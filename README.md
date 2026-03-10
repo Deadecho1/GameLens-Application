@@ -20,3 +20,6 @@ python main.py \
   
 -Videos must be .mp4
 -All videos should be placed in the specified video folder
+
+Model Weights are available here:
+https://drive.google.com/drive/folders/1P8V-G7gfTAqPlpaS92RGeDA0vaGRivSH?usp=sharing
