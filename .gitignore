@@ -18,6 +18,7 @@ venv-poc/
 # model weights
 models/**/model.safetensors
 models/**/training_args.bin
+models/choice/models/**
 
 # windows zone identifiers
 *:Zone.Identifier
@@ -28,3 +29,5 @@ data/run_jsons/
 
 # logs
 *.log
+
+.env

@@ -1,13 +1,23 @@
 import os
+import sys
+from pathlib import Path
+
+if __package__ in (None, ""):
+    # Allow running this file directly: `uv run app_core/model_manager.py`
+    repo_root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(repo_root))
+
+from models.choice.choice_handler import ChoiceExtractor
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from functools import lru_cache
-from pathlib import Path
 
 import torch
-from transformers import XCLIPProcessor, XCLIPModel
+from transformers import XCLIPModel, XCLIPProcessor
 
-from .settings import EVENT_DETECTOR_MODEL_DIR
+from models.choice.choice_extract import SelectionModel
+from app_core.settings import CHOICE_SELECTION_MODEL_PATH, EVENT_DETECTOR_MODEL_DIR
 
 
 class ModelManager:
@@ -36,6 +46,14 @@ class ModelManager:
     @staticmethod
     @lru_cache(maxsize=1)
     def get_choice_extractor():
-        """
-        TODO: Fill
-        """
+        sel = SelectionModel(weights_path=str(CHOICE_SELECTION_MODEL_PATH))
+        ext = ChoiceExtractor(sel)
+        return ext
+
+
+if __name__ == "__main__":
+    print("model loading...")
+    extractor = ModelManager.get_choice_extractor()
+    print("Model loaded successfully. processing...")
+    res = extractor.process_frame("app_core/ex1.png")
+    print(f"got: {res}")
