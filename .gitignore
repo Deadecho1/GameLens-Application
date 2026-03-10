@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# virtual environments
+venv/
+venv-poc/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# model weights
+models/**/model.safetensors
+models/**/training_args.bin
+
+# windows zone identifiers
+*:Zone.Identifier
+
+# output data
+data/event_jsons/
+data/run_jsons/
+
+# logs
+*.log
