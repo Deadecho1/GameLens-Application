@@ -1,12 +1,7 @@
 import argparse
+import subprocess
+import sys
 from pathlib import Path
-
-from scripts.event_detector.folder_processor import FolderProcessor, VideoEventDetector
-from scripts.run_exporter.choice_service import ChoiceExtractionService
-from scripts.run_exporter.json_reader import EventJsonReader
-from scripts.run_exporter.run_exporter import RunExporter
-from scripts.run_exporter.video_frame_provider import VideoFrameProvider
-from app_core.model_manager import ModelManager
 
 
 def validate_input_dir(path: Path, name: str) -> None:
@@ -16,18 +11,31 @@ def validate_input_dir(path: Path, name: str) -> None:
         raise NotADirectoryError(f"{name} is not a folder: {path}")
 
 
+def run_command(command: list[str]) -> None:
+    result = subprocess.run(command)
+    if result.returncode != 0:
+        raise RuntimeError(f"Command failed with exit code {result.returncode}")
+
+
 def run_event_detector(
     video_dir: Path,
     event_json_dir: Path,
     verbose: bool,
 ) -> None:
-    detector = VideoEventDetector()
-    processor = FolderProcessor(detector)
-    processor.process_folder(
-        input_dir=video_dir,
-        output_dir=event_json_dir,
-        verbose=verbose,
-    )
+    command = [
+        sys.executable,
+        "-m",
+        "scripts.event_detector.cli",
+        "--input-dir",
+        str(video_dir),
+        "--output-dir",
+        str(event_json_dir),
+    ]
+
+    if verbose:
+        command.append("--verbose")
+
+    run_command(command)
 
 
 def run_run_exporter(
@@ -36,20 +44,22 @@ def run_run_exporter(
     run_json_dir: Path,
     verbose: bool,
 ) -> None:
-    choice_extractor = ModelManager.get_choice_extractor()
-    choice_service = ChoiceExtractionService(choice_extractor)
+    command = [
+        sys.executable,
+        "-m",
+        "scripts.run_exporter.cli",
+        "--json-dir",
+        str(event_json_dir),
+        "--video-dir",
+        str(video_dir),
+        "--output-dir",
+        str(run_json_dir),
+    ]
 
-    exporter = RunExporter(
-        json_reader=EventJsonReader(),
-        frame_provider=VideoFrameProvider(video_dir=video_dir),
-        choice_service=choice_service,
-    )
+    if verbose:
+        command.append("--verbose")
 
-    exporter.process_folder(
-        json_dir=event_json_dir,
-        output_dir=run_json_dir,
-        verbose=verbose,
-    )
+    run_command(command)
 
 
 def main() -> None:
