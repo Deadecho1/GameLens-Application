@@ -1,0 +1,33 @@
+{
+  "video_name": "holocure_test.mp4",
+  "fps": 60.0,
+  "duration_seconds": 79.61666666666666,
+  "runs": [
+    {
+      "run_index": 1,
+      "start_event": {
+        "time": 10.75,
+        "frame": 645,
+        "confidence": 0.9742559790611267
+      },
+      "end_event": {
+        "time": 75.25,
+        "frame": 4515,
+        "confidence": 0.9982483386993408
+      },
+      "choice_events": [
+        {
+          "time": 33.0,
+          "frame": 1980,
+          "confidence": 0.9990704655647278
+        },
+        {
+          "time": 56.0,
+          "frame": 3360,
+          "confidence": 0.9986981153488159
+        }
+      ],
+      "drop_events": []
+    }
+  ]
+}
