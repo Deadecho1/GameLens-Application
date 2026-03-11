@@ -3,7 +3,7 @@ name = "gamelens-application"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11, <3.13"
 dependencies = [
     "decord>=0.6.0",
     "matplotlib>=3.10.8",
@@ -11,10 +11,22 @@ dependencies = [
     "openai>=2.26.0",
     "opencv-python>=4.13.0.92",
     "paddleocr>=3.4.0",
-    "paddlepaddle>=3.3.0",
     "pillow>=12.1.1",
     "python-dotenv>=1.2.2",
-    "torch>=2.10.0",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
     "transformers>=5.3.0",
     "ultralytics>=8.4.21",
 ]
+
+# Define the custom CUDA 11.8 index for PyTorch
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+# Pin PyTorch and Paddle packages to their explicit indexes
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+torchvision = [{ index = "pytorch-cu118", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+paddlepaddle-gpu = [{ index = "paddle-cu118" }]
