@@ -1,3 +1,4 @@
+import gc
 import io
 from pathlib import Path
 from typing import Dict
@@ -39,3 +40,13 @@ class VideoFrameProvider:
         buffer = io.BytesIO()
         image.save(buffer, format=self.image_format)
         return buffer.getvalue()
+    
+    def release_video(self, video_name: str) -> None:
+        reader = self._cache.pop(video_name, None)
+        if reader is not None:
+            del reader
+            gc.collect()
+
+    def release_all(self) -> None:
+        self._cache.clear()
+        gc.collect()

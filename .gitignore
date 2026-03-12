@@ -24,8 +24,7 @@ models/choice/models/**
 *:Zone.Identifier
 
 # output data
-data/event_jsons/
-data/run_jsons/
+data/versions
 
 # logs
 *.log

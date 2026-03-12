@@ -28,6 +28,7 @@ class RunExporter:
             return None
         return end_time - start_time
 
+    # TODO: I want to retry on extract_choice if it fails with a previous frame a few times, in case the model gave a frame that was too late and the choice is not visibile in that frame.
     def _export_single_run(
         self,
         video_name: str,
@@ -69,23 +70,26 @@ class RunExporter:
     ) -> None:
         video_events: VideoEventsJson = self.json_reader.read_video_events(json_path)
 
-        for run in video_events.runs:
-            exported = self._export_single_run(
-                video_name=video_events.video_name,
-                run=run,
-            )
+        try:
+            for run in video_events.runs:
+                exported = self._export_single_run(
+                    video_name=video_events.video_name,
+                    run=run,
+                )
 
-            out_name = self._make_output_filename(
-                video_name=video_events.video_name,
-                run_index=run.run_index,
-            )
-            out_path = output_dir / out_name
+                out_name = self._make_output_filename(
+                    video_name=video_events.video_name,
+                    run_index=run.run_index,
+                )
+                out_path = output_dir / out_name
 
-            with open(out_path, "w", encoding="utf-8") as f:
-                json.dump(exported, f, indent=2, ensure_ascii=False)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    json.dump(exported, f, indent=2, ensure_ascii=False)
 
-            if verbose:
-                print(f"Saved: {out_path}")
+                if verbose:
+                    print(f"Saved: {out_path}")
+        finally:
+            self.frame_provider.release_video(video_events.video_name)
 
     def process_folder(
         self,

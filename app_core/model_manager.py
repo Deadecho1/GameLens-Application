@@ -46,5 +46,5 @@ if __name__ == "__main__":
     print("model loading...")
     extractor = ModelManager.get_choice_extractor()
     print("Model loaded successfully. processing...")
-    res = extractor.process_frame("app_core/ex1.png")
+    res = extractor.process_frame("ex1.png")
     print(f"got: {res}")

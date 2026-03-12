@@ -8,8 +8,11 @@ from .json_reader import EventJsonReader
 from .run_exporter import RunExporter
 from .video_frame_provider import VideoFrameProvider
 
+from dotenv import load_dotenv
 
 def main():
+    load_dotenv()
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--json-dir",

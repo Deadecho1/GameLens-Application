@@ -22,7 +22,7 @@ class ChoiceExtractor:
         b64 = base64.b64encode(image_bytes).decode("ascii")
         return f"data:{mime};base64,{b64}"
 
-    def extract(self, image_bytes: bytes) -> dict:
+    def extract_frame(self, image_bytes: bytes) -> dict:
         schema = {
             "name": "choice_extraction",
             "schema": {
@@ -53,8 +53,8 @@ class ChoiceExtractor:
                 {
                     "role": "system",
                     "content": (
-                        "You are analyzing a game UI screenshot. "
-                        "Extract the choice titles shown and identify the currently selected one."
+                        "You are analyzing a roguelike game screenshot."
+                        "Extract the item/upgrade titles shown and identify the currently selected one."
                     ),
                 },
                 {
