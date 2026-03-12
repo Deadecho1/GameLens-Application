@@ -1,37 +1,36 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Optional
-
 from PySide6.QtCore import QTimer, Qt, Slot
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QFileDialog,
+    QComboBox,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
-    QLineEdit,
     QMainWindow,
     QMessageBox,
     QPushButton,
-    QPlainTextEdit,
-    QCheckBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
+    QHeaderView,
 )
 
+from .analytics_service import AnalyticsService
 from .config import (
     APP_NAME,
-    DEFAULT_EVENT_JSON_DIR,
-    DEFAULT_RUN_JSON_DIR,
     DEFAULT_WINDOW_HEIGHT,
     DEFAULT_WINDOW_WIDTH,
     MAX_FONT_SIZE,
     MIN_FONT_SIZE,
 )
-from .models import PipelineConfig
-from .pipeline_runner import PipelineRunner
+from .models import DashboardStats, RunSummary, VersionInfo
+from .process_clips_dialog import ProcessClipsDialog
+from .repository import VersionRepository
 
 
 class MainWindow(QMainWindow):
@@ -40,166 +39,240 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(APP_NAME)
         self.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
 
-        self.runner = PipelineRunner()
+        self._repo = VersionRepository()
+        self._analytics = AnalyticsService()
+        self._versions: list[VersionInfo] = []
+        self._current_runs: list[RunSummary] = []
+        self._run_tabs: dict[str, QWidget] = {}
+
         self._font_update_timer = QTimer(self)
         self._font_update_timer.setSingleShot(True)
         self._font_update_timer.timeout.connect(self._apply_responsive_fonts)
 
         self._build_ui()
         self._connect_signals()
-        self._apply_defaults()
+        self._load_versions()
+        self._apply_responsive_fonts()
+        self._refresh_dashboard()
 
     def _build_ui(self) -> None:
-        central = QWidget(self)
-        self.setCentralWidget(central)
+        self.tabs = QTabWidget()
+        self.setCentralWidget(self.tabs)
 
-        root = QVBoxLayout(central)
+        self.dashboard_tab = QWidget()
+        self.tabs.addTab(self.dashboard_tab, "Dashboard")
+
+        root = QVBoxLayout(self.dashboard_tab)
         root.setContentsMargins(12, 12, 12, 12)
-        root.setSpacing(10)
+        root.setSpacing(12)
 
-        config_group = QGroupBox("Videos")
-        config_layout = QGridLayout(config_group)
+        top_row = QHBoxLayout()
 
-        self.video_dir_edit = QLineEdit()
-        self.video_dir_edit.setPlaceholderText("Choose a folder containing source MP4 files")
-        self.video_browse_button = QPushButton("Browse...")
+        version_group = QGroupBox("Version")
+        version_layout = QHBoxLayout(version_group)
 
-        config_layout.addWidget(QLabel("Video folder"), 0, 0)
-        config_layout.addWidget(self.video_dir_edit, 0, 1)
-        config_layout.addWidget(self.video_browse_button, 0, 2)
-        config_layout.setColumnStretch(1, 1)
+        self.version_combo = QComboBox()
+        self.add_version_button = QPushButton("Add version")
+        self.process_button = QPushButton("Process clips")
 
-        options_group = QGroupBox("Options")
-        options_layout = QHBoxLayout(options_group)
+        version_layout.addWidget(QLabel("Selected version"))
+        version_layout.addWidget(self.version_combo, 1)
+        version_layout.addWidget(self.add_version_button)
+        version_layout.addWidget(self.process_button)
 
-        self.only_events_checkbox = QCheckBox("Only events")
-        self.only_export_checkbox = QCheckBox("Only export")
-        self.verbose_checkbox = QCheckBox("Verbose")
-        self.verbose_checkbox.setChecked(True)
+        top_row.addWidget(version_group)
 
-        options_layout.addWidget(self.only_events_checkbox)
-        options_layout.addWidget(self.only_export_checkbox)
-        options_layout.addWidget(self.verbose_checkbox)
-        options_layout.addStretch(1)
+        dashboard_group = QGroupBox("Dashboard Overview")
+        dashboard_layout = QGridLayout(dashboard_group)
 
-        actions_layout = QHBoxLayout()
-        self.run_button = QPushButton("Run")
-        self.stop_button = QPushButton("Stop")
-        self.clear_log_button = QPushButton("Clear log")
-        self.stop_button.setEnabled(False)
+        self.total_runs_value = QLabel("0")
+        self.avg_duration_value = QLabel("0s")
+        self.max_duration_value = QLabel("0s")
+        self.total_choices_value = QLabel("0")
 
-        actions_layout.addWidget(self.run_button)
-        actions_layout.addWidget(self.stop_button)
-        actions_layout.addStretch(1)
-        actions_layout.addWidget(self.clear_log_button)
+        dashboard_layout.addWidget(self._make_stat_card("Runs", self.total_runs_value), 0, 0)
+        dashboard_layout.addWidget(self._make_stat_card("Average Duration", self.avg_duration_value), 0, 1)
+        dashboard_layout.addWidget(self._make_stat_card("Longest Run", self.max_duration_value), 0, 2)
+        dashboard_layout.addWidget(self._make_stat_card("Total Selections", self.total_choices_value), 0, 3)
 
-        status_group = QGroupBox("Status")
-        status_layout = QGridLayout(status_group)
-        self.stage_value = QLabel("Idle")
-        self.stage_value.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        status_layout.addWidget(QLabel("Current stage"), 0, 0)
-        status_layout.addWidget(self.stage_value, 0, 1)
+        runs_group = QGroupBox("Runs")
+        runs_layout = QVBoxLayout(runs_group)
 
-        log_group = QGroupBox("Log")
-        log_layout = QVBoxLayout(log_group)
-        self.log_output = QPlainTextEdit()
-        self.log_output.setReadOnly(True)
-        self.log_output.setLineWrapMode(QPlainTextEdit.NoWrap)
-        log_layout.addWidget(self.log_output)
+        self.runs_table = QTableWidget(0, 2)
+        self.runs_table.setHorizontalHeaderLabels(["Run ID", "Duration"])
+        self.runs_table.verticalHeader().setVisible(False)
+        self.runs_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.runs_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.runs_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.runs_table.setAlternatingRowColors(True)
 
-        root.addWidget(config_group)
-        root.addWidget(options_group)
-        root.addLayout(actions_layout)
-        root.addWidget(status_group)
-        root.addWidget(log_group, 1)
+        header = self.runs_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setStretchLastSection(False)
+
+        runs_layout.addWidget(self.runs_table)
+
+        root.addLayout(top_row)
+        root.addWidget(dashboard_group)
+        root.addWidget(runs_group, 1)
+
+    def _make_stat_card(self, title: str, value_label: QLabel) -> QGroupBox:
+        box = QGroupBox(title)
+        layout = QVBoxLayout(box)
+        value_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(value_label)
+        return box
 
     def _connect_signals(self) -> None:
-        self.video_browse_button.clicked.connect(self._choose_video_dir)
-        self.run_button.clicked.connect(self._on_run_clicked)
-        self.stop_button.clicked.connect(self.runner.stop_pipeline)
-        self.clear_log_button.clicked.connect(self.log_output.clear)
+        self.version_combo.activated.connect(self._on_version_selected)
+        self.add_version_button.clicked.connect(self._add_version)
+        self.process_button.clicked.connect(self._open_process_dialog)
+        self.runs_table.cellDoubleClicked.connect(self._on_run_double_clicked)
 
-        self.only_events_checkbox.toggled.connect(self._sync_mode_checkboxes)
-        self.only_export_checkbox.toggled.connect(self._sync_mode_checkboxes)
+    def _load_versions(self) -> None:
+        current_name = self.version_combo.currentText().strip()
+        self._versions = self._repo.list_versions()
 
-        self.runner.log_message.connect(self._append_log)
-        self.runner.stage_changed.connect(self.stage_value.setText)
-        self.runner.pipeline_finished.connect(self._on_pipeline_finished)
-        self.runner.busy_changed.connect(self._set_busy_state)
+        self.version_combo.blockSignals(True)
+        self.version_combo.clear()
+        for version in self._versions:
+            self.version_combo.addItem(version.name)
+        self.version_combo.blockSignals(False)
 
-    def _apply_defaults(self) -> None:
-        self._apply_responsive_fonts()
+        if self._versions:
+            index = self.version_combo.findText(current_name)
+            self.version_combo.setCurrentIndex(index if index >= 0 else 0)
+
+        self._refresh_dashboard()
+
+    def _current_version(self) -> VersionInfo | None:
+        index = self.version_combo.currentIndex()
+        if index < 0 or index >= len(self._versions):
+            return None
+        return self._versions[index]
 
     @Slot()
-    def _choose_video_dir(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Choose video folder")
-        if folder:
-            self.video_dir_edit.setText(folder)
-
-    @Slot(bool)
-    def _sync_mode_checkboxes(self, checked: bool) -> None:
-        sender = self.sender()
-        if not checked:
+    def _refresh_dashboard(self) -> None:
+        version = self._current_version()
+        if version is None:
+            self._current_runs = []
+            self._set_stats_empty()
+            self._populate_runs([])
             return
 
-        if sender is self.only_events_checkbox:
-            self.only_export_checkbox.setChecked(False)
-        elif sender is self.only_export_checkbox:
-            self.only_events_checkbox.setChecked(False)
+        stats = self._analytics.load_dashboard_stats(version)
+        runs = self._analytics.load_run_summaries(version)
+        self._current_runs = runs
+        self._set_stats(stats)
+        self._populate_runs(runs)
+
+    def _set_stats_empty(self) -> None:
+        self.total_runs_value.setText("0")
+        self.avg_duration_value.setText("0s")
+        self.max_duration_value.setText("0s")
+        self.total_choices_value.setText("0")
+
+    def _set_stats(self, stats: DashboardStats) -> None:
+        self.total_runs_value.setText(str(stats.total_runs))
+        self.avg_duration_value.setText(self._format_seconds(stats.average_run_duration_seconds))
+        self.max_duration_value.setText(self._format_seconds(stats.max_run_duration_seconds))
+        self.total_choices_value.setText(str(stats.total_choices))
+
+    def _populate_runs(self, runs: list[RunSummary]) -> None:
+        self.runs_table.clearContents()
+        self.runs_table.setRowCount(len(runs))
+
+        for row, run in enumerate(runs):
+            self.runs_table.setItem(row, 0, QTableWidgetItem(run.run_name))
+            self.runs_table.setItem(row, 1, QTableWidgetItem(self._format_seconds(run.duration_seconds)))
+
+        self.runs_table.resizeRowsToContents()
+        self.runs_table.viewport().update()
+
+    def _format_seconds(self, seconds: float) -> str:
+        total = int(seconds)
+        minutes, sec = divmod(total, 60)
+        hours, minutes = divmod(minutes, 60)
+        if hours > 0:
+            return f"{hours}h {minutes}m {sec}s"
+        if minutes > 0:
+            return f"{minutes}m {sec}s"
+        return f"{sec}s"
 
     @Slot()
-    def _on_run_clicked(self) -> None:
-        config = self._build_config_from_ui()
-        if config is None:
+    def _add_version(self) -> None:
+        version_name, ok = QInputDialog.getText(self, APP_NAME, "Enter new version name:")
+        if not ok:
             return
 
-        self.stage_value.setText("Preparing")
-        self.runner.start_pipeline(config)
+        version_name = version_name.strip()
+        if not version_name:
+            QMessageBox.warning(self, APP_NAME, "Version name cannot be empty.")
+            return
 
-    def _build_config_from_ui(self) -> Optional[PipelineConfig]:
-        video_dir_text = self.video_dir_edit.text().strip()
-        if not video_dir_text:
-            QMessageBox.warning(self, APP_NAME, "Please choose a video folder.")
-            return None
+        if any(version.name == version_name for version in self._versions):
+            QMessageBox.warning(self, APP_NAME, f"Version '{version_name}' already exists.")
+            return
 
-        video_dir = Path(video_dir_text).resolve()
-        if not video_dir.exists():
-            QMessageBox.warning(self, APP_NAME, f"Video folder not found:\n{video_dir}")
-            return None
+        self._repo.ensure_version(version_name)
+        self._load_versions()
 
-        if not video_dir.is_dir():
-            QMessageBox.warning(self, APP_NAME, f"Path is not a folder:\n{video_dir}")
-            return None
+        index = self.version_combo.findText(version_name)
+        if index >= 0:
+            self.version_combo.setCurrentIndex(index)
+            self._refresh_dashboard()
 
-        event_json_dir = DEFAULT_EVENT_JSON_DIR.resolve()
-        run_json_dir = DEFAULT_RUN_JSON_DIR.resolve()
-        event_json_dir.mkdir(parents=True, exist_ok=True)
-        run_json_dir.mkdir(parents=True, exist_ok=True)
+    @Slot()
+    def _open_process_dialog(self) -> None:
+        version = self._current_version()
+        if version is None:
+            QMessageBox.warning(self, APP_NAME, "Please add and select a version first.")
+            return
 
-        return PipelineConfig(
-            video_dir=video_dir,
-            event_json_dir=event_json_dir,
-            run_json_dir=run_json_dir,
-            only_events=self.only_events_checkbox.isChecked(),
-            only_export=self.only_export_checkbox.isChecked(),
-            verbose=self.verbose_checkbox.isChecked(),
-        )
+        dialog = ProcessClipsDialog(version, self)
+        dialog.processing_completed.connect(self._refresh_dashboard)
+        dialog.exec()
 
-    @Slot(str)
-    def _append_log(self, text: str) -> None:
-        self.log_output.appendPlainText(text.rstrip("\n"))
-        scrollbar = self.log_output.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum())
+    @Slot(int)
+    def _on_version_selected(self, index: int) -> None:
+        self.version_combo.setCurrentIndex(index)
+        self.version_combo.hidePopup()
+        self._refresh_dashboard()
 
-    @Slot(bool)
-    def _set_busy_state(self, busy: bool) -> None:
-        self.video_dir_edit.setEnabled(not busy)
-        self.video_browse_button.setEnabled(not busy)
-        self.only_events_checkbox.setEnabled(not busy)
-        self.only_export_checkbox.setEnabled(not busy)
-        self.verbose_checkbox.setEnabled(not busy)
-        self.run_button.setEnabled(not busy)
-        self.stop_button.setEnabled(busy)
+    @Slot(int, int)
+    def _on_run_double_clicked(self, row: int, _column: int) -> None:
+        if row < 0 or row >= len(self._current_runs):
+            return
+
+        run = self._current_runs[row]
+        self._open_run_tab(run)
+
+    def _open_run_tab(self, run: RunSummary) -> None:
+        run_key = run.run_name
+
+        existing_tab = self._run_tabs.get(run_key)
+        if existing_tab is not None:
+            self.tabs.setCurrentWidget(existing_tab)
+            return
+
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        title = QLabel(run.run_name)
+        title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+        duration_label = QLabel(f"Duration: {self._format_seconds(run.duration_seconds)}")
+
+        layout.addWidget(title)
+        layout.addWidget(duration_label)
+        layout.addStretch(1)
+
+        self.tabs.addTab(tab, run.run_name)
+        self.tabs.setCurrentWidget(tab)
+        self._run_tabs[run_key] = tab
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
@@ -215,24 +288,24 @@ class MainWindow(QMainWindow):
             child.setFont(child_font)
 
     def _apply_responsive_fonts(self) -> None:
-        width = max(self.width(), 800)
-        height = max(self.height(), 600)
-        point_size = max(MIN_FONT_SIZE, min(MAX_FONT_SIZE, int(min(width / 70, height / 42))))
+        width = max(self.width(), 900)
+        height = max(self.height(), 700)
+        point_size = max(MIN_FONT_SIZE, min(MAX_FONT_SIZE, int(min(width / 78, height / 45))))
+
         self._apply_font_recursive(self.centralWidget(), point_size)
 
-        log_font = QFont(self.log_output.font())
-        log_font.setPointSize(max(MIN_FONT_SIZE - 1, point_size - 1))
-        self.log_output.setFont(log_font)
+        stat_font = QFont(self.font())
+        stat_font.setPointSize(point_size + 6)
+        stat_font.setBold(True)
+        for label in [
+            self.total_runs_value,
+            self.avg_duration_value,
+            self.max_duration_value,
+            self.total_choices_value,
+        ]:
+            label.setFont(stat_font)
 
         title_font = QFont(self.font())
         title_font.setPointSize(point_size + 1)
         for group_box in self.findChildren(QGroupBox):
             group_box.setFont(title_font)
-
-    @Slot(bool, str)
-    def _on_pipeline_finished(self, success: bool, message: str) -> None:
-        self._append_log(message)
-        if success:
-            QMessageBox.information(self, APP_NAME, message)
-        else:
-            QMessageBox.warning(self, APP_NAME, message)
