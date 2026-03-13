@@ -1,74 +1,46 @@
-import base64
-import imghdr
-import json
-from app_core.settings import OPENAI_API_KEY
+from typing import Any, Dict, Optional
 
-from openai import OpenAI
+import requests
 
 
 class ChoiceExtractor:
-    def __init__(self, model: str = "gpt-5.1"):
-        self.model = model
-        if OPENAI_API_KEY:
-            self.client = OpenAI(api_key=OPENAI_API_KEY)
-        else:
-            self.client = OpenAI()
+    def __init__(
+        self,
+        base_url: str = "http://localhost:7761",
+    ):
+        self.base_url = base_url.rstrip("/")
+        self.endpoint = f"{self.base_url}/api/v1/choice/extract-choices"
 
-    def _data_url_from_bytes(self, image_bytes: bytes) -> str:
-        img_type = imghdr.what(None, h=image_bytes)
-        if img_type is None:
-            img_type = "png"
-        mime = f"image/{img_type}"
-        b64 = base64.b64encode(image_bytes).decode("ascii")
-        return f"data:{mime};base64,{b64}"
+    def extract_frame(
+        self,
+        image_bytes: bytes,
+        prompt: Optional[str] = None,
+        model: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Sends image bytes to the FastAPI backend to extract choice titles.
+        """
+        # FastAPI's UploadFile expects a file tuple: (filename, content, content_type)
+        # We assign a generic filename and standard image/png type.
+        files = {"file": ("screenshot.png", image_bytes, "image/png")}
 
-    def extract_frame(self, image_bytes: bytes) -> dict:
-        schema = {
-            "name": "choice_extraction",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "choices": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Choice titles, in on-screen order.",
-                    },
-                    "selected_choice": {
-                        "type": "string",
-                        "description": "The currently selected choice title, or empty string if none.",
-                    },
-                },
-                "required": ["choices", "selected_choice"],
-                "additionalProperties": False,
-            },
-        }
+        # Any additional parameters are sent as form data or query params
+        params = {}
+        if prompt:
+            params["prompt"] = prompt
+        if model:
+            params["model"] = model
 
-        data_url = self._data_url_from_bytes(image_bytes)
+        try:
+            # Make the POST request to the FastAPI route
+            response = requests.post(self.endpoint, files=files, params=params)
 
-        resp = self.client.chat.completions.create(
-            model=self.model,
-            temperature=0,
-            response_format={"type": "json_schema", "json_schema": schema},
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are analyzing a roguelike game screenshot."
-                        "Extract the item/upgrade titles shown and identify the currently selected one."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "Return all choice titles and the selected choice.",
-                        },
-                        {"type": "image_url", "image_url": {"url": data_url}},
-                    ],
-                },
-            ],
-        )
+            # Raise an HTTPError if the status code is 4xx or 5xx
+            response.raise_for_status()
 
-        content = resp.choices[0].message.content
-        return json.loads(content) if isinstance(content, str) else content
+            # Returns the validated dictionary: {'choices': [...], 'selected_choice': '...'}
+            return response.json()
+
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to communicate with the extraction API: {e}")
+            raise

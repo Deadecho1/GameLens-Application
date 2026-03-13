@@ -1,13 +1,12 @@
-from functools import lru_cache
 import os
+from functools import lru_cache
 from pathlib import Path
 
 import torch
 from transformers import XCLIPModel, XCLIPProcessor
 
-from scripts.choice_extractor.extractor import ChoiceExtractor
 from app_core.settings import EVENT_DETECTOR_MODEL_DIR
-
+from scripts.choice_extractor.extractor import ChoiceExtractor
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -35,7 +34,6 @@ class ModelManager:
             "num_model_frames": model.config.vision_config.num_frames,
         }
 
-
     @staticmethod
     @lru_cache(maxsize=1)
     def get_choice_extractor():
@@ -43,8 +41,11 @@ class ModelManager:
 
 
 if __name__ == "__main__":
-    print("model loading...")
+    print("loading choice extractor...")
     extractor = ModelManager.get_choice_extractor()
-    print("Model loaded successfully. processing...")
-    res = extractor.process_frame("ex1.png")
+
+    with open("tests/output/clip18_frame.png", "rb") as f:
+        img_bytes = f.read()
+
+    res = extractor.extract_frame(img_bytes)
     print(f"got: {res}")
