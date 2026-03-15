@@ -12,11 +12,20 @@ class JsonSerializer:
         s = ev.refined_score if ev.refined_score is not None else ev.score
         frame = ev.refined_frame if ev.refined_frame is not None else None
 
-        return {
+        data = {
             "time": t,
             "frame": frame,
             "confidence": s,
         }
+
+        if ev.retry_frames:
+            data["retry_frames"] = ev.retry_frames
+        if ev.retry_times:
+            data["retry_times"] = ev.retry_times
+        if ev.refinement_method:
+            data["refinement_method"] = ev.refinement_method
+
+        return data
 
     def decoded_runs_to_dict(
         self,

@@ -28,6 +28,25 @@ class VideoClipSampler:
         frames = vr.get_batch(indices.tolist()).asnumpy()
         return [frames[i] for i in range(frames.shape[0])]
 
+    def get_frame(self, vr, frame_index: int):
+        frame_index = max(0, min(frame_index, len(vr) - 1))
+        return vr[frame_index].asnumpy()
+
+    def get_frame_range(self, vr, start_frame: int, end_frame: int, step: int = 1) -> Tuple[List[int], List]:
+        if len(vr) == 0:
+            return [], []
+
+        start_frame = max(0, start_frame)
+        end_frame = min(len(vr) - 1, end_frame)
+        step = max(1, step)
+
+        if end_frame < start_frame:
+            return [], []
+
+        indices = list(range(start_frame, end_frame + 1, step))
+        frames = vr.get_batch(indices).asnumpy()
+        return indices, [frames[i] for i in range(frames.shape[0])]
+
     def list_mp4_files(self, input_dir: Path) -> List[Path]:
         return sorted(
             p for p in input_dir.glob("*.mp4")

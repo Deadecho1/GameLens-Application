@@ -9,6 +9,7 @@ from .video_frame_provider import VideoFrameProvider
 
 
 class RunExporter:
+
     def __init__(
         self,
         json_reader: EventJsonReader,
@@ -18,6 +19,7 @@ class RunExporter:
         self.json_reader = json_reader
         self.frame_provider = frame_provider
         self.choice_service = choice_service
+        self.CHOICE_LOOKBACK_FRAMES = 16
 
     def _compute_duration(
         self,
@@ -28,7 +30,6 @@ class RunExporter:
             return None
         return end_time - start_time
 
-    # TODO: I want to retry on extract_choice if it fails with a previous frame a few times, in case the model gave a frame that was too late and the choice is not visibile in that frame.
     def _export_single_run(
         self,
         video_name: str,
@@ -39,16 +40,34 @@ class RunExporter:
         duration = self._compute_duration(start_time, end_time)
 
         choices = []
+
         for choice_event in run.choice_events:
             if choice_event.frame is None:
                 continue
 
-            frame_bytes = self.frame_provider.get_frame_bytes(
-                video_name=video_name,
-                frame_index=choice_event.frame,
-            )
+            choice_result = None
 
-            choice_result = self.choice_service.extract_choice(frame_bytes)
+            # Try detected frame, then a few frames before it
+            for offset in range(self.CHOICE_LOOKBACK_FRAMES + 1):
+                frame_index = choice_event.frame - offset
+                if frame_index < 0:
+                    break
+
+                frame_bytes = self.frame_provider.get_frame_bytes(
+                    video_name=video_name,
+                    frame_index=frame_index,
+                )
+
+                result = self.choice_service.extract_choice(frame_bytes)
+
+                if result["options"]:
+                    choice_result = result
+                    break
+
+            # If still empty after retries → discard event as noise
+            if choice_result is None:
+                continue
+
             choices.append(choice_result)
 
         return {

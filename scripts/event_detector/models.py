@@ -25,6 +25,10 @@ class PeakEvent:
     refined_window_start: Optional[float] = None
     refined_window_end: Optional[float] = None
 
+    retry_frames: List[int] = field(default_factory=list)
+    retry_times: List[float] = field(default_factory=list)
+    refinement_method: Optional[str] = None
+
 
 @dataclass
 class RunCandidate:
