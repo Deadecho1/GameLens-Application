@@ -1,0 +1,57 @@
+doc: "Upload a capture file and metadata"
+tags:
+  - Collector
+consumes:
+  - multipart/form-data
+parameters:
+  - name: file
+    in: formData
+    type: file
+    required: true
+    description: The image file to upload (png, jpg, jpeg)
+  - name: session_id
+    in: formData
+    type: string
+    required: true
+  - name: game_id
+    in: formData
+    type: string
+    required: true
+  - name: captured_at
+    in: formData
+    type: string
+    format: date-time
+    required: true
+    description: ISO-8601 timestamp (for example `2026-03-02T10:30:00Z`)
+    example: "2026-03-02T10:30:00Z"
+  - name: capture_index
+    in: formData
+    type: integer
+    required: true
+    description: Monotonic index of the capture within the session/run
+  - name: run_id
+    in: formData
+    type: string
+  - name: screenshot_hash
+    in: formData
+    type: string
+    description: Optional hash/fingerprint for image deduplication or integrity checks
+  - name: mouse_x
+    in: formData
+    type: integer
+  - name: mouse_y
+    in: formData
+    type: integer
+  - name: image_width
+    in: formData
+    type: integer
+  - name: image_height
+    in: formData
+    type: integer
+responses:
+  200:
+    description: File uploaded successfully
+  400:
+    description: Missing file or parameters
+  415:
+    description: Invalid media format

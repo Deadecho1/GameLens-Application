@@ -1,0 +1,31 @@
+doc: "Register a new game"
+tags:
+  - Game
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - game_name
+        - user_id
+        - game_version
+      properties:
+        game_name:
+          type: string
+        user_id:
+          type: integer
+          example: 1
+        game_version:
+          type: string
+          example: "1.0.0"
+      example:
+        game_name: "Hades"
+        user_id: 1
+        game_version: "1.0.0"
+responses:
+  200:
+    description: Game inserted successfully
+  400:
+    description: Missing required parameters

@@ -1,0 +1,28 @@
+doc: "Register a new run"
+tags:
+  - Run
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - game_id
+        - duration
+      properties:
+        game_id:
+          type: integer
+          example: 1
+        duration:
+          type: number
+          format: float
+          example: 125.5
+      example:
+        game_id: 1
+        duration: 125.5
+responses:
+  200:
+    description: Run inserted successfully
+  400:
+    description: Missing required parameters
