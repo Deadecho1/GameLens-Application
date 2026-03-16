@@ -1,16 +1,10 @@
-import os
-
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
 from typing import Dict, List
 
 from .labels import LABEL_TEXTS
-from app_core.model_manager import ModelManager
 
 
 class ModelBackend:
-    def __init__(self):
-        bundle = ModelManager.get_event_detector()
+    def __init__(self, bundle: dict) -> None:
         self.device = bundle["device"]
         self.processor = bundle["processor"]
         self.model = bundle["model"]

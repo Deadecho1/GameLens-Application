@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app_core.formatting import format_seconds
 from .config import APP_NAME
 from .models import ChoiceDetail, RunDetails
 
@@ -35,7 +36,7 @@ class RunDetailsDialog(QDialog):
         title_font.setBold(True)
         title.setFont(title_font)
 
-        duration_label = QLabel(f"Duration: {self._format_seconds(details.duration_seconds)}")
+        duration_label = QLabel(f"Duration: {format_seconds(details.duration_seconds)}")
 
         root.addWidget(title)
         root.addWidget(duration_label)
@@ -94,12 +95,3 @@ class RunDetailsDialog(QDialog):
 
         return box
 
-    def _format_seconds(self, seconds: float) -> str:
-        total = int(seconds)
-        minutes, sec = divmod(total, 60)
-        hours, minutes = divmod(minutes, 60)
-        if hours > 0:
-            return f"{hours}h {minutes}m {sec}s"
-        if minutes > 0:
-            return f"{minutes}m {sec}s"
-        return f"{sec}s"

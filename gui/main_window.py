@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer, Slot
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox,
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
 )
 
+from app_core.formatting import format_seconds
 from .analytics_service import AnalyticsService
 from .config import (
     APP_NAME,
@@ -29,30 +30,37 @@ from .config import (
 )
 from .models import DashboardStats, GameInfo, RunSummary, VersionInfo
 from .process_clips_dialog import ProcessClipsDialog
+from .protocols import AnalyticsReader, GameRepo
 from .repository import GameRepository
 from .run_details_dialog import RunDetailsDialog
+from .widgets import ResponsiveFontMixin, populate_combo_restoring_selection
 
 
-class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+class MainWindow(ResponsiveFontMixin, QMainWindow):
+    def __init__(
+        self,
+        repo: GameRepo | None = None,
+        analytics: AnalyticsReader | None = None,
+    ) -> None:
         super().__init__()
         self.setWindowTitle(APP_NAME)
         self.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
 
-        self._repo = GameRepository()
-        self._analytics = AnalyticsService()
+        from .config import GAMES_ROOT
+        self._repo: GameRepo = repo or GameRepository(root_dir=GAMES_ROOT)
+        self._analytics: AnalyticsReader = analytics or AnalyticsService()
         self._games: list[GameInfo] = []
         self._versions: list[VersionInfo] = []
         self._current_runs: list[RunSummary] = []
 
-        self._font_update_timer = QTimer(self)
-        self._font_update_timer.setSingleShot(True)
-        self._font_update_timer.timeout.connect(self._apply_responsive_fonts)
-
+        self._setup_font_timer()
         self._build_ui()
         self._connect_signals()
         self._load_games()
         self._apply_responsive_fonts()
+
+    def _font_scale_params(self) -> tuple:
+        return MIN_FONT_SIZE, MAX_FONT_SIZE, 900, 700, 78.0, 45.0
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -139,36 +147,22 @@ class MainWindow(QMainWindow):
     def _load_games(self) -> None:
         current_game = self.game_combo.currentText().strip()
         self._games = self._repo.list_games()
-
-        self.game_combo.blockSignals(True)
-        self.game_combo.clear()
-        for game in self._games:
-            self.game_combo.addItem(game.name)
-        self.game_combo.blockSignals(False)
-
-        if self._games:
-            index = self.game_combo.findText(current_game)
-            self.game_combo.setCurrentIndex(index if index >= 0 else 0)
-
+        populate_combo_restoring_selection(
+            self.game_combo,
+            [g.name for g in self._games],
+            current_game,
+        )
         self._load_versions()
 
     def _load_versions(self) -> None:
         game = self._current_game()
         current_version = self.version_combo.currentText().strip()
-
-        self.version_combo.blockSignals(True)
-        self.version_combo.clear()
-        self._versions = []
-        if game is not None:
-            self._versions = self._repo.list_versions(game)
-            for version in self._versions:
-                self.version_combo.addItem(version.name)
-        self.version_combo.blockSignals(False)
-
-        if self._versions:
-            index = self.version_combo.findText(current_version)
-            self.version_combo.setCurrentIndex(index if index >= 0 else 0)
-
+        self._versions = self._repo.list_versions(game) if game is not None else []
+        populate_combo_restoring_selection(
+            self.version_combo,
+            [v.name for v in self._versions],
+            current_version,
+        )
         self._refresh_dashboard()
 
     def _current_game(self) -> GameInfo | None:
@@ -206,8 +200,8 @@ class MainWindow(QMainWindow):
 
     def _set_stats(self, stats: DashboardStats) -> None:
         self.total_runs_value.setText(str(stats.total_runs))
-        self.avg_duration_value.setText(self._format_seconds(stats.average_run_duration_seconds))
-        self.max_duration_value.setText(self._format_seconds(stats.max_run_duration_seconds))
+        self.avg_duration_value.setText(format_seconds(stats.average_run_duration_seconds))
+        self.max_duration_value.setText(format_seconds(stats.max_run_duration_seconds))
         self.popular_item_value.setText(stats.most_popular_item)
 
     def _populate_runs(self, runs: list[RunSummary]) -> None:
@@ -216,20 +210,10 @@ class MainWindow(QMainWindow):
 
         for row, run in enumerate(runs):
             self.runs_table.setItem(row, 0, QTableWidgetItem(run.run_name))
-            self.runs_table.setItem(row, 1, QTableWidgetItem(self._format_seconds(run.duration_seconds)))
+            self.runs_table.setItem(row, 1, QTableWidgetItem(format_seconds(run.duration_seconds)))
 
         self.runs_table.resizeRowsToContents()
         self.runs_table.viewport().update()
-
-    def _format_seconds(self, seconds: float) -> str:
-        total = int(seconds)
-        minutes, sec = divmod(total, 60)
-        hours, minutes = divmod(minutes, 60)
-        if hours > 0:
-            return f"{hours}h {minutes}m {sec}s"
-        if minutes > 0:
-            return f"{minutes}m {sec}s"
-        return f"{sec}s"
 
     @Slot()
     def _add_game(self) -> None:
@@ -317,21 +301,13 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self._font_update_timer.start(50)
-
-    def _apply_font_recursive(self, widget: QWidget, point_size: int) -> None:
-        font = QFont(widget.font())
-        font.setPointSize(point_size)
-        widget.setFont(font)
-        for child in widget.findChildren(QWidget):
-            child_font = QFont(child.font())
-            child_font.setPointSize(point_size)
-            child.setFont(child_font)
+        self._schedule_font_update()
 
     def _apply_responsive_fonts(self) -> None:
-        width = max(self.width(), 900)
-        height = max(self.height(), 700)
-        point_size = max(MIN_FONT_SIZE, min(MAX_FONT_SIZE, int(min(width / 78, height / 45))))
+        min_fs, max_fs, min_w, min_h, w_ratio, h_ratio = self._font_scale_params()
+        width = max(self.width(), min_w)
+        height = max(self.height(), min_h)
+        point_size = max(min_fs, min(max_fs, int(min(width / w_ratio, height / h_ratio))))
 
         self._apply_font_recursive(self.centralWidget(), point_size)
 

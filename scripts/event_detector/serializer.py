@@ -2,26 +2,22 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-from .models import DecodedRun, PeakEvent
+from .models import RefinedEvent, RefinedRun
 
 
 class JsonSerializer:
     @staticmethod
-    def event_to_dict(ev: PeakEvent) -> Dict:
-        t = ev.refined_time if ev.refined_time is not None else ev.time
-        s = ev.refined_score if ev.refined_score is not None else ev.score
-        frame = ev.refined_frame if ev.refined_frame is not None else None
-
-        data = {
-            "time": t,
-            "frame": frame,
-            "confidence": s,
+    def event_to_dict(ev: RefinedEvent) -> Dict:
+        data: Dict = {
+            "time": ev.refined_time,
+            "frame": ev.refined_frame,
+            "confidence": ev.refined_score,
         }
 
         if ev.retry_frames:
-            data["retry_frames"] = ev.retry_frames
+            data["retry_frames"] = list(ev.retry_frames)
         if ev.retry_times:
-            data["retry_times"] = ev.retry_times
+            data["retry_times"] = list(ev.retry_times)
         if ev.refinement_method:
             data["refinement_method"] = ev.refinement_method
 
@@ -32,11 +28,11 @@ class JsonSerializer:
         video_path: str,
         fps: float,
         duration: float,
-        decoded_runs: List[DecodedRun],
+        refined_runs: List[RefinedRun],
     ) -> Dict:
         runs_json = []
 
-        for i, run in enumerate(decoded_runs, start=1):
+        for i, run in enumerate(refined_runs, start=1):
             runs_json.append(
                 {
                     "run_index": i,
@@ -59,14 +55,14 @@ class JsonSerializer:
         video_path: str,
         fps: float,
         duration: float,
-        decoded_runs: List[DecodedRun],
+        refined_runs: List[RefinedRun],
         json_out_path: str,
     ) -> None:
         data = self.decoded_runs_to_dict(
             video_path=video_path,
             fps=fps,
             duration=duration,
-            decoded_runs=decoded_runs,
+            refined_runs=refined_runs,
         )
 
         out_path = Path(json_out_path)

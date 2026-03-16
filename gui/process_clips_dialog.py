@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QTimer, Qt, Signal, Slot
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -24,9 +24,10 @@ from PySide6.QtWidgets import (
 from .config import APP_NAME, MAX_FONT_SIZE, MIN_FONT_SIZE
 from .models import PipelineConfig, VersionInfo
 from .pipeline_runner import PipelineRunner
+from .widgets import ResponsiveFontMixin
 
 
-class ProcessClipsDialog(QDialog):
+class ProcessClipsDialog(ResponsiveFontMixin, QDialog):
     processing_completed = Signal()
 
     def __init__(self, version: VersionInfo, parent: Optional[QWidget] = None) -> None:
@@ -37,13 +38,13 @@ class ProcessClipsDialog(QDialog):
         self.setWindowTitle(f"{APP_NAME} - Process Clips - {version.name}")
         self.resize(1100, 800)
 
-        self._font_update_timer = QTimer(self)
-        self._font_update_timer.setSingleShot(True)
-        self._font_update_timer.timeout.connect(self._apply_responsive_fonts)
-
+        self._setup_font_timer()
         self._build_ui()
         self._connect_signals()
         self._apply_responsive_fonts()
+
+    def _font_scale_params(self) -> tuple:
+        return MIN_FONT_SIZE, MAX_FONT_SIZE, 800, 600, 70.0, 42.0
 
     def _build_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -185,21 +186,14 @@ class ProcessClipsDialog(QDialog):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self._font_update_timer.start(50)
-
-    def _apply_font_recursive(self, widget: QWidget, point_size: int) -> None:
-        font = QFont(widget.font())
-        font.setPointSize(point_size)
-        widget.setFont(font)
-        for child in widget.findChildren(QWidget):
-            child_font = QFont(child.font())
-            child_font.setPointSize(point_size)
-            child.setFont(child_font)
+        self._schedule_font_update()
 
     def _apply_responsive_fonts(self) -> None:
-        width = max(self.width(), 800)
-        height = max(self.height(), 600)
-        point_size = max(MIN_FONT_SIZE, min(MAX_FONT_SIZE, int(min(width / 70, height / 42))))
+        min_fs, max_fs, min_w, min_h, w_ratio, h_ratio = self._font_scale_params()
+        width = max(self.width(), min_w)
+        height = max(self.height(), min_h)
+        point_size = max(min_fs, min(max_fs, int(min(width / w_ratio, height / h_ratio))))
+
         self._apply_font_recursive(self, point_size)
 
         log_font = QFont(self.log_output.font())

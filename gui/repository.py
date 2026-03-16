@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .config import GAMES_ROOT
 from .models import GameInfo, VersionInfo
 
 
 class GameRepository:
-    def __init__(self) -> None:
-        GAMES_ROOT.mkdir(parents=True, exist_ok=True)
+    def __init__(self, root_dir: Path) -> None:
+        self._root = root_dir
+        root_dir.mkdir(parents=True, exist_ok=True)
 
     def list_games(self) -> list[GameInfo]:
         games: list[GameInfo] = []
-        for path in sorted(GAMES_ROOT.iterdir()):
+        for path in sorted(self._root.iterdir()):
             if path.is_dir():
                 games.append(GameInfo(name=path.name, root_dir=path))
         return games
@@ -21,7 +21,7 @@ class GameRepository:
         cleaned = game_name.strip()
         if not cleaned:
             raise ValueError("Game name cannot be empty.")
-        game = GameInfo(name=cleaned, root_dir=GAMES_ROOT / cleaned)
+        game = GameInfo(name=cleaned, root_dir=self._root / cleaned)
         (game.root_dir / "versions").mkdir(parents=True, exist_ok=True)
         return game
 

@@ -1,30 +1,41 @@
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional
 
 import requests
+
+from app_core.logging import get_logger
+from .models import ExtractionResult
+
+logger = get_logger(__name__)
+
+
+@dataclass(frozen=True)
+class ChoiceExtractorConfig:
+    base_url: str = "http://localhost:7761"
+    timeout_seconds: float = 10.0
+    endpoint_path: str = "/api/v1/choice/extract-choices"
 
 
 class ChoiceExtractor:
     def __init__(
         self,
         base_url: str = "http://localhost:7761",
-    ):
-        self.base_url = base_url.rstrip("/")
-        self.endpoint = f"{self.base_url}/api/v1/choice/extract-choices"
+        config: ChoiceExtractorConfig | None = None,
+    ) -> None:
+        cfg = config or ChoiceExtractorConfig(base_url=base_url)
+        self._endpoint = cfg.base_url.rstrip("/") + cfg.endpoint_path
+        self._timeout = cfg.timeout_seconds
 
     def extract_frame(
         self,
         image_bytes: bytes,
         prompt: Optional[str] = None,
         model: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """
-        Sends image bytes to the FastAPI backend to extract choice titles.
-        """
-        # FastAPI's UploadFile expects a file tuple: (filename, content, content_type)
-        # We assign a generic filename and standard image/png type.
+    ) -> ExtractionResult:
+        """Send image bytes to the FastAPI backend and return extracted choices."""
         files = {"file": ("screenshot.png", image_bytes, "image/png")}
-
-        # Any additional parameters are sent as form data or query params
         params = {}
         if prompt:
             params["prompt"] = prompt
@@ -32,15 +43,15 @@ class ChoiceExtractor:
             params["model"] = model
 
         try:
-            # Make the POST request to the FastAPI route
-            response = requests.post(self.endpoint, files=files, params=params)
-
-            # Raise an HTTPError if the status code is 4xx or 5xx
+            response = requests.post(
+                self._endpoint, files=files, params=params, timeout=self._timeout
+            )
             response.raise_for_status()
-
-            # Returns the validated dictionary: {'choices': [...], 'selected_choice': '...'}
-            return response.json()
-
+            data = response.json()
+            return ExtractionResult(
+                choices=data.get("choices", []),
+                selected_choice=data.get("selected_choice"),
+            )
         except requests.exceptions.RequestException as e:
-            print(f"Failed to communicate with the extraction API: {e}")
+            logger.error("Failed to communicate with the extraction API: %s", e)
             raise

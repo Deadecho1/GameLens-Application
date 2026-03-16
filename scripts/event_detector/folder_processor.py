@@ -1,21 +1,29 @@
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
+from app_core.logging import get_logger
 from .config import DetectorConfig
+from .model_backend import ModelBackend
+from .models import DecodedRun, PeakEvent, RefinedEvent, RefinedRun, WindowResult
 from .peak_detection import PeakDetector
 from .refiner import EventRefiner
 from .run_decoder import RunDecoder
 from .serializer import JsonSerializer
 from .video_utils import VideoClipSampler
-from .model_backend import ModelBackend
-from .models import DecodedRun, WindowResult
+
+logger = get_logger(__name__)
 
 
 class VideoEventDetector:
-    def __init__(self, config: DetectorConfig | None = None):
+    def __init__(
+        self,
+        config: DetectorConfig | None = None,
+        backend: ModelBackend | None = None,
+        sampler: VideoClipSampler | None = None,
+    ):
         self.config = config or DetectorConfig()
-        self.backend = ModelBackend()
-        self.sampler = VideoClipSampler()
+        self.backend = backend
+        self.sampler = sampler or VideoClipSampler()
         self.peak_detector = PeakDetector(self.config)
         self.run_decoder = RunDecoder(self.config)
         self.refiner = EventRefiner(self.config, self.backend, self.sampler)
@@ -27,12 +35,11 @@ class VideoEventDetector:
         stride_frames = max(1, int(round(self.config.stride_seconds * fps)))
 
         if verbose:
-            print(f"Video: {video_path}")
-            print(f"FPS: {fps:.3f}")
-            print(f"Duration: {duration:.3f}s")
-            print(f"Total frames: {total_frames}")
-            print(f"Model frames per clip: {self.backend.num_model_frames}")
-            print()
+            logger.debug("Video: %s", video_path)
+            logger.debug("FPS: %.3f", fps)
+            logger.debug("Duration: %.3fs", duration)
+            logger.debug("Total frames: %d", total_frames)
+            logger.debug("Model frames per clip: %d", self.backend.num_model_frames)
 
         windows: List[WindowResult] = []
 
@@ -61,41 +68,58 @@ class VideoEventDetector:
             windows.append(wr)
 
             if verbose:
-                print(
-                    f"[{wr.start_time:.2f}s - {wr.end_time:.2f}s] "
-                    f"center={wr.center_time:.2f}s "
-                    f"-> {best_label} ({best_score:.3f})"
+                logger.debug(
+                    "[%.2fs - %.2fs] center=%.2fs -> %s (%.3f)",
+                    wr.start_time, wr.end_time, wr.center_time, best_label, best_score,
                 )
 
         return windows, vr, fps, duration
 
-    def detect_video(self, video_path: str, verbose: bool = False) -> Tuple[List[DecodedRun], float, float]:
+    def detect_video(
+        self, video_path: str, verbose: bool = False
+    ) -> Tuple[List[RefinedRun], float, float]:
         windows, vr, fps, duration = self.collect_window_results(video_path, verbose=verbose)
         peaks = self.peak_detector.build_peaks(windows)
         decoded_runs = self.run_decoder.decode_runs(peaks)
 
-        seen_ids = set()
-        kept_events = []
-
+        # Deduplicate events by content key
+        seen_keys: set = set()
+        kept_events: List[PeakEvent] = []
         for run in decoded_runs:
-            for ev in [run.start, run.end] + run.choices + run.drops:
-                if id(ev) not in seen_ids:
-                    seen_ids.add(id(ev))
+            for ev in [run.start, run.end] + list(run.choices) + list(run.drops):
+                key = (ev.label, ev.time, ev.score)
+                if key not in seen_keys:
+                    seen_keys.add(key)
                     kept_events.append(ev)
 
+        # Refine each unique event — returns new RefinedEvent (no mutation)
+        refined_map: Dict[Tuple, RefinedEvent] = {}
         for ev in kept_events:
-            self.refiner.refine_event(
-                event=ev,
-                vr=vr,
-                fps=fps,
-                duration=duration,
+            refined = self.refiner.refine_event(event=ev, vr=vr, fps=fps, duration=duration)
+            refined_map[(ev.label, ev.time, ev.score)] = refined
+
+        def get_refined(ev: PeakEvent) -> RefinedEvent:
+            return refined_map[(ev.label, ev.time, ev.score)]
+
+        # Rebuild runs with RefinedEvent objects and apply final threshold filtering
+        refined_runs: List[RefinedRun] = []
+        for run in decoded_runs:
+            refined_choices = self.refiner.filter_events_by_final_threshold(
+                [get_refined(ev) for ev in run.choices]
+            )
+            refined_drops = self.refiner.filter_events_by_final_threshold(
+                [get_refined(ev) for ev in run.drops]
+            )
+            refined_runs.append(
+                RefinedRun(
+                    start=get_refined(run.start),
+                    end=get_refined(run.end),
+                    choices=tuple(refined_choices),
+                    drops=tuple(refined_drops),
+                )
             )
 
-        for run in decoded_runs:
-            run.choices = self.refiner.filter_events_by_final_threshold(run.choices)
-            run.drops = self.refiner.filter_events_by_final_threshold(run.drops)
-
-        return decoded_runs, fps, duration
+        return refined_runs, fps, duration
 
 
 class FolderProcessor:
@@ -108,22 +132,22 @@ class FolderProcessor:
         videos = self.sampler.list_mp4_files(input_dir)
 
         if not videos:
-            print(f"No .mp4 files found in: {input_dir}")
+            logger.warning("No .mp4 files found in: %s", input_dir)
             return
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        print(f"Device: {self.detector.backend.device}")
-        print(f"Found {len(videos)} video(s).\n")
+        logger.info("Device: %s", self.detector.backend.device)
+        logger.info("Found %d video(s).", len(videos))
 
         ok = 0
         failed = 0
 
         for idx, video_path in enumerate(videos, start=1):
-            print(f"[{idx}/{len(videos)}] Processing: {video_path.name}")
+            logger.info("[%d/%d] Processing: %s", idx, len(videos), video_path.name)
 
             try:
-                decoded_runs, fps, duration = self.detector.detect_video(
+                refined_runs, fps, duration = self.detector.detect_video(
                     str(video_path),
                     verbose=verbose,
                 )
@@ -133,18 +157,15 @@ class FolderProcessor:
                     video_path=str(video_path),
                     fps=fps,
                     duration=duration,
-                    decoded_runs=decoded_runs,
+                    refined_runs=refined_runs,
                     json_out_path=str(out_json),
                 )
 
-                print(f"Saved: {out_json}\n")
+                logger.info("Saved: %s", out_json)
                 ok += 1
 
             except Exception as e:
-                print(f"FAILED: {video_path.name}")
-                print(f"Reason: {e}\n")
+                logger.error("FAILED: %s — %s", video_path.name, e)
                 failed += 1
 
-        print("Done.")
-        print(f"Successful: {ok}")
-        print(f"Failed: {failed}")
+        logger.info("Done. Successful: %d  Failed: %d", ok, failed)

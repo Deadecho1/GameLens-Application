@@ -39,7 +39,7 @@ class PeakDetector:
                     score=s,
                     start_time=w.start_time,
                     end_time=w.end_time,
-                    support_windows=[w],
+                    support_windows=(w,),
                 )
             )
 
@@ -75,7 +75,7 @@ class PeakDetector:
                     score=best.score,
                     start_time=max(0.0, group_start - self.config.merge_boundary_pad_seconds),
                     end_time=group_end + self.config.merge_boundary_pad_seconds,
-                    support_windows=[sw for g in group for sw in g.support_windows],
+                    support_windows=tuple(sw for g in group for sw in g.support_windows),
                 )
             )
 

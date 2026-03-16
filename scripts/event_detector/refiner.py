@@ -8,7 +8,7 @@ import torch
 
 from .config import DetectorConfig
 from .labels import LABEL_CHOICE
-from .models import PeakEvent
+from .models import PeakEvent, RefinedEvent
 
 
 class EventRefiner:
@@ -136,7 +136,9 @@ class EventRefiner:
         return scores[label], start_t, end_t
 
     @torch.no_grad()
-    def _hillclimb_refine_event(self, event: PeakEvent, vr, fps: float, duration: float) -> PeakEvent:
+    def _hillclimb_refine_event(
+        self, event: PeakEvent, vr, fps: float, duration: float
+    ) -> RefinedEvent:
         half = self.config.hillclimb_window_seconds / 2.0
 
         min_center = max(half, event.start_time + half)
@@ -145,7 +147,7 @@ class EventRefiner:
         if min_center > max_center:
             fallback_center = max(
                 half,
-                min(duration - half, (event.start_time + event.end_time) / 2.0)
+                min(duration - half, (event.start_time + event.end_time) / 2.0),
             )
 
             best_score, best_start, best_end = self.score_window_at_center(
@@ -156,13 +158,15 @@ class EventRefiner:
                 duration=duration,
             )
 
-            event.refined_time = fallback_center
-            event.refined_frame = int(round(fallback_center * fps))
-            event.refined_score = best_score
-            event.refined_window_start = best_start
-            event.refined_window_end = best_end
-            event.refinement_method = "hillclimb-fallback"
-            return event
+            return RefinedEvent(
+                source=event,
+                refined_time=fallback_center,
+                refined_frame=int(round(fallback_center * fps)),
+                refined_score=best_score,
+                refined_window_start=best_start,
+                refined_window_end=best_end,
+                refinement_method="hillclimb-fallback",
+            )
 
         grid_centers: List[float] = []
         t = min_center
@@ -240,13 +244,15 @@ class EventRefiner:
                 best_start = current_start
                 best_end = current_end
 
-        event.refined_time = best_center
-        event.refined_frame = int(round(best_center * fps))
-        event.refined_score = best_score
-        event.refined_window_start = best_start
-        event.refined_window_end = best_end
-        event.refinement_method = "hillclimb"
-        return event
+        return RefinedEvent(
+            source=event,
+            refined_time=best_center,
+            refined_frame=int(round(best_center * fps)),
+            refined_score=best_score,
+            refined_window_start=best_start,
+            refined_window_end=best_end,
+            refinement_method="hillclimb",
+        )
 
     def _build_choice_retry_candidates(
         self,
@@ -389,14 +395,14 @@ class EventRefiner:
             return None
 
         confirm_needed = max(1, int(self.config.choice_exit_confirm_frames))
-        running_peak = float('-inf')
+        running_peak = float("-inf")
 
         for idx, (score, frame, _, _) in enumerate(forward_candidates):
             running_peak = max(running_peak, float(score))
             if score < self.config.choice_min_clip_score:
                 continue
 
-            post_candidates = forward_candidates[idx + 1: idx + 1 + confirm_needed]
+            post_candidates = forward_candidates[idx + 1 : idx + 1 + confirm_needed]
             if len(post_candidates) < confirm_needed:
                 continue
 
@@ -410,7 +416,9 @@ class EventRefiner:
         return None
 
     @torch.no_grad()
-    def _refine_choice_event(self, event: PeakEvent, vr, fps: float, duration: float) -> PeakEvent:
+    def _refine_choice_event(
+        self, event: PeakEvent, vr, fps: float, duration: float
+    ) -> RefinedEvent:
         coarse_frame = int(round(event.time * fps))
         lookback_frames = max(0, int(round(self.config.choice_peak_lookback_seconds * fps)))
         after_pad_frames = max(0, int(round(self.config.choice_refine_region_pad_after_seconds * fps)))
@@ -428,9 +436,19 @@ class EventRefiner:
         )
 
         if len(frame_indices) < 2:
-            event = self._hillclimb_refine_event(event, vr, fps, duration)
-            event.refinement_method = "choice-forward-fallback-hillclimb"
-            return event
+            result = self._hillclimb_refine_event(event, vr, fps, duration)
+            # Repackage with updated method name
+            return RefinedEvent(
+                source=result.source,
+                refined_time=result.refined_time,
+                refined_frame=result.refined_frame,
+                refined_score=result.refined_score,
+                refined_window_start=result.refined_window_start,
+                refined_window_end=result.refined_window_end,
+                retry_frames=result.retry_frames,
+                retry_times=result.retry_times,
+                refinement_method="choice-forward-fallback-hillclimb",
+            )
 
         diffs = self._compute_adjacent_diffs(frames)
         smoothed = self._moving_average(diffs, self.config.choice_diff_smooth_window)
@@ -499,9 +517,18 @@ class EventRefiner:
                     best_score, best_frame, best_start, best_end = max(candidate_scores, key=lambda x: x[0])
                     method = "choice-lookback-fallback-score"
                 else:
-                    event = self._hillclimb_refine_event(event, vr, fps, duration)
-                    event.refinement_method = "choice-no-candidates-hillclimb"
-                    return event
+                    result = self._hillclimb_refine_event(event, vr, fps, duration)
+                    return RefinedEvent(
+                        source=result.source,
+                        refined_time=result.refined_time,
+                        refined_frame=result.refined_frame,
+                        refined_score=result.refined_score,
+                        refined_window_start=result.refined_window_start,
+                        refined_window_end=result.refined_window_end,
+                        retry_frames=result.retry_frames,
+                        retry_times=result.retry_times,
+                        refinement_method="choice-no-candidates-hillclimb",
+                    )
 
         retry_frames, retry_times = self._build_choice_retry_candidates(
             selected_frame=best_frame,
@@ -510,27 +537,28 @@ class EventRefiner:
             fps=fps,
         )
 
-        event.refined_time = best_frame / fps
-        event.refined_frame = best_frame
-        event.refined_score = best_score
-        event.refined_window_start = best_start
-        event.refined_window_end = best_end
-        event.retry_frames = retry_frames
-        event.retry_times = retry_times
-        event.refinement_method = method
-        return event
+        return RefinedEvent(
+            source=event,
+            refined_time=best_frame / fps,
+            refined_frame=best_frame,
+            refined_score=best_score,
+            refined_window_start=best_start,
+            refined_window_end=best_end,
+            retry_frames=tuple(retry_frames),
+            retry_times=tuple(retry_times),
+            refinement_method=method,
+        )
 
     @torch.no_grad()
-    def refine_event(self, event: PeakEvent, vr, fps: float, duration: float) -> PeakEvent:
+    def refine_event(self, event: PeakEvent, vr, fps: float, duration: float) -> RefinedEvent:
         if event.label == LABEL_CHOICE:
             return self._refine_choice_event(event, vr, fps, duration)
         return self._hillclimb_refine_event(event, vr, fps, duration)
 
-    def filter_events_by_final_threshold(self, events: List[PeakEvent]) -> List[PeakEvent]:
+    def filter_events_by_final_threshold(self, events: List[RefinedEvent]) -> List[RefinedEvent]:
         out = []
         for ev in events:
-            score = ev.refined_score if ev.refined_score is not None else ev.score
             threshold = self.config.final_event_score_thresholds.get(ev.label, 0.0)
-            if score >= threshold:
+            if ev.refined_score >= threshold:
                 out.append(ev)
         return out

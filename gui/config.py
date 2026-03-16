@@ -1,17 +1,26 @@
+"""GUI config — delegates to AppConfig.
+
+All new code should use AppConfig directly. These module-level names are kept
+for backwards compatibility with existing gui imports.
+"""
 from __future__ import annotations
 
 from pathlib import Path
 
+from app_core.config import AppConfig
+
+_config = AppConfig.load()
+
 APP_NAME = "GameLens"
 
-# Path Constants
+# Path constants
 GUI_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = GUI_DIR.parent
-OUTPUT_ROOT = PROJECT_ROOT / "data"
-GAMES_ROOT = OUTPUT_ROOT / "games"
+PROJECT_ROOT = _config.project_root
+OUTPUT_ROOT = _config.project_root / "data"
+GAMES_ROOT = _config.games_root
 
-# GUI Constants
-DEFAULT_WINDOW_WIDTH = 1200
-DEFAULT_WINDOW_HEIGHT = 800
-MIN_FONT_SIZE = 14
-MAX_FONT_SIZE = 20
+# GUI constants
+DEFAULT_WINDOW_WIDTH = _config.default_window_width
+DEFAULT_WINDOW_HEIGHT = _config.default_window_height
+MIN_FONT_SIZE = _config.min_font_size
+MAX_FONT_SIZE = _config.max_font_size

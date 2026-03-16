@@ -1,14 +1,9 @@
-import os
-from functools import lru_cache
 from pathlib import Path
 
 import torch
 from transformers import XCLIPModel, XCLIPProcessor
 
-from app_core.settings import EVENT_DETECTOR_MODEL_DIR
-from scripts.choice_extractor.extractor import ChoiceExtractor
-
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
+from scripts.choice_extractor.extractor import ChoiceExtractor, ChoiceExtractorConfig
 
 
 class ModelManager:
@@ -17,32 +12,35 @@ class ModelManager:
         return "cuda" if torch.cuda.is_available() else "cpu"
 
     @staticmethod
-    @lru_cache(maxsize=1)
-    def get_event_detector():
-        model_dir = str(Path(EVENT_DETECTOR_MODEL_DIR))
-        device = ModelManager.get_device()
+    def load_event_detector(model_dir: Path) -> dict:
+        """Load and return the XCLIP event detector bundle.
 
-        processor = XCLIPProcessor.from_pretrained(model_dir)
-        model = XCLIPModel.from_pretrained(model_dir).to(device)
+        Callers are responsible for caching the result if desired.
+        """
+        device = ModelManager.get_device()
+        model_path = str(model_dir)
+
+        processor = XCLIPProcessor.from_pretrained(model_path)
+        model = XCLIPModel.from_pretrained(model_path).to(device)
         model.eval()
 
         return {
             "processor": processor,
             "model": model,
             "device": device,
-            "model_dir": model_dir,
+            "model_dir": model_path,
             "num_model_frames": model.config.vision_config.num_frames,
         }
 
     @staticmethod
-    @lru_cache(maxsize=1)
-    def get_choice_extractor():
-        return ChoiceExtractor()
+    def load_choice_extractor(base_url: str = "http://localhost:7761", timeout: float = 10.0) -> ChoiceExtractor:
+        """Create and return a ChoiceExtractor instance."""
+        return ChoiceExtractor(config=ChoiceExtractorConfig(base_url=base_url, timeout_seconds=timeout))
 
 
 if __name__ == "__main__":
     print("loading choice extractor...")
-    extractor = ModelManager.get_choice_extractor()
+    extractor = ModelManager.load_choice_extractor()
 
     with open("tests/output/clip18_frame.png", "rb") as f:
         img_bytes = f.read()
