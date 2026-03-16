@@ -1,6 +1,8 @@
 import argparse
+import logging
 from pathlib import Path
 
+from app_core.logging import configure_logging
 from app_core.model_manager import ModelManager
 
 from .choice_service import ChoiceExtractionService
@@ -36,6 +38,8 @@ def main():
     )
     args = parser.parse_args()
 
+    configure_logging(logging.DEBUG if args.verbose else logging.INFO)
+
     json_dir = Path(args.json_dir)
     video_dir = Path(args.video_dir)
     output_dir = Path(args.output_dir)
@@ -50,7 +54,7 @@ def main():
     if not video_dir.is_dir():
         raise NotADirectoryError(f"Video path is not a folder: {video_dir}")
 
-    choice_extractor = ModelManager.get_choice_extractor()
+    choice_extractor = ModelManager.load_choice_extractor()
     choice_service = ChoiceExtractionService(choice_extractor)
 
     exporter = RunExporter(
