@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
     QMessageBox,
     QPushButton,
     QPlainTextEdit,
@@ -65,6 +66,12 @@ class ProcessClipsDialog(ResponsiveFontMixin, QDialog):
         config_layout.addWidget(self.video_browse_button, 0, 2)
         config_layout.setColumnStretch(1, 1)
 
+        self.video_list = QListWidget()
+        self.video_list.setMaximumHeight(120)
+        self._video_count_label = QLabel("No videos found")
+        config_layout.addWidget(self._video_count_label, 1, 0)
+        config_layout.addWidget(self.video_list, 1, 1, 1, 2)
+
         options_group = QGroupBox("Options")
         options_layout = QHBoxLayout(options_group)
         self.only_events_checkbox = QCheckBox("Only events")
@@ -109,6 +116,7 @@ class ProcessClipsDialog(ResponsiveFontMixin, QDialog):
 
     def _connect_signals(self) -> None:
         self.video_browse_button.clicked.connect(self._choose_video_dir)
+        self.video_dir_edit.textChanged.connect(self._refresh_video_list)
         self.run_button.clicked.connect(self._on_run_clicked)
         self.stop_button.clicked.connect(self.runner.stop_pipeline)
         self.clear_log_button.clicked.connect(self.log_output.clear)
@@ -126,6 +134,19 @@ class ProcessClipsDialog(ResponsiveFontMixin, QDialog):
         folder = QFileDialog.getExistingDirectory(self, "Choose video folder")
         if folder:
             self.video_dir_edit.setText(folder)
+
+    @Slot(str)
+    def _refresh_video_list(self, text: str) -> None:
+        self.video_list.clear()
+        folder = Path(text.strip())
+        if not folder.is_dir():
+            self._video_count_label.setText("No videos found")
+            return
+        videos = sorted(folder.glob("*.mp4"))
+        for v in videos:
+            self.video_list.addItem(v.name)
+        count = len(videos)
+        self._video_count_label.setText(f"{count} video{'s' if count != 1 else ''} found")
 
     @Slot(bool)
     def _sync_mode_checkboxes(self, checked: bool) -> None:
@@ -178,6 +199,7 @@ class ProcessClipsDialog(ResponsiveFontMixin, QDialog):
     def _set_busy_state(self, busy: bool) -> None:
         self.video_dir_edit.setEnabled(not busy)
         self.video_browse_button.setEnabled(not busy)
+        self.video_list.setEnabled(not busy)
         self.only_events_checkbox.setEnabled(not busy)
         self.only_export_checkbox.setEnabled(not busy)
         self.verbose_checkbox.setEnabled(not busy)
