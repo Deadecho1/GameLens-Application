@@ -41,9 +41,13 @@ class VideoEventDetector:
             logger.debug("Total frames: %d", total_frames)
             logger.debug("Model frames per clip: %d", self.backend.num_model_frames)
 
+        total_windows = max(0, (total_frames - window_frames) // stride_frames + 1)
+        if verbose:
+            logger.debug("Total windows to process: %d", total_windows)
+
         windows: List[WindowResult] = []
 
-        for start_frame in range(0, total_frames - window_frames + 1, stride_frames):
+        for win_idx, start_frame in enumerate(range(0, total_frames - window_frames + 1, stride_frames), start=1):
             end_frame = start_frame + window_frames
 
             frames = self.sampler.sample_window_frames(
@@ -69,7 +73,8 @@ class VideoEventDetector:
 
             if verbose:
                 logger.debug(
-                    "[%.2fs - %.2fs] center=%.2fs -> %s (%.3f)",
+                    "[%d/%d] [%.2fs - %.2fs] center=%.2fs -> %s (%.3f)",
+                    win_idx, total_windows,
                     wr.start_time, wr.end_time, wr.center_time, best_label, best_score,
                 )
 
@@ -78,10 +83,19 @@ class VideoEventDetector:
     def detect_video(
         self, video_path: str, verbose: bool = False
     ) -> Tuple[List[RefinedRun], float, float]:
+        logger.debug("Stage 1/4: collecting window results for %s", video_path)
         windows, vr, fps, duration = self.collect_window_results(video_path, verbose=verbose)
-        peaks = self.peak_detector.build_peaks(windows)
-        decoded_runs = self.run_decoder.decode_runs(peaks)
+        logger.debug("Stage 1/4: done — %d windows collected", len(windows))
 
+        logger.debug("Stage 2/4: building peaks")
+        peaks = self.peak_detector.build_peaks(windows)
+        logger.debug("Stage 2/4: done — %d peaks", len(peaks))
+
+        logger.debug("Stage 3/4: decoding runs")
+        decoded_runs = self.run_decoder.decode_runs(peaks)
+        logger.debug("Stage 3/4: done — %d runs decoded", len(decoded_runs))
+
+        logger.debug("Stage 4/4: deduplicating and refining events")
         # Deduplicate events by content key
         seen_keys: set = set()
         kept_events: List[PeakEvent] = []
@@ -92,9 +106,11 @@ class VideoEventDetector:
                     seen_keys.add(key)
                     kept_events.append(ev)
 
+        logger.debug("Stage 4/4: %d unique events to refine", len(kept_events))
         # Refine each unique event — returns new RefinedEvent (no mutation)
         refined_map: Dict[Tuple, RefinedEvent] = {}
-        for ev in kept_events:
+        for ev_idx, ev in enumerate(kept_events, start=1):
+            logger.debug("  refining event %d/%d: label=%s time=%.2f", ev_idx, len(kept_events), ev.label, ev.time)
             refined = self.refiner.refine_event(event=ev, vr=vr, fps=fps, duration=duration)
             refined_map[(ev.label, ev.time, ev.score)] = refined
 
@@ -119,6 +135,7 @@ class VideoEventDetector:
                 )
             )
 
+        logger.debug("Stage 4/4: done — %d refined runs", len(refined_runs))
         return refined_runs, fps, duration
 
 
