@@ -20,5 +20,5 @@ class ChoiceExtractionService:
 
         return {
             "options": options,
-            "selected_choice": selected_choice,
+            "selected_option": selected_choice,
         }

@@ -48,10 +48,10 @@ class AnalyticsService:
             data = self._loader.load(path)
             runs = data if isinstance(data, list) else [data]
             for run in runs:
-                duration = float(run.get("duration_seconds", 0.0) or 0.0)
+                duration = float(run.get("duration_seconds") or run.get("duration") or 0.0)
                 durations.append(duration)
                 for choice in run.get("choices", []):
-                    selected = choice.get("selected_option")
+                    selected = choice.get("selected_option") or choice.get("selected_choice")
                     if selected:
                         item_counter[str(selected)] += 1
 
@@ -88,11 +88,11 @@ class AnalyticsService:
             runs = data if isinstance(data, list) else [data]
             for idx, run in enumerate(runs, start=1):
                 choices = run.get("choices", [])
-                item_names = [str(choice.get("selected_option", "Unknown")) for choice in choices]
+                item_names = [str(choice.get("selected_option") or choice.get("selected_choice") or "Unknown") for choice in choices]
                 summaries.append(
                     RunSummary(
                         run_name=f"{path.stem} / Run {idx}",
-                        duration_seconds=float(run.get("duration_seconds", 0.0) or 0.0),
+                        duration_seconds=float(run.get("duration_seconds") or run.get("duration") or 0.0),
                         selected_items=item_names,
                     )
                 )
@@ -123,7 +123,7 @@ class AnalyticsService:
         choices: list[ChoiceDetail] = []
         for choice in run.get("choices", []):
             options = choice.get("options", [])
-            selected = str(choice.get("selected_option", "Unknown"))
+            selected = str(choice.get("selected_option") or choice.get("selected_choice") or "Unknown")
             choices.append(
                 ChoiceDetail(
                     options=[str(o) for o in options] if options else [],
@@ -133,7 +133,7 @@ class AnalyticsService:
 
         return RunDetails(
             run_name=run_summary.run_name,
-            duration_seconds=float(run.get("duration_seconds", 0.0) or 0.0),
+            duration_seconds=float(run.get("duration_seconds") or run.get("duration") or 0.0),
             selected_items=run_summary.selected_items,
             choices=choices,
         )
