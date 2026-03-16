@@ -15,6 +15,9 @@ venv-poc/
 .vscode/
 .idea/
 
+# Claude Code
+CLAUDE.md
+
 # model weights
 models/**/model.safetensors
 models/**/training_args.bin
