@@ -1,36 +1,54 @@
 from __future__ import annotations
 
-from .config import VERSIONS_ROOT
-from .models import VersionInfo
+from pathlib import Path
+
+from .config import GAMES_ROOT
+from .models import GameInfo, VersionInfo
 
 
-class VersionRepository:
+class GameRepository:
     def __init__(self) -> None:
-        VERSIONS_ROOT.mkdir(parents=True, exist_ok=True)
+        GAMES_ROOT.mkdir(parents=True, exist_ok=True)
 
-    def list_versions(self) -> list[VersionInfo]:
+    def list_games(self) -> list[GameInfo]:
+        games: list[GameInfo] = []
+        for path in sorted(GAMES_ROOT.iterdir()):
+            if path.is_dir():
+                games.append(GameInfo(name=path.name, root_dir=path))
+        return games
+
+    def ensure_game(self, game_name: str) -> GameInfo:
+        cleaned = game_name.strip()
+        if not cleaned:
+            raise ValueError("Game name cannot be empty.")
+        game = GameInfo(name=cleaned, root_dir=GAMES_ROOT / cleaned)
+        (game.root_dir / "versions").mkdir(parents=True, exist_ok=True)
+        return game
+
+    def list_versions(self, game: GameInfo) -> list[VersionInfo]:
+        versions_dir = game.root_dir / "versions"
+        if not versions_dir.exists():
+            return []
         versions: list[VersionInfo] = []
-        for path in sorted(VERSIONS_ROOT.iterdir()):
-            if not path.is_dir():
-                continue
-            versions.append(self._build_version(path.name))
+        for path in sorted(versions_dir.iterdir()):
+            if path.is_dir():
+                versions.append(self._build_version(path))
         return versions
 
-    def ensure_version(self, version_name: str) -> VersionInfo:
-        cleaned_name = version_name.strip()
-        if not cleaned_name:
+    def ensure_version(self, game: GameInfo, version_name: str) -> VersionInfo:
+        cleaned = version_name.strip()
+        if not cleaned:
             raise ValueError("Version name cannot be empty.")
-
-        version = self._build_version(cleaned_name)
+        version_path = game.root_dir / "versions" / cleaned
+        version = self._build_version(version_path)
         version.event_json_dir.mkdir(parents=True, exist_ok=True)
         version.run_json_dir.mkdir(parents=True, exist_ok=True)
         return version
 
-    def _build_version(self, version_name: str) -> VersionInfo:
-        root = VERSIONS_ROOT / version_name
+    def _build_version(self, version_path: Path) -> VersionInfo:
         return VersionInfo(
-            name=version_name,
-            root_dir=root,
-            event_json_dir=root / "event_json",
-            run_json_dir=root / "run_json",
+            name=version_path.name,
+            root_dir=version_path,
+            event_json_dir=version_path / "event_json",
+            run_json_dir=version_path / "run_json",
         )

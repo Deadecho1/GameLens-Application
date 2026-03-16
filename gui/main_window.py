@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QTimer, Qt, Slot
+from PySide6.QtCore import Qt, QTimer, Slot
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox,
@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
     QHeaderView,
@@ -28,9 +27,10 @@ from .config import (
     MAX_FONT_SIZE,
     MIN_FONT_SIZE,
 )
-from .models import DashboardStats, RunSummary, VersionInfo
+from .models import DashboardStats, GameInfo, RunSummary, VersionInfo
 from .process_clips_dialog import ProcessClipsDialog
-from .repository import VersionRepository
+from .repository import GameRepository
+from .run_details_dialog import RunDetailsDialog
 
 
 class MainWindow(QMainWindow):
@@ -39,11 +39,11 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(APP_NAME)
         self.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
 
-        self._repo = VersionRepository()
+        self._repo = GameRepository()
         self._analytics = AnalyticsService()
+        self._games: list[GameInfo] = []
         self._versions: list[VersionInfo] = []
         self._current_runs: list[RunSummary] = []
-        self._run_tabs: dict[str, QWidget] = {}
 
         self._font_update_timer = QTimer(self)
         self._font_update_timer.setSingleShot(True)
@@ -51,50 +51,54 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._connect_signals()
-        self._load_versions()
+        self._load_games()
         self._apply_responsive_fonts()
-        self._refresh_dashboard()
 
     def _build_ui(self) -> None:
-        self.tabs = QTabWidget()
-        self.setCentralWidget(self.tabs)
+        central = QWidget()
+        self.setCentralWidget(central)
 
-        self.dashboard_tab = QWidget()
-        self.tabs.addTab(self.dashboard_tab, "Dashboard")
-
-        root = QVBoxLayout(self.dashboard_tab)
+        root = QVBoxLayout(central)
         root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(12)
 
+        # Top row: Game selector + Version selector
         top_row = QHBoxLayout()
+
+        game_group = QGroupBox("Game")
+        game_layout = QHBoxLayout(game_group)
+        self.game_combo = QComboBox()
+        self.add_game_button = QPushButton("Add game")
+        game_layout.addWidget(self.game_combo, 1)
+        game_layout.addWidget(self.add_game_button)
 
         version_group = QGroupBox("Version")
         version_layout = QHBoxLayout(version_group)
-
         self.version_combo = QComboBox()
         self.add_version_button = QPushButton("Add version")
         self.process_button = QPushButton("Process clips")
-
-        version_layout.addWidget(QLabel("Selected version"))
         version_layout.addWidget(self.version_combo, 1)
         version_layout.addWidget(self.add_version_button)
         version_layout.addWidget(self.process_button)
 
+        top_row.addWidget(game_group)
         top_row.addWidget(version_group)
 
+        # Dashboard Overview
         dashboard_group = QGroupBox("Dashboard Overview")
         dashboard_layout = QGridLayout(dashboard_group)
 
         self.total_runs_value = QLabel("0")
         self.avg_duration_value = QLabel("0s")
         self.max_duration_value = QLabel("0s")
-        self.total_choices_value = QLabel("0")
+        self.popular_item_value = QLabel("—")
 
         dashboard_layout.addWidget(self._make_stat_card("Runs", self.total_runs_value), 0, 0)
         dashboard_layout.addWidget(self._make_stat_card("Average Duration", self.avg_duration_value), 0, 1)
         dashboard_layout.addWidget(self._make_stat_card("Longest Run", self.max_duration_value), 0, 2)
-        dashboard_layout.addWidget(self._make_stat_card("Total Selections", self.total_choices_value), 0, 3)
+        dashboard_layout.addWidget(self._make_stat_card("Most Popular Item", self.popular_item_value), 0, 3)
 
+        # Runs table
         runs_group = QGroupBox("Runs")
         runs_layout = QVBoxLayout(runs_group)
 
@@ -125,26 +129,53 @@ class MainWindow(QMainWindow):
         return box
 
     def _connect_signals(self) -> None:
+        self.game_combo.activated.connect(self._on_game_selected)
         self.version_combo.activated.connect(self._on_version_selected)
+        self.add_game_button.clicked.connect(self._add_game)
         self.add_version_button.clicked.connect(self._add_version)
         self.process_button.clicked.connect(self._open_process_dialog)
         self.runs_table.cellDoubleClicked.connect(self._on_run_double_clicked)
 
+    def _load_games(self) -> None:
+        current_game = self.game_combo.currentText().strip()
+        self._games = self._repo.list_games()
+
+        self.game_combo.blockSignals(True)
+        self.game_combo.clear()
+        for game in self._games:
+            self.game_combo.addItem(game.name)
+        self.game_combo.blockSignals(False)
+
+        if self._games:
+            index = self.game_combo.findText(current_game)
+            self.game_combo.setCurrentIndex(index if index >= 0 else 0)
+
+        self._load_versions()
+
     def _load_versions(self) -> None:
-        current_name = self.version_combo.currentText().strip()
-        self._versions = self._repo.list_versions()
+        game = self._current_game()
+        current_version = self.version_combo.currentText().strip()
 
         self.version_combo.blockSignals(True)
         self.version_combo.clear()
-        for version in self._versions:
-            self.version_combo.addItem(version.name)
+        self._versions = []
+        if game is not None:
+            self._versions = self._repo.list_versions(game)
+            for version in self._versions:
+                self.version_combo.addItem(version.name)
         self.version_combo.blockSignals(False)
 
         if self._versions:
-            index = self.version_combo.findText(current_name)
+            index = self.version_combo.findText(current_version)
             self.version_combo.setCurrentIndex(index if index >= 0 else 0)
 
         self._refresh_dashboard()
+
+    def _current_game(self) -> GameInfo | None:
+        index = self.game_combo.currentIndex()
+        if index < 0 or index >= len(self._games):
+            return None
+        return self._games[index]
 
     def _current_version(self) -> VersionInfo | None:
         index = self.version_combo.currentIndex()
@@ -171,13 +202,13 @@ class MainWindow(QMainWindow):
         self.total_runs_value.setText("0")
         self.avg_duration_value.setText("0s")
         self.max_duration_value.setText("0s")
-        self.total_choices_value.setText("0")
+        self.popular_item_value.setText("—")
 
     def _set_stats(self, stats: DashboardStats) -> None:
         self.total_runs_value.setText(str(stats.total_runs))
         self.avg_duration_value.setText(self._format_seconds(stats.average_run_duration_seconds))
         self.max_duration_value.setText(self._format_seconds(stats.max_run_duration_seconds))
-        self.total_choices_value.setText(str(stats.total_choices))
+        self.popular_item_value.setText(stats.most_popular_item)
 
     def _populate_runs(self, runs: list[RunSummary]) -> None:
         self.runs_table.clearContents()
@@ -201,7 +232,35 @@ class MainWindow(QMainWindow):
         return f"{sec}s"
 
     @Slot()
+    def _add_game(self) -> None:
+        game_name, ok = QInputDialog.getText(self, APP_NAME, "Enter new game name:")
+        if not ok:
+            return
+
+        game_name = game_name.strip()
+        if not game_name:
+            QMessageBox.warning(self, APP_NAME, "Game name cannot be empty.")
+            return
+
+        if any(g.name == game_name for g in self._games):
+            QMessageBox.warning(self, APP_NAME, f"Game '{game_name}' already exists.")
+            return
+
+        self._repo.ensure_game(game_name)
+        self._load_games()
+
+        index = self.game_combo.findText(game_name)
+        if index >= 0:
+            self.game_combo.setCurrentIndex(index)
+            self._load_versions()
+
+    @Slot()
     def _add_version(self) -> None:
+        game = self._current_game()
+        if game is None:
+            QMessageBox.warning(self, APP_NAME, "Please add and select a game first.")
+            return
+
         version_name, ok = QInputDialog.getText(self, APP_NAME, "Enter new version name:")
         if not ok:
             return
@@ -211,11 +270,11 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, APP_NAME, "Version name cannot be empty.")
             return
 
-        if any(version.name == version_name for version in self._versions):
+        if any(v.name == version_name for v in self._versions):
             QMessageBox.warning(self, APP_NAME, f"Version '{version_name}' already exists.")
             return
 
-        self._repo.ensure_version(version_name)
+        self._repo.ensure_version(game, version_name)
         self._load_versions()
 
         index = self.version_combo.findText(version_name)
@@ -227,7 +286,7 @@ class MainWindow(QMainWindow):
     def _open_process_dialog(self) -> None:
         version = self._current_version()
         if version is None:
-            QMessageBox.warning(self, APP_NAME, "Please add and select a version first.")
+            QMessageBox.warning(self, APP_NAME, "Please add and select a game and version first.")
             return
 
         dialog = ProcessClipsDialog(version, self)
@@ -235,44 +294,26 @@ class MainWindow(QMainWindow):
         dialog.exec()
 
     @Slot(int)
-    def _on_version_selected(self, index: int) -> None:
-        self.version_combo.setCurrentIndex(index)
-        self.version_combo.hidePopup()
+    def _on_game_selected(self, _: int) -> None:
+        self._load_versions()
+
+    @Slot(int)
+    def _on_version_selected(self, _: int) -> None:
         self._refresh_dashboard()
 
     @Slot(int, int)
-    def _on_run_double_clicked(self, row: int, _column: int) -> None:
+    def _on_run_double_clicked(self, row: int, _: int) -> None:
         if row < 0 or row >= len(self._current_runs):
             return
 
-        run = self._current_runs[row]
-        self._open_run_tab(run)
-
-    def _open_run_tab(self, run: RunSummary) -> None:
-        run_key = run.run_name
-
-        existing_tab = self._run_tabs.get(run_key)
-        if existing_tab is not None:
-            self.tabs.setCurrentWidget(existing_tab)
+        version = self._current_version()
+        if version is None:
             return
 
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
-
-        title = QLabel(run.run_name)
-        title.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-
-        duration_label = QLabel(f"Duration: {self._format_seconds(run.duration_seconds)}")
-
-        layout.addWidget(title)
-        layout.addWidget(duration_label)
-        layout.addStretch(1)
-
-        self.tabs.addTab(tab, run.run_name)
-        self.tabs.setCurrentWidget(tab)
-        self._run_tabs[run_key] = tab
+        run_summary = self._current_runs[row]
+        details = self._analytics.load_run_details(version, run_summary)
+        dialog = RunDetailsDialog(details, self)
+        dialog.exec()
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
@@ -301,7 +342,7 @@ class MainWindow(QMainWindow):
             self.total_runs_value,
             self.avg_duration_value,
             self.max_duration_value,
-            self.total_choices_value,
+            self.popular_item_value,
         ]:
             label.setFont(stat_font)
 
