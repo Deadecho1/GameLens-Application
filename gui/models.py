@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+
+
+@dataclass(frozen=True)
+class GameInfo:
+    name: str
+    root_dir: Path
 
 
 @dataclass(frozen=True)
@@ -29,7 +34,7 @@ class DashboardStats:
     average_run_duration_seconds: float
     max_run_duration_seconds: float
     min_run_duration_seconds: float
-    total_choices: int
+    most_popular_item: str
 
 
 @dataclass(frozen=True)
@@ -37,3 +42,17 @@ class RunSummary:
     run_name: str
     duration_seconds: float
     selected_items: list[str]
+
+
+@dataclass(frozen=True)
+class ChoiceDetail:
+    options: list[str]
+    selected: str
+
+
+@dataclass(frozen=True)
+class RunDetails:
+    run_name: str
+    duration_seconds: float
+    selected_items: list[str]
+    choices: list[ChoiceDetail]

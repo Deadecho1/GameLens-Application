@@ -35,7 +35,7 @@ class ProcessClipsDialog(QDialog):
         self.runner = PipelineRunner()
 
         self.setWindowTitle(f"{APP_NAME} - Process Clips - {version.name}")
-        self.resize(950, 700)
+        self.resize(1100, 800)
 
         self._font_update_timer = QTimer(self)
         self._font_update_timer.setSingleShot(True)
