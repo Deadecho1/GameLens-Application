@@ -49,7 +49,7 @@ class TestExtractFrame:
     def test_returns_extraction_result(self):
         extractor = _make_extractor()
         mock_resp = self._mock_response(["Item A", "Item B"], "Item A")
-        with patch("scripts.choice_extractor.extractor.requests.post", return_value=mock_resp):
+        with patch("requests.Session.post", return_value=mock_resp):
             result = extractor.extract_frame(b"fake_image")
 
         assert isinstance(result, ExtractionResult)
@@ -60,7 +60,7 @@ class TestExtractFrame:
         cfg = ChoiceExtractorConfig(timeout_seconds=7.5)
         extractor = ChoiceExtractor(config=cfg)
         mock_resp = self._mock_response([], None)
-        with patch("scripts.choice_extractor.extractor.requests.post", return_value=mock_resp) as mock_post:
+        with patch("requests.Session.post", return_value=mock_resp) as mock_post:
             extractor.extract_frame(b"img")
 
         _, kwargs = mock_post.call_args
@@ -69,7 +69,7 @@ class TestExtractFrame:
     def test_optional_prompt_and_model_passed_as_params(self):
         extractor = _make_extractor()
         mock_resp = self._mock_response([], None)
-        with patch("scripts.choice_extractor.extractor.requests.post", return_value=mock_resp) as mock_post:
+        with patch("requests.Session.post", return_value=mock_resp) as mock_post:
             extractor.extract_frame(b"img", prompt="custom", model="gpt-4")
 
         _, kwargs = mock_post.call_args
@@ -79,7 +79,7 @@ class TestExtractFrame:
     def test_no_prompt_means_no_params(self):
         extractor = _make_extractor()
         mock_resp = self._mock_response([], None)
-        with patch("scripts.choice_extractor.extractor.requests.post", return_value=mock_resp) as mock_post:
+        with patch("requests.Session.post", return_value=mock_resp) as mock_post:
             extractor.extract_frame(b"img")
 
         _, kwargs = mock_post.call_args
@@ -89,7 +89,7 @@ class TestExtractFrame:
         import requests
         extractor = _make_extractor()
         with patch(
-            "scripts.choice_extractor.extractor.requests.post",
+            "requests.Session.post",
             side_effect=requests.exceptions.ConnectionError("refused"),
         ):
             with pytest.raises(requests.exceptions.ConnectionError):

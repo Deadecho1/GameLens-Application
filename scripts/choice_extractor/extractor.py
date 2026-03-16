@@ -27,6 +27,7 @@ class ChoiceExtractor:
         cfg = config or ChoiceExtractorConfig(base_url=base_url)
         self._endpoint = cfg.base_url.rstrip("/") + cfg.endpoint_path
         self._timeout = cfg.timeout_seconds
+        self._session = requests.Session()
 
     def extract_frame(
         self,
@@ -43,7 +44,7 @@ class ChoiceExtractor:
             params["model"] = model
 
         try:
-            response = requests.post(
+            response = self._session.post(
                 self._endpoint, files=files, params=params, timeout=self._timeout
             )
             response.raise_for_status()
