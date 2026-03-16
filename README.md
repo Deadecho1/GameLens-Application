@@ -18,7 +18,7 @@ GameLens is a multi-service system for ingesting gameplay captures, classifying 
 - 🪟 PySide6 (Qt) for the desktop GUI.
 
 ## 🛠️ Installation
-for the following, there is an `.env.example` for the environment variables in each folder below you could use as a reference.
+for the following, there is an `.env.example` for the environment variables in each folder below you could use as a reference. change in each folder its name to `.env` if you use it.
 ### Inside GameLens-Collector folder's .env
 **Add a .env file inside the `backend/GameLens-Collector` with the following fields:
 
