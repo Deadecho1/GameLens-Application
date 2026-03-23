@@ -23,6 +23,7 @@ class PipelineRunner(QObject):
         self._config: Optional[PipelineConfig] = None
         self._queue: list[tuple[str, list[str]]] = []
         self._stopping = False
+        self._output_buffer: str = ""
 
     def is_running(self) -> bool:
         return self._process is not None
@@ -141,13 +142,30 @@ class PipelineRunner(QObject):
         if self._process is None:
             return
         data = self._process.readAllStandardOutput().data().decode(errors="replace")
-        if data:
-            self.log_message.emit(data)
+        if not data:
+            return
+        self._output_buffer += data
+        newline_pos = self._output_buffer.rfind("\n")
+        if newline_pos != -1:
+            complete = self._output_buffer[: newline_pos + 1]
+            self._output_buffer = self._output_buffer[newline_pos + 1 :]
+            self.log_message.emit(complete)
+
+    def _flush_output_buffer(self) -> None:
+        if self._process is not None:
+            remaining = self._process.readAllStandardOutput().data().decode(errors="replace")
+            if remaining:
+                self._output_buffer += remaining
+        if self._output_buffer:
+            self.log_message.emit(self._output_buffer)
+            self._output_buffer = ""
 
     @Slot(int, QProcess.ExitStatus)
     def _handle_finished(self, exit_code: int, _exit_status: QProcess.ExitStatus) -> None:
         if self._process is None:
             return
+
+        self._flush_output_buffer()
 
         if self._stopping:
             self._cleanup_process()
@@ -179,3 +197,4 @@ class PipelineRunner(QObject):
             return
         self._process.deleteLater()
         self._process = None
+        self._output_buffer = ""

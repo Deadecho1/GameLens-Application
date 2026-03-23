@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QByteArray, Qt, Signal, Slot
+from PySide6.QtGui import QFont, QImage, QTextCursor
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -17,10 +18,12 @@ from PySide6.QtWidgets import (
     QListWidget,
     QMessageBox,
     QPushButton,
-    QPlainTextEdit,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
+
+_GAMELENS_IMG_SENTINEL = "__GAMELENS_IMG__"
 
 from .config import APP_NAME, MAX_FONT_SIZE, MIN_FONT_SIZE
 from .models import PipelineConfig, VersionInfo
@@ -102,9 +105,9 @@ class ProcessClipsDialog(ResponsiveFontMixin, QDialog):
 
         log_group = QGroupBox("Log")
         log_layout = QVBoxLayout(log_group)
-        self.log_output = QPlainTextEdit()
+        self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
-        self.log_output.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.log_output.setLineWrapMode(QTextEdit.NoWrap)
         log_layout.addWidget(self.log_output)
 
         root.addWidget(version_group)
@@ -191,7 +194,32 @@ class ProcessClipsDialog(ResponsiveFontMixin, QDialog):
 
     @Slot(str)
     def _append_log(self, text: str) -> None:
-        self.log_output.appendPlainText(text.rstrip("\n"))
+        sentinel_prefix = f"{_GAMELENS_IMG_SENTINEL}:"
+        pending: list[str] = []
+
+        for line in text.split("\n"):
+            line = line.rstrip("\r")
+            if line.startswith(sentinel_prefix):
+                if pending:
+                    self.log_output.append("\n".join(pending).rstrip("\n"))
+                    pending.clear()
+                try:
+                    img_bytes = base64.b64decode(line[len(sentinel_prefix):])
+                    qimg = QImage.fromData(QByteArray(img_bytes))
+                    if not qimg.isNull():
+                        cursor = self.log_output.textCursor()
+                        cursor.movePosition(QTextCursor.End)
+                        cursor.insertBlock()
+                        cursor.insertImage(qimg)
+                        self.log_output.setTextCursor(cursor)
+                except Exception:
+                    pass
+            else:
+                pending.append(line)
+
+        if pending:
+            self.log_output.append("\n".join(pending).rstrip("\n"))
+
         scrollbar = self.log_output.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
 

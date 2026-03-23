@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -10,6 +11,44 @@ from .models import RunEventJson, VideoEventsJson
 from .video_frame_provider import VideoFrameProvider
 
 logger = get_logger(__name__)
+
+_GAMELENS_IMG_SENTINEL = "__GAMELENS_IMG__"
+
+
+def _maybe_show_frame(image_bytes: bytes, label: str) -> None:
+    import base64
+    import io
+    import os
+    import sys
+    import tempfile
+
+    from PIL import Image
+
+    img = Image.open(io.BytesIO(image_bytes))
+    img.thumbnail((640, 360))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    small_bytes = buf.getvalue()
+    b64 = base64.b64encode(small_bytes).decode()
+
+    if not sys.stdout.isatty():
+        # Running as a subprocess (e.g. from GUI) — emit sentinel on stdout
+        print(f"{_GAMELENS_IMG_SENTINEL}:{b64}", flush=True)
+    elif (
+        os.environ.get("WT_SESSION")
+        or os.environ.get("TERM_PROGRAM") == "iTerm.app"
+        or os.environ.get("KITTY_WINDOW_ID")
+    ):
+        # Terminal with inline image support — OSC 1337
+        sys.stderr.write(f"\x1b]1337;File=inline=1:{b64}\a\n")
+        sys.stderr.flush()
+    else:
+        # Plain terminal — save to temp file
+        with tempfile.NamedTemporaryFile(
+            suffix=".png", prefix=label, delete=False
+        ) as tmp:
+            tmp.write(image_bytes)
+            logger.debug("    -> screenshot: %s", tmp.name)
 
 
 class RunExporter:
@@ -70,6 +109,12 @@ class RunExporter:
                     video_name=video_name,
                     frame_index=frame_index,
                 )
+
+                if logger.isEnabledFor(logging.DEBUG):
+                    _maybe_show_frame(
+                        frame_bytes,
+                        label=f"gamelens_{Path(video_name).stem[:20]}_f{frame_index}_",
+                    )
 
                 result = self.choice_service.extract_choice(frame_bytes)
                 logger.debug("    -> options=%s", result.get("options"))
