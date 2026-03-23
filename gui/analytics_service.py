@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -40,6 +41,7 @@ class AnalyticsService:
         if key in self._stats_cache and self._is_cache_valid(key):
             return self._stats_cache[key]
 
+        self._summaries_cache.pop(key, None)
         run_files = self._update_fingerprint(key)
         durations: list[float] = []
         item_counter: Counter[str] = Counter()
@@ -81,17 +83,25 @@ class AnalyticsService:
         if key in self._summaries_cache and self._is_cache_valid(key):
             return self._summaries_cache[key]
 
+        self._stats_cache.pop(key, None)
         run_files = self._update_fingerprint(key)
         summaries: list[RunSummary] = []
         for path in run_files:
             data = self._loader.load(path)
             runs = data if isinstance(data, list) else [data]
+            m = re.match(r"^(.+)_run_(\d+)$", path.stem)
             for idx, run in enumerate(runs, start=1):
+                if m:
+                    video_stem = m.group(1)
+                    run_number = int(m.group(2)) if len(runs) == 1 else idx
+                else:
+                    video_stem = path.stem
+                    run_number = idx
                 choices = run.get("choices", [])
                 item_names = [str(choice.get("selected_option") or choice.get("selected_choice") or "Unknown") for choice in choices]
                 summaries.append(
                     RunSummary(
-                        run_name=f"{path.stem} / Run {idx}",
+                        run_name=f"{video_stem} / Run {run_number}",
                         duration_seconds=float(run.get("duration_seconds") or run.get("duration") or 0.0),
                         selected_items=item_names,
                     )
@@ -102,10 +112,13 @@ class AnalyticsService:
 
     def load_run_details(self, version: VersionInfo, run_summary: RunSummary) -> RunDetails:
         parts = run_summary.run_name.rsplit(" / Run ", 1)
-        stem = parts[0]
-        idx = int(parts[1]) - 1 if len(parts) == 2 else 0
+        video_stem = parts[0]
+        run_number = int(parts[1]) if len(parts) == 2 else 1
 
-        run_file = version.run_json_dir / f"{stem}.json"
+        run_file = version.run_json_dir / f"{video_stem}_run_{run_number}.json"
+        if not run_file.exists():
+            run_file = version.run_json_dir / f"{video_stem}.json"
+        idx = 0
         if not run_file.exists():
             return RunDetails(
                 run_name=run_summary.run_name,
