@@ -11,6 +11,7 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 DEFAULT_PROMPT_CHOICE = """
         You are analyzing a roguelike game screenshot.
         Extract the item/upgrade titles shown and identify the currently selected one.
+        If the screen is not a screen where the player is choosing between items/upgrades, return an empty list and empty string.
         """
 
 # Initialize the router and OpenAI client
@@ -55,7 +56,7 @@ async def extract_choices(
                 "choices": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Choice titles, in on-screen order.",
+                    "description": "Choice titles, in on-screen order, or empty if not a choice screen.",
                 },
                 "selected_choice": {
                     "type": "string",
