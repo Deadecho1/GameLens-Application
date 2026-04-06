@@ -1,3 +1,4 @@
+import ctypes
 import gc
 import io
 from pathlib import Path
@@ -5,6 +6,24 @@ from typing import Dict
 
 from decord import VideoReader, cpu
 from PIL import Image
+
+# Force glibc to return freed C++ heap pages back to the OS.
+# gc.collect() only frees Python objects — decord's VideoReader lives in C++
+# heap and glibc will hold those pages indefinitely unless we trim explicitly.
+try:
+    _libc = ctypes.CDLL("libc.so.6", use_errno=True)
+    _libc.malloc_trim.restype = ctypes.c_int
+    _libc.malloc_trim.argtypes = [ctypes.c_size_t]
+except Exception:
+    _libc = None
+
+
+def _malloc_trim() -> None:
+    if _libc is not None:
+        try:
+            _libc.malloc_trim(0)
+        except Exception:
+            pass
 
 
 class VideoFrameProvider:
@@ -36,17 +55,23 @@ class VideoFrameProvider:
 
         frame_np = vr[frame_index].asnumpy()
         image = Image.fromarray(frame_np)
+        del frame_np
 
         buffer = io.BytesIO()
         image.save(buffer, format=self.image_format)
-        return buffer.getvalue()
-    
+        del image
+        result = buffer.getvalue()
+        buffer.close()
+        return result
+
     def release_video(self, video_name: str) -> None:
         reader = self._cache.pop(video_name, None)
         if reader is not None:
             del reader
             gc.collect()
+            _malloc_trim()
 
     def release_all(self) -> None:
         self._cache.clear()
         gc.collect()
+        _malloc_trim()

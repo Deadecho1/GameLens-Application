@@ -1,3 +1,4 @@
+import gc
 import json
 import logging
 from pathlib import Path
@@ -117,6 +118,8 @@ class RunExporter:
                     )
 
                 result = self.choice_service.extract_choice(frame_bytes)
+                del frame_bytes
+                gc.collect()
                 logger.debug("    -> options=%s", result.get("options"))
 
                 if result["options"]:
@@ -127,9 +130,13 @@ class RunExporter:
             # If still empty after retries → discard event as noise
             if choice_result is None:
                 logger.debug("  choice %d: no options found after all offsets, discarding", ci)
-                continue
+            else:
+                choices.append(choice_result)
 
-            choices.append(choice_result)
+            # Release VideoReader after each choice so decord's seek buffer is freed
+            # and malloc_trim can return C++ heap pages to the OS before the next choice.
+            self.frame_provider.release_video(video_name)
+            gc.collect()
 
         return {
             "start_time": start_time,
@@ -202,5 +209,10 @@ class RunExporter:
             except Exception as e:
                 logger.error("FAILED: %s — %s", json_path.name, e)
                 failed += 1
+            finally:
+                # Reset HTTP session between videos to release connection pool
+                # resources accumulated during that video's API calls.
+                self.choice_service.choice_extractor.reset_session()
+                gc.collect()
 
         logger.info("Done. Successful: %d  Failed: %d", ok, failed)

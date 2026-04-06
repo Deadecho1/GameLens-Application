@@ -56,3 +56,8 @@ class ChoiceExtractor:
         except requests.exceptions.RequestException as e:
             logger.error("Failed to communicate with the extraction API: %s", e)
             raise
+
+    def reset_session(self) -> None:
+        """Close and replace the HTTP session to free connection pool resources."""
+        self._session.close()
+        self._session = requests.Session()
