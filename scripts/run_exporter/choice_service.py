@@ -7,9 +7,9 @@ class ChoiceExtractionService:
     def __init__(self, choice_extractor: ChoiceExtractor):
         self.choice_extractor = choice_extractor
 
-    # Returns a dict with keys "options" and "selected_choice"
-    def extract_choice(self, frame_bytes: bytes) -> dict:
-        result = self.choice_extractor.extract_frame(frame_bytes)
+    # Returns a dict with keys "options" and "selected_option".
+    def extract_choice(self, frame_bytes: list[bytes]) -> dict:
+        result = self.choice_extractor.extract_frame(frame_bytes[0])
 
         if isinstance(result, dict):
             options = result.get("choices")

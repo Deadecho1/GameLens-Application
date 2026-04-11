@@ -7,6 +7,8 @@ services:
       - 7761:7761
     networks:
       - db_network
+    environment:
+      - MALLOC_TRIM_THRESHOLD_=100000
 
 networks:
   db_network:

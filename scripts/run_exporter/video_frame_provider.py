@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict
 
 from decord import VideoReader, cpu
-from PIL import Image
+from PIL import Image, ImageEnhance, ImageFilter
 
 # Force glibc to return freed C++ heap pages back to the OS.
 # gc.collect() only frees Python objects — decord's VideoReader lives in C++
@@ -57,13 +57,24 @@ class VideoFrameProvider:
         image = Image.fromarray(frame_np)
         del frame_np
 
+        # Resize to 960×540 before encoding — reduces payload from ~6MB to ~1MB,
+        # keeping API calls fast enough to avoid WSL connection instability.
+        image = image.resize((1280, 720), Image.LANCZOS)
+
+        # Enhance contrast and sharpen edges so hover indicators (brackets,
+        # side arrows, cursor) are more visible to the vision model.
+        # UnsharpMask boosts local contrast at edges rather than globally,
+        # making small border markers stand out without blowing out flat areas.
+        image = ImageEnhance.Contrast(image).enhance(2.0)
+        image = image.filter(ImageFilter.UnsharpMask(radius=2, percent=200, threshold=2))
+
         buffer = io.BytesIO()
         image.save(buffer, format=self.image_format)
         del image
         result = buffer.getvalue()
         buffer.close()
         return result
-
+    
     def release_video(self, video_name: str) -> None:
         reader = self._cache.pop(video_name, None)
         if reader is not None:

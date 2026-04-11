@@ -36,3 +36,8 @@ paddlepaddle-gpu = [{ index = "paddle-cu118" }]
 dev = [
     "pytest>=9.0.2",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: full pipeline benchmark tests (require ML models and services to be running)",
+]

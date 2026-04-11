@@ -1,0 +1,62 @@
+{
+  "holocure_test": {
+    "runs": [
+      {
+        "run_index": 1,
+        "start_time": 9.0,
+        "end_time": 70.0,
+        "choices": [
+          { "options": ["Bubba", "Detective Eye", "The Ame Way", "Piki Piki Piman"], "selected_option": "Bubba" },
+          { "options": ["Elite Lava Bucket", "Piki Piki Piman", "Just Bandage", "Body Pillow"], "selected_option": "Body Pillow" }
+        ]
+      },
+      {
+        "run_index": 2,
+        "start_time": 74.0,
+        "end_time": 114.5,
+        "choices": []
+      },
+      {
+        "run_index": 3,
+        "start_time": 123.8,
+        "end_time": 154.0,
+        "choices": []
+      }
+    ]
+  },
+  "megabonk_test": {
+    "runs": [
+      {
+        "run_index": 1,
+        "start_time": 9.0,
+        "end_time": 97.0,
+        "choices": [
+          { "options": ["Silver Tome", "Lightning Staff", "Knockback Tome"], "selected_option": "Knockback Tome" },
+          { "options": ["Precision Tome", "Cooldown Tome", "Knockback Tome"], "selected_option": "Knockback Tome" },
+          { "options": ["Bone", "Shield Tome", "Aegis"], "selected_option": "Aegis" }
+        ]
+      },
+      {
+        "run_index": 2,
+        "start_time": 113.0,
+        "end_time": 143.0,
+        "choices": [
+          { "options": ["Firestaff", "Aura", "Lightning Staff"], "selected_option": "Firestaff" }
+        ]
+      }
+    ]
+  },
+  "vampire_test": {
+    "runs": [
+      {
+        "run_index": 1,
+        "start_time": 14.0,
+        "end_time": 98.0,
+        "choices": [
+          { "options": ["Whip", "King Bible", "Knife"], "selected_option": "Knife" },
+          { "options": ["Axe", "Magic Wand", "Santa Water"], "selected_option": "Axe" }
+        ]
+      }
+    ]
+  }
+}

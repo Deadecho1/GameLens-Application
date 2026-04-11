@@ -19,7 +19,7 @@ class TestChoiceExtractorConfig:
     def test_default_values(self):
         cfg = ChoiceExtractorConfig()
         assert cfg.base_url == "http://localhost:7761"
-        assert cfg.timeout_seconds == 10.0
+        assert cfg.timeout_seconds == 15.0
         assert cfg.endpoint_path == "/api/v1/choice/extract-choices"
 
     def test_custom_base_url(self):
