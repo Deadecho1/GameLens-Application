@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 
 from app_core.formatting import format_seconds
 from .config import APP_NAME
-from .models import ChoiceDetail, RunDetails
+from app_core.models import ChoiceDetail, RunDetails
 
 
 class RunDetailsDialog(QDialog):

@@ -6,7 +6,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from app_core.config import AppConfig
-from .analytics_service import AnalyticsService
+from app_core.analytics import AnalyticsService
 from .main_window import MainWindow
 from .repository import GameRepository
 

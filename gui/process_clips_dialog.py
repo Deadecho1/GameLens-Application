@@ -26,7 +26,8 @@ from PySide6.QtWidgets import (
 _GAMELENS_IMG_SENTINEL = "__GAMELENS_IMG__"
 
 from .config import APP_NAME, MAX_FONT_SIZE, MIN_FONT_SIZE
-from .models import PipelineConfig, VersionInfo
+from app_core.models import VersionInfo
+from .models import PipelineConfig
 from .pipeline_runner import PipelineRunner
 from .widgets import ResponsiveFontMixin
 

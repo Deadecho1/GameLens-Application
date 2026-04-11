@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .models import DashboardStats, GameInfo, RunDetails, RunSummary, VersionInfo
+from app_core.models import DashboardStats, GameInfo, RunDetails, RunSummary, VersionInfo
 
 
 class GameRepo(Protocol):

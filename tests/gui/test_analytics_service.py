@@ -8,8 +8,8 @@ from typing import Union
 
 import pytest
 
-from gui.analytics_service import AnalyticsService
-from gui.models import VersionInfo
+from app_core.analytics import AnalyticsService
+from app_core.models import VersionInfo
 
 
 def _make_version(tmp_path: Path) -> VersionInfo:
@@ -129,7 +129,7 @@ class TestLoadRunDetails:
 
     def test_missing_file_returns_summary_data(self, tmp_path):
         version = _make_version(tmp_path)
-        from gui.models import RunSummary
+        from app_core.models import RunSummary
         summary = RunSummary(run_name="missing / Run 1", duration_seconds=30.0, selected_items=[])
         svc = AnalyticsService()
         details = svc.load_run_details(version, summary)

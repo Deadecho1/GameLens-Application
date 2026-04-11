@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .models import GameInfo, VersionInfo
+from app_core.models import GameInfo, VersionInfo
 
 
 class GameRepository:

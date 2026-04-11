@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from app_core.formatting import format_seconds
-from .analytics_service import AnalyticsService
+from app_core.analytics import AnalyticsService
 from .config import (
     APP_NAME,
     DEFAULT_WINDOW_HEIGHT,
@@ -28,7 +28,7 @@ from .config import (
     MAX_FONT_SIZE,
     MIN_FONT_SIZE,
 )
-from .models import DashboardStats, GameInfo, RunSummary, VersionInfo
+from app_core.models import DashboardStats, GameInfo, RunSummary, VersionInfo
 from .process_clips_dialog import ProcessClipsDialog
 from .protocols import AnalyticsReader, GameRepo
 from .repository import GameRepository

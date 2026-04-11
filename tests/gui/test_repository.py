@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from gui.repository import GameRepository
-from gui.models import GameInfo, VersionInfo
+from app_core.models import GameInfo, VersionInfo
 
 
 @pytest.fixture
