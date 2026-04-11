@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from scripts.event_detector.config import DetectorConfig
-from scripts.event_detector.labels import LABEL_START, LABEL_CHOICE, LABEL_TEXTS, NONE_LABEL
+from scripts.event_detector.labels import LABEL_START, LABEL_CHOICE, LABEL_TEXTS
 from scripts.event_detector.models import PeakEvent, RefinedEvent
 from scripts.event_detector.refiner import EventRefiner
 from tests.event_detector.fakes import ConstantScorer, FakeVideoSampler

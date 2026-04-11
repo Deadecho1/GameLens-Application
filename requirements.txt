@@ -1,11 +1,6 @@
 decord==0.6.0
-peft>=0.13
-matplotlib==3.10.8
 numpy==2.4.3
-openai==2.26.0
-opencv-contrib-python==4.10.0.84
 opencv-python==4.13.0.92
-paddleocr==3.4.0
 Pillow==12.1.1
 pyside6==6.10.2
 pyside6-addons==6.10.2
@@ -14,4 +9,3 @@ python-dotenv==1.2.2
 torch==2.7.1+cu118
 torchvision==0.22.1+cu118
 transformers==5.3.0
-ultralytics==8.4.21
