@@ -47,8 +47,6 @@ models/
     └── ... (other tokenizer/preprocessor files)
 ```
 
-> Choice/screenshot classification is handled by the Event Extraction service via the OpenAI vision API — no local choice model weights are needed.
-
 ---
 
 ## 3. Configure Environment Files
@@ -155,4 +153,4 @@ The GUI connects to:
 - Videos must be `.mp4` format.
 - All videos should be placed in the folder configured in the GUI.
 - The event detector uses X-CLIP and runs on GPU if CUDA is available, otherwise falls back to CPU (significantly slower).
-- The choice extraction service uses PaddleOCR, YOLO, and OpenAI vision — an `OPENAI_API_KEY` is required.
+- Choice extraction uses the OpenAI vision API — an `OPENAI_API_KEY` is required.
