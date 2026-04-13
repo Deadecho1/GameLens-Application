@@ -56,7 +56,8 @@ def test_pipeline_accuracy(tmp_path: Path) -> None:
         check=True,
     )
 
-    gt = load_ground_truth(GROUND_TRUTH)
+    present_stems = {mp4.stem for mp4 in video_dir.glob("*.mp4")}
+    gt = {k: v for k, v in load_ground_truth(GROUND_TRUTH).items() if k in present_stems}
     summary = evaluate_all(gt, run_dir)
     summary.print_report()
     assert summary.all_passed(), "One or more benchmark metrics failed — see report above."

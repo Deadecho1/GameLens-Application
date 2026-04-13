@@ -58,5 +58,20 @@
         ]
       }
     ]
+  },
+  "torment_test": {
+    "runs": [
+      {
+        "run_index": 1,
+        "start_time": 14.0,
+        "end_time": 140.0,
+        "choices": [
+          { "options": ["Swift Feet I (Fast)", "Vanguard I", "Long Fingers I", "Collateral Damage I"], "selected_option": "Long Fingers I" },
+          { "options": ["Cunning Technique I", "Swift Feet I (Fast)", "Collateral Damage I", "Vanguard I"], "selected_option": "Cunning Technique I" },
+          { "options": ["Parry I", "Strength I", "Quick Hands I", "Vitality I"], "selected_option": "Quick Hands I" },
+          { "options": ["Thick Hide I", "Channeling I", "Swift Feet I (Fast)", "Parry I"], "selected_option": "Channeling I" }
+        ]
+      }
+    ]
   }
 }

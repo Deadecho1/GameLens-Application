@@ -6,9 +6,12 @@ from typing import Dict, List, Tuple
 import numpy as np
 import torch
 
+from app_core.logging import get_logger
 from .config import DetectorConfig
 from .labels import LABEL_CHOICE
 from .models import PeakEvent, RefinedEvent
+
+_log = get_logger(__name__)
 
 
 class EventRefiner:
@@ -338,18 +341,43 @@ class EventRefiner:
         smoothed: np.ndarray,
         score_by_frame: Dict[int, float],
         coarse_frame: int,
-    ) -> int | None:
+        fps: float = 1.0,
+    ) -> Tuple[int | None, int | None]:
+        """Return (confirmed_exit_frame, first_unconfirmed_spike_frame).
+
+        confirmed_exit_frame: the frame just before a visually detected AND
+            CLIP-score-confirmed exit transition, or None.
+        first_unconfirmed_spike_frame: the frame of the first spike that passed
+            the diff threshold and pre-score check but failed CLIP confirmation,
+            or None.  Used as a fallback cap by the caller.
+        """
         if not frame_indices or smoothed.size == 0 or not score_by_frame:
-            return None
+            return None, None
 
         scored_frames = sorted(score_by_frame.keys())
         scored_values = [score_by_frame[f] for f in scored_frames]
         confirm_needed = max(1, int(self.config.choice_exit_confirm_frames))
-        threshold = self._adaptive_exit_threshold(smoothed)
 
         coarse_idx = min(range(len(frame_indices)), key=lambda i: abs(frame_indices[i] - coarse_frame))
         max_diff_idx = len(frame_indices) - 2
         start_diff_idx = max(0, min(coarse_idx, max_diff_idx))
+
+        # Compute threshold from the forward portion only (start_diff_idx onward) so that
+        # the entry transition spike in the lookback region doesn't inflate max_diff.
+        forward_diffs = smoothed[start_diff_idx:]
+        max_diff = float(np.max(forward_diffs)) if forward_diffs.size > 0 else 0.0
+        mean_diff = float(np.mean(forward_diffs)) if forward_diffs.size > 0 else 0.0
+        std_diff = float(np.std(forward_diffs)) if forward_diffs.size > 0 else 0.0
+        threshold = self._adaptive_exit_threshold(forward_diffs)
+
+        _log.info(
+            "[exit-scan] threshold=%.4f  (mean=%.4f  std=%.4f  max_diff=%.4f  ratio=%.2f)  "
+            "scan=%.2fs–%.2fs",
+            threshold, mean_diff, std_diff, max_diff, self.config.choice_exit_min_strength_ratio,
+            frame_indices[start_diff_idx] / fps, frame_indices[-1] / fps,
+        )
+
+        first_unconfirmed: int | None = None
 
         for diff_idx in range(start_diff_idx, max_diff_idx + 1):
             diff_value = float(smoothed[diff_idx])
@@ -363,23 +391,40 @@ class EventRefiner:
 
             pre_score = scored_values[pre_scored_idx]
             if pre_score < self.config.choice_min_clip_score:
+                _log.info(
+                    "  spike  t=%.2fs  diff=%.4f  SKIP pre_score=%.4f < min=%.4f",
+                    pre_frame / fps, diff_value, pre_score, self.config.choice_min_clip_score,
+                )
                 continue
 
             post_scores: List[float] = []
             for j in range(pre_scored_idx + 1, min(len(scored_values), pre_scored_idx + 1 + confirm_needed)):
                 post_scores.append(scored_values[j])
 
-            if len(post_scores) < confirm_needed:
+            if len(post_scores) == 0:
+                _log.info(
+                    "  spike  t=%.2fs  diff=%.4f  pre_score=%.4f  SKIP no post candidates",
+                    pre_frame / fps, diff_value, pre_score,
+                )
                 continue
 
-            if all(
+            confirmed = all(
                 (post_score <= self.config.choice_min_clip_score)
                 or ((pre_score - post_score) >= self.config.choice_exit_score_drop)
                 for post_score in post_scores
-            ):
-                return pre_frame
+            )
+            _log.info(
+                "  spike  t=%.2fs  diff=%.4f  pre_score=%.4f  post_scores=%s  confirmed=%s",
+                pre_frame / fps, diff_value, pre_score,
+                [round(s, 4) for s in post_scores], confirmed,
+            )
+            if confirmed:
+                return pre_frame, None
 
-        return None
+            if first_unconfirmed is None:
+                first_unconfirmed = pre_frame
+
+        return None, first_unconfirmed
 
     def _forward_score_collapse_frame(
         self,
@@ -469,11 +514,23 @@ class EventRefiner:
         )
         score_by_frame = {frame: score for score, frame, _, _ in candidate_scores}
 
-        exit_frame = self._forward_exit_transition_frame(
+        _log.info(
+            "[choice-refine] coarse=%.2fs  search=%.2fs–%.2fs  candidates=%d  scores min=%.4f max=%.4f",
+            coarse_frame / fps,
+            search_start_frame / fps, end_frame / fps,
+            len(candidate_scores),
+            min(s for s, _, _, _ in candidate_scores) if candidate_scores else 0.0,
+            max(s for s, _, _, _ in candidate_scores) if candidate_scores else 0.0,
+        )
+        for score, frame, _, _ in sorted(candidate_scores, key=lambda x: x[1]):
+            _log.info("  candidate  t=%.2fs  score=%.4f", frame / fps, score)
+
+        exit_frame, unconfirmed_frame = self._forward_exit_transition_frame(
             frame_indices=frame_indices,
             smoothed=smoothed,
             score_by_frame=score_by_frame,
             coarse_frame=coarse_frame,
+            fps=fps,
         )
 
         if exit_frame is not None:
@@ -484,6 +541,18 @@ class EventRefiner:
             else:
                 best_score, best_frame, best_start, best_end = max(candidate_scores, key=lambda x: x[0])
                 method = "choice-forward-exit-fallback-score"
+        elif unconfirmed_frame is not None:
+            # A diff spike was found but CLIP score didn't confirm the exit.
+            # Still cap at the first spike so we pick the latest valid candidate
+            # before the visual transition rather than falling back to coarse_frame.
+            _log.info("[choice-refine] unconfirmed exit at t=%.2fs — capping candidates there", unconfirmed_frame / fps)
+            picked, picked_kind = self._pick_latest_valid_candidate(candidate_scores, max_frame=unconfirmed_frame)
+            if picked is not None:
+                best_score, best_frame, best_start, best_end = picked
+                method = f"choice-unconfirmed-exit-last-{picked_kind}"
+            else:
+                best_score, best_frame, best_start, best_end = max(candidate_scores, key=lambda x: x[0])
+                method = "choice-unconfirmed-exit-fallback-score"
         else:
             collapse_frame = self._forward_score_collapse_frame(
                 candidate_scores=candidate_scores,
@@ -529,6 +598,11 @@ class EventRefiner:
                         retry_times=result.retry_times,
                         refinement_method="choice-no-candidates-hillclimb",
                     )
+
+        _log.info(
+            "[choice-refine] method=%s  selected t=%.2fs (frame=%d)  score=%.4f",
+            method, best_frame / fps, best_frame, best_score,
+        )
 
         retry_frames, retry_times = self._build_choice_retry_candidates(
             selected_frame=best_frame,

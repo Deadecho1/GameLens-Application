@@ -130,7 +130,7 @@ class RunExporter:
         self.CHOICE_MAX_SCAN_LOOKBACK = 300   # max frames to scan back (~5s at 60fps)
         # Phase 2 — once the boundary frame is found, sample this many frames
         # backward from it for the final multi-frame extraction call.
-        self.CHOICE_EXTRACTION_OFFSETS = [0]
+        self.CHOICE_EXTRACTION_OFFSETS = [5]
 
     def _compute_duration(
         self,

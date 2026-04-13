@@ -101,6 +101,9 @@ async def extract_choices(
         resp = client.chat.completions.create(
             model=model,
             temperature=0,
+            reasoning_effort="none",
+            prompt_cache_key="gamelens-choice-extraction",
+            prompt_cache_retention="24h",
             response_format={"type": "json_schema", "json_schema": schema},
             messages=[
                 {
