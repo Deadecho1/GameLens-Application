@@ -1,68 +1,158 @@
-# 🎮 GameLens Application
+# GameLens
 
-GameLens is a multi-service system for ingesting gameplay captures, classifying events, and running local analysis workflows.
+GameLens is a gameplay analysis system that processes video captures to detect in-game events, classify game-state transitions, and export structured run/session data.
 
-**🧩 Services**
-- 📥 `GameLens-Collector` (`backend/GameLens-Collector`) — Flask + Socket.IO ingestion API, stores data in PostgreSQL via `psycopg`, exposes port `8000`. Docker Compose also brings up `postgres` and `pgadmin`.
-- 🤖 `GameLens-Event-Classifier` (`backend/GameLens-Event-Classifier`) — FastAPI service for event classification, uses PyTorch + `timm` for inference and PostgreSQL via `psycopg`, exposes port `7761`.
-- 🗄️ `PostgreSQL` — Database container used by the backend services.
-- 🧰 `pgAdmin` — DB admin UI container.
-- 🖥️ `Desktop GUI` (`gui`) — PySide6/Qt desktop client.
+**Services**
+- `GameLens-Collector` (`backend/GameLens-Collector`) — Flask + Socket.IO ingestion API. Stores data in PostgreSQL. Port `8000`.
+- `GameLens-Event-Extraction` (`backend/GameLens-Event-Extraction`) — FastAPI service for event/choice classification using vision models + OpenAI. Port `7761`.
+- `PostgreSQL` — Database used by both backend services.
+- `pgAdmin` — Optional DB admin UI. Port `5050`.
+- `GUI` (`gui/`) — PySide6 desktop client that connects to the backend.
 
-**🧱 Stacks**
-- 🐍 Python (root project requires `>=3.11,<3.13`; backend services require `>=3.13`).
-- ⚙️ FastAPI, Flask, Flask-SocketIO, Gunicorn/eventlet.
-- 🧠 PyTorch, `timm`, OpenCV, PaddleOCR, Ultralytics, Transformers.
-- 🗄️ PostgreSQL + `psycopg`.
-- 🐳 Docker + Docker Compose.
-- 🪟 PySide6 (Qt) for the desktop GUI.
+---
 
-## 🛠️ Installation
-for the following, there is an `.env.example` for the environment variables in each folder below you could use as a reference. change in each folder its name to `.env` if you use it.
-### Inside GameLens-Collector folder's .env
-**Add a .env file inside the `backend/GameLens-Collector` with the following fields:
+## Prerequisites
 
-**Environment Variables:** You must configure the following in your `.env` file: 
+- **Python 3.11–3.12** (root project and GUI)
+- **[uv](https://github.com/astral-sh/uv)** — Python package manager
+- **Docker + Docker Compose** — for running backend services
+- **CUDA-capable GPU** (optional but strongly recommended for event detection inference)
 
- `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`. Optionally, you could configure the `PGADMIN_MAIL` and `PGADMIN_PASS` for postgreSQL dashboard.
- Also,  you must configure the `CLASSIFIER_SERVICE_HOST_URL` thats used for triggering the Event Classifier Service. the following can be used: `CLASSIFIER_SERVICE_HOST_URL=http://event_classifier:7761`
+---
 
-For your database connection (`PGSQL_CONN`), the host depends on how you are running the API:
-* **Running via Docker:** `postgresql://<POSTGRES_USER>:<POSTGRES_PASSWORD>@db:5432/<POSTGRES_DB>`
+## 1. Install Python Dependencies
 
-* This is true for docker when running both the DB container and Event Classifier Service in the same local enviornment.
-* **Running locally (Host machine):** `postgresql://<POSTGRES_USER>:<POSTGRES_PASSWORD>@localhost:5432/<POSTGRES_DB>`
-
-### Inside GameLens-Event-Extraction folder's .env
-**Add a .env file inside the `backend/GameLens-Event-Extraction` with the following fields:
-
-**Environment Variables:** You must configure the following in your `.env` file: 
-
-For your database connection (`PGSQL_CONN`), the host depends on how you are running the API:
-* **Running via Docker:** `postgresql://<POSTGRES_USER>:<POSTGRES_PASSWORD>@db:5432/<POSTGRES_DB>`
-
-* This is true for docker when running both the DB container and Event Classifier Service in the same local enviornment.
- * **Running locally (Host machine):** `postgresql://<POSTGRES_USER>:<POSTGRES_PASSWORD>@localhost:5432/<POSTGRES_DB>`
-
-For your LLM api key, use: `OPENAI_API_KEY`.
-For a local build you also need to export those environment variables into the terminal.
-
-**🚀 Run (Docker Compose)**
--  Migrate the DB using the following command, after the startup of all docker containers: 
+From the repo root:
 
 ```bash
-cd backend/GameLens-Collector && 
-docker exec -i postgres_db psql -U your_username -d your_database_name < db/GameLens-Schema-Updated.sql
- ```
-from the main project's root(GameLens-Application), run:
+uv sync
+```
 
-`docker compose up -d --build`
+---
 
-Use the GameLens GUI:
+## 2. Download Model Weights
+
+Model weights are not included in the repository. Download them from Google Drive and place them as follows:
+
+**Google Drive:** https://drive.google.com/drive/folders/1P8V-G7gfTAqPlpaS92RGeDA0vaGRivSH?usp=sharing
+
+Download the event detector weights and place them at `models/event_detector/`:
+
+```
+models/
+└── event_detector/
+    ├── config.json
+    ├── model.safetensors
+    ├── tokenizer.json
+    └── ... (other tokenizer/preprocessor files)
+```
+
+> Choice/screenshot classification is handled by the Event Extraction service via the OpenAI vision API — no local choice model weights are needed.
+
+---
+
+## 3. Configure Environment Files
+
+### `backend/GameLens-Collector/.env`
+
+Copy the example and fill in your values:
+
+```bash
+cp backend/GameLens-Collector/.env.example backend/GameLens-Collector/.env
+```
+
+```env
+POSTGRES_USER=your_username
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=your_database_name
+
+# Docker: use @db:5432 | Local: use @localhost:5432
+PGSQL_CONN=postgresql://your_username:your_password@db:5432/your_database_name
+
+# URL of the Event Extraction service (use container name when running via Docker)
+CLASSIFIER_SERVICE_HOST_URL=http://event_classifier:7761
+
+# Optional — pgAdmin credentials
+PGADMIN_MAIL=admin@gamelens.com
+PGADMIN_PASS=admin123
+```
+
+### `backend/GameLens-Event-Extraction/.env`
+
+```bash
+cp backend/GameLens-Event-Extraction/.env.example backend/GameLens-Event-Extraction/.env
+```
+
+```env
+# Docker: use @db:5432 | Local: use @localhost:5432
+PGSQL_CONN=postgresql://your_username:your_password@db:5432/your_database_name
+
+OPENAI_API_KEY=your_openai_api_key
+```
+
+### Root `.env`
+
+Create a `.env` in the repo root for the GUI and CLI pipeline:
+
+```env
+OPENAI_API_KEY=your_openai_api_key
+```
+
+---
+
+## 4. Create the Docker Network
+
+Both backend services share an external Docker network. Create it once before the first run:
+
+```bash
+docker network create db_network
+```
+
+---
+
+## 5. Start Backend Services
+
+From the repo root:
+
+```bash
+docker compose up -d --build
+```
+
+This starts: `postgres_db`, `pgadmin`, `collector` (port 8000), and `event_classifier` (port 7761).
+
+Wait for all containers to be healthy, then run the DB migration:
+
+```bash
+docker exec -i postgres_db psql -U your_username -d your_database_name < backend/GameLens-Collector/db/GameLens-Schema-Updated.sql
+```
+
+> The migration only needs to be run once (or after wiping the DB volume).
+
+Verify services are up:
+
+```bash
+docker compose ps
+curl http://localhost:8000      # Collector
+curl http://localhost:7761      # Event Extraction
+```
+
+---
+
+## 6. Launch the GUI
+
+```bash
 python -m gui.main
-  
--Videos must be .mp4
--All videos should be placed in the specified video folder
+```
 
-Model Weights are available here:
-https://drive.google.com/drive/folders/1P8V-G7gfTAqPlpaS92RGeDA0vaGRivSH?usp=sharing
+The GUI connects to:
+- Collector API at `http://localhost:8000`
+- Event Extraction service at `http://localhost:7761` (configurable via `GAMELENS_CLASSIFIER_URL` in `.env`)
+
+---
+
+## Notes
+
+- Videos must be `.mp4` format.
+- All videos should be placed in the folder configured in the GUI.
+- The event detector uses X-CLIP and runs on GPU if CUDA is available, otherwise falls back to CPU (significantly slower).
+- The choice extraction service uses PaddleOCR, YOLO, and OpenAI vision — an `OPENAI_API_KEY` is required.
