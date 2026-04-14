@@ -44,6 +44,26 @@ class VideoFrameProvider:
             self._cache[video_name] = VideoReader(str(video_path), ctx=cpu(0))
         return self._cache[video_name]
 
+    def get_fps(self, video_name: str) -> float:
+        """Return the average FPS of the video."""
+        return self._get_reader(video_name).get_avg_fps()
+
+    def get_frame_pil(self, video_name: str, frame_index: int) -> Image.Image:
+        """Return a raw PIL image suitable for YOLO inference (no contrast enhancement)."""
+        vr = self._get_reader(video_name)
+
+        if frame_index < 0 or frame_index >= len(vr):
+            raise IndexError(
+                f"Frame index {frame_index} out of range for video {video_name} "
+                f"(num_frames={len(vr)})"
+            )
+
+        frame_np = vr[frame_index].asnumpy()
+        image = Image.fromarray(frame_np)
+        del frame_np
+        image = image.resize((640, 360), Image.LANCZOS)
+        return image
+
     def get_frame_bytes(self, video_name: str, frame_index: int) -> bytes:
         vr = self._get_reader(video_name)
 

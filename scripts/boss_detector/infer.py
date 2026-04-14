@@ -1,6 +1,9 @@
 import argparse
 
-from model import BossDetectionResult
+try:
+    from .model import BossDetectionResult
+except ImportError:  # fallback when run as __main__ script
+    from model import BossDetectionResult  # type: ignore[no-redef]
 from PIL import Image
 from ultralytics import YOLO
 

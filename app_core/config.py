@@ -25,6 +25,9 @@ class AppConfig:
     classifier_base_url: str
     classifier_timeout_seconds: float
 
+    # Boss detector
+    boss_model_path: Path
+
     # GUI
     default_window_width: int
     default_window_height: int
@@ -58,6 +61,12 @@ class AppConfig:
             classifier_base_url=os.environ.get("GAMELENS_CLASSIFIER_URL", "http://localhost:7761"),
             classifier_timeout_seconds=float(
                 os.environ.get("GAMELENS_CLASSIFIER_TIMEOUT", "10.0")
+            ),
+            boss_model_path=Path(
+                os.environ.get(
+                    "GAMELENS_BOSS_MODEL_PATH",
+                    str(models_dir / "boss" / "model.pt"),
+                )
             ),
             default_window_width=int(os.environ.get("GAMELENS_WINDOW_WIDTH", "1200")),
             default_window_height=int(os.environ.get("GAMELENS_WINDOW_HEIGHT", "800")),

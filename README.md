@@ -148,6 +148,67 @@ The GUI connects to:
 
 ---
 
+---
+
+## CLI Pipeline
+
+The CLI pipeline processes videos in three sequential stages. The backend must be running (`docker compose up -d --build`) before Stage 2 and Stage 3.
+
+### Stage 1 — Event Detection
+
+Processes video files and outputs per-video JSON files describing detected run boundaries, choice events, and drop events.
+
+```bash
+uv run python -m scripts.event_detector.cli \
+  --input-dir /path/to/videos \
+  --output-dir /path/to/event-jsons
+```
+
+### Stage 2 — Run Exporter
+
+Reads the event JSONs from Stage 1, extracts choice selections via the Event Extraction service (OpenAI vision), and writes one JSON file per run.
+
+```bash
+uv run python -m scripts.run_exporter.cli \
+  --json-dir /path/to/event-jsons \
+  --video-dir /path/to/videos \
+  --output-dir /path/to/run-jsons
+```
+
+Stage 2 output is safe to keep and reuse — re-running it is expensive (one OpenAI call per choice event).
+
+### Stage 3 — Boss Processor
+
+Enriches the run JSONs from Stage 2 with boss fight data. Requires a YOLO boss classifier model and the Event Extraction service.
+
+```bash
+uv run python -m scripts.boss_processor.cli \
+  --run-json-dir /path/to/run-jsons \
+  --video-dir /path/to/videos \
+  --boss-model models/boss/model.pt
+```
+
+Each run JSON gains a `boss_fights` key:
+
+```json
+"boss_fights": [
+  {
+    "boss_names": ["Stone Golem", "Stone Golem"],
+    "boss_class": "boss",
+    "start_time": 238.75,
+    "end_time": 261.25,
+    "duration_seconds": 22.5,
+    "player_died": false
+  }
+]
+```
+
+- `boss_names` — all boss names visible on screen (there can be multiple simultaneous bosses).
+- `player_died` — `true` if the run ended at or near the boss fight's end time.
+- Boss model weights go in `models/boss/` (download separately, same Google Drive as event detector weights).
+
+---
+
 ## Notes
 
 - Videos must be `.mp4` format.
