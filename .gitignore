@@ -33,3 +33,6 @@ data/versions
 *.log
 
 .env
+
+node_modules/
+dist/
