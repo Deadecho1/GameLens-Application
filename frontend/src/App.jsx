@@ -1,63 +1,193 @@
-import React, { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { cloneInitialData, MOCK_VIDEOS_FOR_PATH } from './dataStore';
+import Header from './components/Header';
+import AddItemModal from './components/AddItemModal';
+import ProcessingModal from './components/ProcessingModal';
+import Dashboard from './components/Dashboard';
+
+/**
+ * GameLens SPA — single source of truth: `data` cloned from dataStore.initialData.
+ *
+ * BACKEND INTEGRATION (replace mock handlers):
+ * - mergePatch: apply server-driven partial updates to the same shape.
+ * - handleRun / handleStop: POST to job API; subscribe for logs + status.
+ * - handleChooseFolder: return path from OS picker, then GET scan → processing.videoFiles.
+ * - On job completion: set processing.status to 'completed' and PATCH dashboard.* from report API.
+ */
 
 function App() {
-  const [games, setGames] = useState(["Elden Ring", "Hades"]);
-  const [versions, setVersions] = useState(["v1.0.1", "v1.1.0"]);
-  const [selectedGame, setSelectedGame] = useState(games[0]);
-  const [selectedVersion, setSelectedVersion] = useState(versions[0]);
+  const [data, setData] = useState(() => cloneInitialData());
+  const mockRunTimerRef = useRef(null);
+
+  /** Shallow-merge into top-level slices (ui, setup, processing, dashboard). */
+  const mergePatch = useCallback((patch) => {
+    setData((prev) => ({
+      ...prev,
+      ...(patch.ui ? { ui: { ...prev.ui, ...patch.ui } } : {}),
+      ...(patch.setup ? { setup: { ...prev.setup, ...patch.setup } } : {}),
+      ...(patch.processing ? { processing: { ...prev.processing, ...patch.processing } } : {}),
+      ...(patch.dashboard ? { dashboard: { ...prev.dashboard, ...patch.dashboard } } : {}),
+    }));
+  }, []);
+
+  useEffect(() => {
+    return () => clearTimeout(mockRunTimerRef.current);
+  }, []);
+
+  /** Mock: cycle pipelinePath through MOCK_VIDEOS_FOR_PATH keys and refresh videoFiles. */
+  const handleChooseFolder = () => {
+    const paths = Object.keys(MOCK_VIDEOS_FOR_PATH);
+    setData((prev) => {
+      const idx = paths.indexOf(prev.processing.pipelinePath);
+      const nextPath = paths[(idx + 1) % paths.length];
+      return {
+        ...prev,
+        processing: {
+          ...prev.processing,
+          pipelinePath: nextPath,
+          videoFiles: [...(MOCK_VIDEOS_FOR_PATH[nextPath] || [])],
+        },
+      };
+    });
+  };
+
+  /** Mock run: sets running, then completes after 4s unless Stop clears the timer. */
+  const handleRun = () => {
+    clearTimeout(mockRunTimerRef.current);
+    setData((prev) => ({
+      ...prev,
+      processing: {
+        ...prev.processing,
+        status: 'running',
+        logs: [
+          ...prev.processing.logs,
+          `[RUN] Started (${prev.processing.selectedOption})…`,
+        ],
+      },
+    }));
+    mockRunTimerRef.current = setTimeout(() => {
+      mockRunTimerRef.current = null;
+      setData((prev) => ({
+        ...prev,
+        processing: {
+          ...prev.processing,
+          status: 'completed',
+          logs: [...prev.processing.logs, '[RUN] Pipeline completed.'],
+        },
+        ui: { ...prev.ui, processingModalOpen: false },
+      }));
+    }, 4000);
+  };
+
+  const handleStop = () => {
+    clearTimeout(mockRunTimerRef.current);
+    mockRunTimerRef.current = null;
+    setData((prev) => ({
+      ...prev,
+      processing: {
+        ...prev.processing,
+        status: 'stopped',
+        logs: [...prev.processing.logs, '[WARN] Stopped by user.'],
+      },
+    }));
+  };
+
+  const handleClearLogs = () => {
+    setData((prev) => ({
+      ...prev,
+      processing: { ...prev.processing, logs: [] },
+    }));
+  };
+
+  const confirmAddGame = () => {
+    const name = data.ui.newGameNameDraft.trim();
+    if (!name) return;
+    setData((prev) => {
+      const games = prev.setup.games.includes(name)
+        ? prev.setup.games
+        : [...prev.setup.games, name];
+      return {
+        ...prev,
+        setup: { ...prev.setup, games, selectedGame: name },
+        ui: { ...prev.ui, addGameModalOpen: false, newGameNameDraft: '' },
+      };
+    });
+  };
+
+  const confirmAddVersion = () => {
+    const name = data.ui.newVersionNameDraft.trim();
+    if (!name) return;
+    setData((prev) => {
+      const versions = prev.setup.versions.includes(name)
+        ? prev.setup.versions
+        : [...prev.setup.versions, name];
+      return {
+        ...prev,
+        setup: { ...prev.setup, versions, selectedVersion: name },
+        ui: { ...prev.ui, addVersionModalOpen: false, newVersionNameDraft: '' },
+      };
+    });
+  };
+
+  const showPlaceholder = data.processing.status !== 'completed';
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* Top Bar */}
-      <header className="p-4 bg-slate-800 border-b border-slate-700 flex items-center justify-between shadow-2xl">
-        <div className="flex items-center gap-6">
-          <h1 className="text-2xl font-black text-blue-500 tracking-tighter">GAMELENS</h1>
-          
-          {/* Game Dropdown */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-400 uppercase">Game</label>
-            <select 
-              className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              value={selectedGame}
-              onChange={(e) => setSelectedGame(e.target.value)}
-            >
-              {games.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-            <button className="bg-slate-600 hover:bg-blue-600 p-1.5 rounded transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-              </svg>
-            </button>
+    <div className="min-h-screen bg-slate-900 text-slate-100 antialiased">
+      <Header data={data} onPatch={mergePatch} />
+
+      <AddItemModal
+        open={data.ui.addGameModalOpen}
+        title="Add new game"
+        draftValue={data.ui.newGameNameDraft}
+        onDraftChange={(v) =>
+          setData((prev) => ({ ...prev, ui: { ...prev.ui, newGameNameDraft: v } }))
+        }
+        onClose={() =>
+          setData((prev) => ({ ...prev, ui: { ...prev.ui, addGameModalOpen: false } }))
+        }
+        onConfirm={confirmAddGame}
+        inputId="add-game"
+      />
+      <AddItemModal
+        open={data.ui.addVersionModalOpen}
+        title="Add new version"
+        draftValue={data.ui.newVersionNameDraft}
+        onDraftChange={(v) =>
+          setData((prev) => ({ ...prev, ui: { ...prev.ui, newVersionNameDraft: v } }))
+        }
+        onClose={() =>
+          setData((prev) => ({ ...prev, ui: { ...prev.ui, addVersionModalOpen: false } }))
+        }
+        onConfirm={confirmAddVersion}
+        inputId="add-version"
+      />
+
+      <ProcessingModal
+        data={data}
+        onPatch={mergePatch}
+        onRun={handleRun}
+        onStop={handleStop}
+        onClearLogs={handleClearLogs}
+        onChooseFolder={handleChooseFolder}
+      />
+
+      <main>
+        {showPlaceholder ? (
+          <div className="mx-auto max-w-3xl px-4 py-16 text-center">
+            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-800/20 px-8 py-20 transition hover:border-slate-700">
+              <p className="text-lg text-slate-400">
+                Select a game and version, then use <span className="text-blue-400">Process Clip</span> to
+                run the pipeline.
+              </p>
+              <p className="mt-4 text-sm text-slate-600">
+                When <code className="rounded bg-slate-950 px-1.5 py-0.5 text-slate-500">processing.status</code>{' '}
+                is <code className="text-emerald-500/90">completed</code>, the dashboard appears here.
+              </p>
+            </div>
           </div>
-
-          {/* Version Dropdown */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-bold text-slate-400 uppercase">Version</label>
-            <select 
-              className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              value={selectedVersion}
-              onChange={(e) => setSelectedVersion(e.target.value)}
-            >
-              {versions.map(v => <option key={v} value={v}>{v}</option>)}
-            </select>
-            <button className="bg-slate-600 hover:bg-blue-600 p-1.5 rounded transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <button className="bg-blue-600 hover:bg-blue-500 px-8 py-2 rounded-full font-bold uppercase text-sm tracking-widest transition-all shadow-[0_0_15px_rgba(37,99,235,0.4)]">
-          Process Clip
-        </button>
-      </header>
-
-      {/* Placeholder for Content */}
-      <main className="p-12">
-        <div className="max-w-4xl mx-auto border-2 border-dashed border-slate-800 rounded-3xl h-96 flex items-center justify-center text-slate-600">
-          <p className="text-lg">Select game and version to begin analysis</p>
-        </div>
+        ) : (
+          <Dashboard data={data} onPatch={mergePatch} />
+        )}
       </main>
     </div>
   );
