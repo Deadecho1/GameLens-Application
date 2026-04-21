@@ -2,15 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { cloneInitialData, MOCK_VIDEOS_FOR_PATH } from './dataStore';
 import Header from './components/Header';
-import ConfigSidebar from './components/ConfigSidebar';
+import MainTabNav from './components/MainTabNav';
+import ChangePickerModal from './components/ChangePickerModal';
 import AddItemModal from './components/AddItemModal';
-import ProcessingModal from './components/ProcessingModal';
-import UploadPortal from './components/UploadPortal';
-import Dashboard from './components/Dashboard';
+import SetupTab from './components/tabs/SetupTab';
+import ProcessTab from './components/tabs/ProcessTab';
+import AnalyticsTab from './components/tabs/AnalyticsTab';
 
 /**
- * GameLens SPA — `data` mirrors dataStore.initialData.
- * BACKEND: swap mock handlers for API / WebSocket; keep mergePatch contract.
+ * GameLens — tab console (SETUP | PROCESS | ANALYTICS). State = dataStore shape.
  */
 
 function App() {
@@ -69,7 +69,7 @@ function App() {
           status: 'completed',
           logs: [...prev.processing.logs, '[RUN] Pipeline completed.'],
         },
-        ui: { ...prev.ui, processingModalOpen: false },
+        ui: { ...prev.ui, activeMainTab: 'analytics' },
       }));
     }, 4000);
   };
@@ -95,9 +95,9 @@ function App() {
   };
 
   const confirmAddGame = () => {
-    const name = data.ui.newGameNameDraft.trim();
-    if (!name) return;
     setData((prev) => {
+      const name = prev.ui.newGameNameDraft.trim();
+      if (!name) return prev;
       const games = prev.setup.games.includes(name)
         ? prev.setup.games
         : [...prev.setup.games, name];
@@ -110,9 +110,9 @@ function App() {
   };
 
   const confirmAddVersion = () => {
-    const name = data.ui.newVersionNameDraft.trim();
-    if (!name) return;
     setData((prev) => {
+      const name = prev.ui.newVersionNameDraft.trim();
+      if (!name) return prev;
       const versions = prev.setup.versions.includes(name)
         ? prev.setup.versions
         : [...prev.setup.versions, name];
@@ -124,39 +124,58 @@ function App() {
     });
   };
 
-  const openEngine = () => {
-    setData((prev) => ({
-      ...prev,
-      ui: { ...prev.ui, processingModalOpen: true },
-    }));
-  };
-
-  const showHub = data.processing.status !== 'completed';
+  const tab = data.ui.activeMainTab;
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
-      <div className="pointer-events-none fixed inset-0 gl-cyber-grid opacity-100" aria-hidden />
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(30,58,138,0.12),transparent)]" aria-hidden />
+      <div className="pointer-events-none fixed inset-0 gl-cyber-grid" aria-hidden />
+      <div
+        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(30,58,138,0.14),transparent)]"
+        aria-hidden
+      />
+      <div className="gl-app-scanlines" aria-hidden />
 
       <div className="relative z-10">
-        <Header data={data} onPatch={mergePatch} />
+        <Header data={data} />
+        <MainTabNav data={data} onPatch={mergePatch} />
 
-        <ConfigSidebar
-          data={data}
-          onPatch={mergePatch}
-          onAddGame={() =>
-            setData((prev) => ({
-              ...prev,
-              ui: { ...prev.ui, addGameModalOpen: true, newGameNameDraft: '' },
-            }))
-          }
-          onAddVersion={() =>
-            setData((prev) => ({
-              ...prev,
-              ui: { ...prev.ui, addVersionModalOpen: true, newVersionNameDraft: '' },
-            }))
-          }
-        />
+        <div className="relative min-h-[calc(100vh-8rem)]">
+          <AnimatePresence mode="wait">
+            {tab === 'setup' && (
+              <SetupTab
+                key="setup"
+                data={data}
+                onPatch={mergePatch}
+                onAddGame={() =>
+                  setData((p) => ({
+                    ...p,
+                    ui: { ...p.ui, addGameModalOpen: true, newGameNameDraft: '' },
+                  }))
+                }
+                onAddVersion={() =>
+                  setData((p) => ({
+                    ...p,
+                    ui: { ...p.ui, addVersionModalOpen: true, newVersionNameDraft: '' },
+                  }))
+                }
+              />
+            )}
+            {tab === 'process' && (
+              <ProcessTab
+                key="process"
+                data={data}
+                onPatch={mergePatch}
+                onChooseFolder={handleChooseFolder}
+                onRun={handleRun}
+                onStop={handleStop}
+                onClearLogs={handleClearLogs}
+              />
+            )}
+            {tab === 'analytics' && <AnalyticsTab key="analytics" data={data} />}
+          </AnimatePresence>
+        </div>
+
+        <ChangePickerModal data={data} onPatch={mergePatch} />
 
         <AddItemModal
           open={data.ui.addGameModalOpen}
@@ -184,28 +203,6 @@ function App() {
           onConfirm={confirmAddVersion}
           inputId="add-version"
         />
-
-        <ProcessingModal
-          data={data}
-          onPatch={mergePatch}
-          onRun={handleRun}
-          onStop={handleStop}
-          onClearLogs={handleClearLogs}
-          onChooseFolder={handleChooseFolder}
-        />
-
-        <AnimatePresence mode="wait">
-          {showHub ? (
-            <UploadPortal
-              key="hub"
-              data={data}
-              onPatch={mergePatch}
-              onOpenEngine={openEngine}
-            />
-          ) : (
-            <Dashboard key="dash" data={data} onPatch={mergePatch} />
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );

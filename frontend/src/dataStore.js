@@ -6,9 +6,9 @@
  * PATCH the same structure (or merge server payloads into this state).
  *
  * Suggested integration points:
- * - setup.*           → GET/POST games & versions; sync dropdowns after save.
- * - processing.*     → WebSocket or SSE for logs; POST run/stop; GET folder scan for videoFiles.
- * - dashboard.*      → GET aggregated report when processing.status becomes 'completed'.
+ * - setup.*           → GET/POST games & versions; sync after catalog changes.
+ * - processing.*     → WebSocket/SSE for logs; POST run/stop; folder scan → videoFiles.
+ * - dashboard.*      → GET aggregated analytics for ANALYTICS tab.
  * - ui.*             → Frontend-only (omit from API); safe to strip on the server.
  */
 
@@ -21,29 +21,26 @@ export const MOCK_VIDEOS_FOR_PATH = {
 
 export const initialData = {
   /**
-   * ui — Frontend-only modal/tab/input state. Not persisted to backend.
+   * ui — Frontend-only. Main navigation: activeMainTab drives SETUP | PROCESS | ANALYTICS.
    */
   ui: {
-    /** Gear icon: mission catalog / add game & version (Config drawer) */
-    configSidebarOpen: false,
-    /** When true, the large “Process Clip” workflow modal is visible */
-    processingModalOpen: false,
-    /** “Add new game” centered modal */
+    /** Primary console tab: 'setup' | 'process' | 'analytics' */
+    activeMainTab: 'setup',
+    /**
+     * “Change” selection card → opens list picker. null | 'game' | 'version'
+     * BACKEND: not used; replace with API-driven picker if needed.
+     */
+    changePicker: null,
+    /** Register new mission (game) modal */
     addGameModalOpen: false,
-    /** “Add new version” centered modal */
+    /** Register new build (version) modal */
     addVersionModalOpen: false,
-    /** Dashboard tab key: 'summary' | 'combat' | 'inventory' */
-    dashboardActiveTab: 'summary',
-    /** Bound to the text field in Add Game modal — BACKEND: not used */
     newGameNameDraft: '',
-    /** Bound to the text field in Add Version modal — BACKEND: not used */
     newVersionNameDraft: '',
   },
 
   /**
-   * setup — Game / version selection shown in the header.
-   * BACKEND: Populate games[] and versions[] from your catalog API.
-   *          Push updates when user adds a game/version (POST then refresh lists).
+   * setup — Game / version catalog and current selection (SETUP tab + PROCESS context).
    */
   setup: {
     games: ['Elden Ring', 'Hades', 'Cyberpunk 2077'],
@@ -53,13 +50,7 @@ export const initialData = {
   },
 
   /**
-   * processing — Active clip pipeline. BACKEND owns authoritative values during a run.
-   *
-   * pipelinePath   — Root folder the backend should scan (user picks folder in UI).
-   * videoFiles     — BACKEND: set to list of discovered video filenames after scan.
-   * selectedOption — CLI mode: 'only event' | 'only export' | 'verbose'
-   * status         — 'idle' | 'running' | 'stopped' | 'completed' — drives SPA layout.
-   * logs           — BACKEND: append lines (stdout/stderr); UI appends only for local mock.
+   * processing — Pipeline state (PROCESS tab). status drives Run/Stop UI and optional badges.
    */
   processing: {
     pipelinePath: 'C:/Games/Captures/EldenRing',
@@ -70,12 +61,7 @@ export const initialData = {
   },
 
   /**
-   * dashboard — Post-run analytics. BACKEND: fill when processing completes (or poll a job id).
-   *
-   * stats          — Summary cards (totals, durations).
-   * items          — Popularity / impact for bar list or charts.
-   * bosses         — Combat tab: Name, lifespan, Alive/Defeated etc.
-   * runsHistory    — Runs tab list rows.
+   * dashboard — ANALYTICS tab (bento: bosses, items, runs, headline stats).
    */
   dashboard: {
     stats: {
@@ -100,7 +86,6 @@ export const initialData = {
   },
 };
 
-/** Deep clone for React initial state (no functions in store) */
 export function cloneInitialData() {
   return structuredClone(initialData);
 }

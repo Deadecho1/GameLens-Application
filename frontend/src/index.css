@@ -158,3 +158,31 @@ body {
     0 0 12px rgba(34, 211, 238, 0.5),
     0 0 24px rgba(59, 130, 246, 0.3);
 }
+
+/* Full-app CRT / scanline veil (pointer-events none) */
+@keyframes gl-global-scan {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(4px);
+  }
+}
+
+.gl-app-scanlines {
+  position: fixed;
+  inset: 0;
+  /* Above main chrome, below modals (z-[60]+) */
+  z-index: 40;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1px,
+    rgba(0, 0, 0, 0.11) 1px,
+    rgba(0, 0, 0, 0.11) 2px
+  );
+  opacity: 0.35;
+  animation: gl-global-scan 8s linear infinite;
+  mix-blend-mode: overlay;
+}
