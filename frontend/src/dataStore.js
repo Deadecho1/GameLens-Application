@@ -1,18 +1,13 @@
 /**
  * GameLens — central data bridge (single source of truth)
  * ---------------------------------------------------------------------------
- * BACKEND TEAM: Treat this object shape as the contract. The UI only reads
- * and writes these fields. Replace mock flows in App.jsx with API calls that
- * PATCH the same structure (or merge server payloads into this state).
+ * BACKEND TEAM: Treat this object shape as the contract.
  *
- * Suggested integration points:
- * - setup.*           → GET/POST games & versions; sync after catalog changes.
- * - processing.*     → WebSocket/SSE for logs; POST run/stop; folder scan → videoFiles.
- * - dashboard.*      → GET aggregated analytics for ANALYTICS tab.
- * - ui.*             → Frontend-only (omit from API); safe to strip on the server.
+ * - ui.activeMainTab     → 'workflow' | 'analytics'
+ * - ui.workflowStep      → 1 Configure | 2 Initialize | 3 Execute (MISSION START tab only)
+ * - ui.completionCelebrationActive → brief success HUD after processing.status → completed
  */
 
-/** Mock video filenames — BACKEND: replace with real directory listing for processing.pipelinePath */
 export const MOCK_VIDEOS_FOR_PATH = {
   'C:/Games/Captures/EldenRing': ['boss_fight_01.mp4', 'intro_cutscene.mp4', 'limgrave_02.mp4'],
   'C:/Games/Captures/Hades': ['run_17.mp4', 'escape_attempt.mp4'],
@@ -20,28 +15,23 @@ export const MOCK_VIDEOS_FOR_PATH = {
 };
 
 export const initialData = {
-  /**
-   * ui — Frontend-only. Main navigation: activeMainTab drives SETUP | PROCESS | ANALYTICS.
-   */
   ui: {
-    /** Primary console tab: 'setup' | 'process' | 'analytics' */
-    activeMainTab: 'setup',
+    /** Main nav: unified mission flow vs analytics deck */
+    activeMainTab: 'workflow',
     /**
-     * “Change” selection card → opens list picker. null | 'game' | 'version'
-     * BACKEND: not used; replace with API-driven picker if needed.
+     * Workflow stepper position (MISSION START tab).
+     * 1 = Configure (game/version) · 2 = Initialize (upload/options) · 3 = Execute (run + terminal)
      */
+    workflowStep: 1,
+    /** Brief full-screen success pulse + banner when run completes (Framer-driven in App) */
+    completionCelebrationActive: false,
     changePicker: null,
-    /** Register new mission (game) modal */
     addGameModalOpen: false,
-    /** Register new build (version) modal */
     addVersionModalOpen: false,
     newGameNameDraft: '',
     newVersionNameDraft: '',
   },
 
-  /**
-   * setup — Game / version catalog and current selection (SETUP tab + PROCESS context).
-   */
   setup: {
     games: ['Elden Ring', 'Hades', 'Cyberpunk 2077'],
     versions: ['v1.0.1-stable', 'v1.1.0-alpha'],
@@ -49,9 +39,6 @@ export const initialData = {
     selectedVersion: 'v1.1.0-alpha',
   },
 
-  /**
-   * processing — Pipeline state (PROCESS tab). status drives Run/Stop UI and optional badges.
-   */
   processing: {
     pipelinePath: 'C:/Games/Captures/EldenRing',
     videoFiles: ['boss_fight_01.mp4', 'intro_cutscene.mp4'],
@@ -60,9 +47,6 @@ export const initialData = {
     logs: ['[INFO] System ready...', '[DEBUG] Waiting for user to click Run...'],
   },
 
-  /**
-   * dashboard — ANALYTICS tab (bento: bosses, items, runs, headline stats).
-   */
   dashboard: {
     stats: {
       totalRuns: 12,

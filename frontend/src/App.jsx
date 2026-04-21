@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { cloneInitialData, MOCK_VIDEOS_FOR_PATH } from './dataStore';
+import { cloneInitialData, MOCK_VIDEOS_FOR_PATH, initialData } from './dataStore';
 import Header from './components/Header';
 import MainTabNav from './components/MainTabNav';
 import ChangePickerModal from './components/ChangePickerModal';
 import AddItemModal from './components/AddItemModal';
-import SetupTab from './components/tabs/SetupTab';
-import ProcessTab from './components/tabs/ProcessTab';
+import MissionSuccessOverlay from './components/MissionSuccessOverlay';
+import WorkflowTab from './components/tabs/WorkflowTab';
 import AnalyticsTab from './components/tabs/AnalyticsTab';
 
 /**
- * GameLens — tab console (SETUP | PROCESS | ANALYTICS). State = dataStore shape.
+ * GameLens — MISSION START (workflow) + ANALYTICS. State mirrors dataStore.js.
  */
 
 function App() {
   const [data, setData] = useState(() => cloneInitialData());
   const mockRunTimerRef = useRef(null);
+  const prevStatusRef = useRef(initialData.processing.status);
 
   const mergePatch = useCallback((patch) => {
     setData((prev) => ({
@@ -30,6 +31,34 @@ function App() {
   useEffect(() => {
     return () => clearTimeout(mockRunTimerRef.current);
   }, []);
+
+  /** When processing.status becomes completed, transition to ANALYTICS + success HUD. */
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    const next = data.processing.status;
+    if (prev !== 'completed' && next === 'completed') {
+      setData((p) => ({
+        ...p,
+        ui: {
+          ...p.ui,
+          activeMainTab: 'analytics',
+          completionCelebrationActive: true,
+        },
+      }));
+    }
+    prevStatusRef.current = next;
+  }, [data.processing.status]);
+
+  useEffect(() => {
+    if (!data.ui.completionCelebrationActive) return undefined;
+    const t = window.setTimeout(() => {
+      setData((p) => ({
+        ...p,
+        ui: { ...p.ui, completionCelebrationActive: false },
+      }));
+    }, 3200);
+    return () => window.clearTimeout(t);
+  }, [data.ui.completionCelebrationActive]);
 
   const handleChooseFolder = () => {
     const paths = Object.keys(MOCK_VIDEOS_FOR_PATH);
@@ -69,7 +98,6 @@ function App() {
           status: 'completed',
           logs: [...prev.processing.logs, '[RUN] Pipeline completed.'],
         },
-        ui: { ...prev.ui, activeMainTab: 'analytics' },
       }));
     }, 4000);
   };
@@ -135,15 +163,17 @@ function App() {
       />
       <div className="gl-app-scanlines" aria-hidden />
 
+      <MissionSuccessOverlay active={data.ui.completionCelebrationActive} />
+
       <div className="relative z-10">
         <Header data={data} />
         <MainTabNav data={data} onPatch={mergePatch} />
 
         <div className="relative min-h-[calc(100vh-8rem)]">
           <AnimatePresence mode="wait">
-            {tab === 'setup' && (
-              <SetupTab
-                key="setup"
+            {tab === 'workflow' && (
+              <WorkflowTab
+                key="workflow"
                 data={data}
                 onPatch={mergePatch}
                 onAddGame={() =>
@@ -158,13 +188,6 @@ function App() {
                     ui: { ...p.ui, addVersionModalOpen: true, newVersionNameDraft: '' },
                   }))
                 }
-              />
-            )}
-            {tab === 'process' && (
-              <ProcessTab
-                key="process"
-                data={data}
-                onPatch={mergePatch}
                 onChooseFolder={handleChooseFolder}
                 onRun={handleRun}
                 onStop={handleStop}
