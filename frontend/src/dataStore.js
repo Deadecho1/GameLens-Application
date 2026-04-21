@@ -24,6 +24,8 @@ export const initialData = {
    * ui — Frontend-only modal/tab/input state. Not persisted to backend.
    */
   ui: {
+    /** Gear icon: mission catalog / add game & version (Config drawer) */
+    configSidebarOpen: false,
     /** When true, the large “Process Clip” workflow modal is visible */
     processingModalOpen: false,
     /** “Add new game” centered modal */

@@ -1,25 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { cloneInitialData, MOCK_VIDEOS_FOR_PATH } from './dataStore';
 import Header from './components/Header';
+import ConfigSidebar from './components/ConfigSidebar';
 import AddItemModal from './components/AddItemModal';
 import ProcessingModal from './components/ProcessingModal';
+import UploadPortal from './components/UploadPortal';
 import Dashboard from './components/Dashboard';
 
 /**
- * GameLens SPA — single source of truth: `data` cloned from dataStore.initialData.
- *
- * BACKEND INTEGRATION (replace mock handlers):
- * - mergePatch: apply server-driven partial updates to the same shape.
- * - handleRun / handleStop: POST to job API; subscribe for logs + status.
- * - handleChooseFolder: return path from OS picker, then GET scan → processing.videoFiles.
- * - On job completion: set processing.status to 'completed' and PATCH dashboard.* from report API.
+ * GameLens SPA — `data` mirrors dataStore.initialData.
+ * BACKEND: swap mock handlers for API / WebSocket; keep mergePatch contract.
  */
 
 function App() {
   const [data, setData] = useState(() => cloneInitialData());
   const mockRunTimerRef = useRef(null);
 
-  /** Shallow-merge into top-level slices (ui, setup, processing, dashboard). */
   const mergePatch = useCallback((patch) => {
     setData((prev) => ({
       ...prev,
@@ -34,7 +31,6 @@ function App() {
     return () => clearTimeout(mockRunTimerRef.current);
   }, []);
 
-  /** Mock: cycle pipelinePath through MOCK_VIDEOS_FOR_PATH keys and refresh videoFiles. */
   const handleChooseFolder = () => {
     const paths = Object.keys(MOCK_VIDEOS_FOR_PATH);
     setData((prev) => {
@@ -51,7 +47,6 @@ function App() {
     });
   };
 
-  /** Mock run: sets running, then completes after 4s unless Stop clears the timer. */
   const handleRun = () => {
     clearTimeout(mockRunTimerRef.current);
     setData((prev) => ({
@@ -129,66 +124,89 @@ function App() {
     });
   };
 
-  const showPlaceholder = data.processing.status !== 'completed';
+  const openEngine = () => {
+    setData((prev) => ({
+      ...prev,
+      ui: { ...prev.ui, processingModalOpen: true },
+    }));
+  };
+
+  const showHub = data.processing.status !== 'completed';
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 antialiased">
-      <Header data={data} onPatch={mergePatch} />
+    <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
+      <div className="pointer-events-none fixed inset-0 gl-cyber-grid opacity-100" aria-hidden />
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(30,58,138,0.12),transparent)]" aria-hidden />
 
-      <AddItemModal
-        open={data.ui.addGameModalOpen}
-        title="Add new game"
-        draftValue={data.ui.newGameNameDraft}
-        onDraftChange={(v) =>
-          setData((prev) => ({ ...prev, ui: { ...prev.ui, newGameNameDraft: v } }))
-        }
-        onClose={() =>
-          setData((prev) => ({ ...prev, ui: { ...prev.ui, addGameModalOpen: false } }))
-        }
-        onConfirm={confirmAddGame}
-        inputId="add-game"
-      />
-      <AddItemModal
-        open={data.ui.addVersionModalOpen}
-        title="Add new version"
-        draftValue={data.ui.newVersionNameDraft}
-        onDraftChange={(v) =>
-          setData((prev) => ({ ...prev, ui: { ...prev.ui, newVersionNameDraft: v } }))
-        }
-        onClose={() =>
-          setData((prev) => ({ ...prev, ui: { ...prev.ui, addVersionModalOpen: false } }))
-        }
-        onConfirm={confirmAddVersion}
-        inputId="add-version"
-      />
+      <div className="relative z-10">
+        <Header data={data} onPatch={mergePatch} />
 
-      <ProcessingModal
-        data={data}
-        onPatch={mergePatch}
-        onRun={handleRun}
-        onStop={handleStop}
-        onClearLogs={handleClearLogs}
-        onChooseFolder={handleChooseFolder}
-      />
+        <ConfigSidebar
+          data={data}
+          onPatch={mergePatch}
+          onAddGame={() =>
+            setData((prev) => ({
+              ...prev,
+              ui: { ...prev.ui, addGameModalOpen: true, newGameNameDraft: '' },
+            }))
+          }
+          onAddVersion={() =>
+            setData((prev) => ({
+              ...prev,
+              ui: { ...prev.ui, addVersionModalOpen: true, newVersionNameDraft: '' },
+            }))
+          }
+        />
 
-      <main>
-        {showPlaceholder ? (
-          <div className="mx-auto max-w-3xl px-4 py-16 text-center">
-            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-800/20 px-8 py-20 transition hover:border-slate-700">
-              <p className="text-lg text-slate-400">
-                Select a game and version, then use <span className="text-blue-400">Process Clip</span> to
-                run the pipeline.
-              </p>
-              <p className="mt-4 text-sm text-slate-600">
-                When <code className="rounded bg-slate-950 px-1.5 py-0.5 text-slate-500">processing.status</code>{' '}
-                is <code className="text-emerald-500/90">completed</code>, the dashboard appears here.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <Dashboard data={data} onPatch={mergePatch} />
-        )}
-      </main>
+        <AddItemModal
+          open={data.ui.addGameModalOpen}
+          title="Register mission"
+          draftValue={data.ui.newGameNameDraft}
+          onDraftChange={(v) =>
+            setData((prev) => ({ ...prev, ui: { ...prev.ui, newGameNameDraft: v } }))
+          }
+          onClose={() =>
+            setData((prev) => ({ ...prev, ui: { ...prev.ui, addGameModalOpen: false } }))
+          }
+          onConfirm={confirmAddGame}
+          inputId="add-game"
+        />
+        <AddItemModal
+          open={data.ui.addVersionModalOpen}
+          title="Register build"
+          draftValue={data.ui.newVersionNameDraft}
+          onDraftChange={(v) =>
+            setData((prev) => ({ ...prev, ui: { ...prev.ui, newVersionNameDraft: v } }))
+          }
+          onClose={() =>
+            setData((prev) => ({ ...prev, ui: { ...prev.ui, addVersionModalOpen: false } }))
+          }
+          onConfirm={confirmAddVersion}
+          inputId="add-version"
+        />
+
+        <ProcessingModal
+          data={data}
+          onPatch={mergePatch}
+          onRun={handleRun}
+          onStop={handleStop}
+          onClearLogs={handleClearLogs}
+          onChooseFolder={handleChooseFolder}
+        />
+
+        <AnimatePresence mode="wait">
+          {showHub ? (
+            <UploadPortal
+              key="hub"
+              data={data}
+              onPatch={mergePatch}
+              onOpenEngine={openEngine}
+            />
+          ) : (
+            <Dashboard key="dash" data={data} onPatch={mergePatch} />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
