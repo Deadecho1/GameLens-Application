@@ -52,34 +52,11 @@ export const initialData = {
     logs: ['[INFO] System ready...', '[DEBUG] Waiting for user to click Run...'],
   },
 
+  /**
+   * Analytics payloads.
+   * GENERAL tab derives KPIs from runsHistory, bosses, and items only.
+   */
   dashboard: {
-    stats: {
-      totalRuns: 12,
-      averageRunTime: '00:42:15',
-      longestRun: '01:15:30',
-      totalItemsFound: 154,
-      /** Latest finished pipeline succeeded (BACKEND: set from last job result) */
-      lastRunSuccessful: true,
-      /**
-       * GENERAL briefing — mock pipeline efficiency (0–100).
-       * BACKEND: replace with model-derived score.
-       */
-      efficiencyScore: 94,
-      /**
-       * GENERAL briefing — human-readable fleet health (e.g. Optimized | Degraded).
-       * BACKEND: derive from SLO checks.
-       */
-      systemHealthLabel: 'Optimized',
-    },
-    /**
-     * Action-type mix for GENERAL briefing chart (percentages should sum ~100).
-     * BACKEND: aggregate from event classifier.
-     */
-    actionTypeDistribution: [
-      { name: 'Combat', value: 60, fill: '#22d3ee' },
-      { name: 'Exploration', value: 30, fill: '#3b82f6' },
-      { name: 'Menu', value: 10, fill: '#818cf8' },
-    ],
     items: [
       { id: 1, name: 'Health Potion', popularity: 85, impact: 'High' },
       { id: 2, name: 'Iron Sword', popularity: 40, impact: 'Medium' },
