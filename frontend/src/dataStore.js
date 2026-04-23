@@ -55,6 +55,7 @@ export const initialData = {
   /**
    * Analytics payloads.
    * GENERAL tab derives KPIs from runsHistory, bosses, and items only.
+   * BOSSES global intel merges dashboard.bosses with per-session bossEncounters on runsHistory.
    */
   dashboard: {
     items: [
@@ -63,8 +64,8 @@ export const initialData = {
       { id: 3, name: 'Shield', popularity: 62, impact: 'Medium' },
     ],
     /**
-     * Boss intel. Core fields: id, name, lifespan, status.
-     * Optional lifespansByUser: per-user/run fight durations (same time format as lifespan) for BOSSES analytics chart.
+     * Boss catalog. globalLifespanSamples: optional extra detections (same time format as lifespan)
+     * merged with all matching bossEncounters across runsHistory for aggregate BOSSES analytics.
      */
     bosses: [
       {
@@ -72,23 +73,68 @@ export const initialData = {
         name: 'Malenia',
         lifespan: '05:20',
         status: 'Defeated',
-        lifespansByUser: ['04:48', '05:55', '05:20', '06:02', '04:31'],
+        globalLifespanSamples: ['05:08', '06:01'],
       },
       {
         id: 2,
         name: 'Radahn',
         lifespan: '02:15',
         status: 'Alive',
-        lifespansByUser: ['01:50', '02:15', '02:40', '01:58', '02:22', '01:44'],
+        globalLifespanSamples: ['00:45', '01:12'],
       },
     ],
+    /**
+     * Analyzed sessions. bossEncounters: boss fights detected in that session (bossId + lifespan).
+     */
     runsHistory: [
-      { id: 'RUN-001', date: '2024-05-18', duration: '00:28:00' },
-      { id: 'RUN-002', date: '2024-05-19', duration: '00:45:30' },
-      { id: 'RUN-003', date: '2024-05-20', duration: '00:30:00' },
-      { id: 'RUN-004', date: '2024-05-20', duration: '00:52:10' },
-      { id: 'RUN-005', date: '2024-05-21', duration: '01:10:00' },
-      { id: 'RUN-006', date: '2024-05-22', duration: '00:38:45' },
+      {
+        id: 'RUN-001',
+        date: '2024-05-18',
+        duration: '00:28:00',
+        bossEncounters: [
+          { bossId: 1, lifespan: '04:48' },
+          { bossId: 2, lifespan: '01:52' },
+        ],
+      },
+      {
+        id: 'RUN-002',
+        date: '2024-05-19',
+        duration: '00:45:30',
+        bossEncounters: [{ bossId: 1, lifespan: '05:55' }],
+      },
+      {
+        id: 'RUN-003',
+        date: '2024-05-20',
+        duration: '00:30:00',
+        bossEncounters: [
+          { bossId: 1, lifespan: '05:20' },
+          { bossId: 2, lifespan: '02:15' },
+        ],
+      },
+      {
+        id: 'RUN-004',
+        date: '2024-05-20',
+        duration: '00:52:10',
+        bossEncounters: [{ bossId: 2, lifespan: '02:40' }],
+      },
+      {
+        id: 'RUN-005',
+        date: '2024-05-21',
+        duration: '01:10:00',
+        bossEncounters: [
+          { bossId: 1, lifespan: '06:02' },
+          { bossId: 2, lifespan: '01:58' },
+        ],
+      },
+      {
+        id: 'RUN-006',
+        date: '2024-05-22',
+        duration: '00:38:45',
+        bossEncounters: [
+          { bossId: 1, lifespan: '04:31' },
+          { bossId: 2, lifespan: '02:22' },
+        ],
+      },
     ],
   },
 };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -9,40 +9,94 @@ import {
   Tooltip,
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crosshair, Radar, Swords, Target, Timer, Users } from 'lucide-react';
+import { Award, ChartColumn, Crosshair, Globe, Radar, Swords, Target, Timer } from 'lucide-react';
 import { durationToSeconds, formatSecondsAsHMS, secondsToMinutes } from '../../utils/duration';
 
-function encounterSeriesForBoss(boss) {
-  const list =
-    Array.isArray(boss.lifespansByUser) && boss.lifespansByUser.length > 0
-      ? boss.lifespansByUser
-      : boss.lifespan
-        ? [boss.lifespan]
-        : [];
-  return list.map((raw, i) => {
-    const sec = durationToSeconds(raw);
-    return {
-      id: `${boss.id}-${i}`,
-      label: `U${String(i + 1).padStart(2, '0')}`,
-      minutes: secondsToMinutes(sec),
-      seconds: sec,
-      raw,
-    };
-  });
+/** Seconds from all analyzed sessions (runsHistory.bossEncounters) plus boss.globalLifespanSamples; fallback: single lifespan. */
+function collectGlobalLifespanSeconds(bossId, dashboard) {
+  const bosses = dashboard.bosses ?? [];
+  const runsHistory = dashboard.runsHistory ?? [];
+  const boss = bosses.find((b) => b.id === bossId);
+  const out = [];
+
+  for (const run of runsHistory) {
+    const enc = run.bossEncounters;
+    if (!Array.isArray(enc)) continue;
+    for (const e of enc) {
+      if (e.bossId !== bossId || !e.lifespan) continue;
+      const s = durationToSeconds(e.lifespan);
+      if (s > 0) out.push(s);
+    }
+  }
+
+  const extra = boss?.globalLifespanSamples;
+  if (Array.isArray(extra)) {
+    for (const raw of extra) {
+      const s = durationToSeconds(raw);
+      if (s > 0) out.push(s);
+    }
+  }
+
+  if (out.length === 0 && boss?.lifespan) {
+    const s = durationToSeconds(boss.lifespan);
+    if (s > 0) out.push(s);
+  }
+
+  return out;
 }
 
-function meanSeconds(series) {
-  if (!series.length) return 0;
-  return series.reduce((a, r) => a + r.seconds, 0) / series.length;
+function meanSeconds(values) {
+  if (!values.length) return 0;
+  return values.reduce((a, s) => a + s, 0) / values.length;
+}
+
+const HISTOGRAM_BRACKETS = [
+  { bracket: '0-1m', min: 0, max: 60 },
+  { bracket: '1-2m', min: 60, max: 120 },
+  { bracket: '2-5m', min: 120, max: 300 },
+  { bracket: '5m+', min: 300, max: Number.POSITIVE_INFINITY },
+];
+
+function lifespanHistogramData(secondsList) {
+  const counts = [0, 0, 0, 0];
+  for (const s of secondsList) {
+    if (s < 60) counts[0]++;
+    else if (s < 120) counts[1]++;
+    else if (s < 300) counts[2]++;
+    else counts[3]++;
+  }
+  return HISTOGRAM_BRACKETS.map((b, i) => ({
+    bracket: b.bracket,
+    count: counts[i],
+  }));
+}
+
+/** Longer mean lifespan → better rank (rank 1 = longest). Top % = ceil(rank / N * 100). */
+function survivalRankTopPercent(bossId, dashboard) {
+  const bosses = dashboard.bosses ?? [];
+  if (!bosses.length) return { topPct: null, rank: null, total: 0, singleCohort: false };
+  if (bosses.length === 1) {
+    return { topPct: null, rank: 1, total: 1, singleCohort: true };
+  }
+
+  const scored = bosses.map((b) => ({
+    id: b.id,
+    mean: meanSeconds(collectGlobalLifespanSeconds(b.id, dashboard)),
+  }));
+  const sorted = [...scored].sort((a, b) => b.mean - a.mean);
+  const rank = sorted.findIndex((x) => x.id === bossId) + 1;
+  const topPct = Math.max(1, Math.ceil((rank / bosses.length) * 100));
+  return { topPct, rank, total: bosses.length, singleCohort: false };
 }
 
 /**
- * BOSSES — Master-detail tactical intel. Sidebar selection + detail deck.
- * Data: dashboard.bosses (status is not shown in UI per product spec).
+ * BOSSES — Master-detail tactical intel. Global aggregates from dashboard.bosses + runsHistory.
  */
 export default function BossesAnalytics({ data }) {
-  const bosses = data.dashboard.bosses ?? [];
+  const dashboard = data.dashboard;
+  const bosses = dashboard.bosses ?? [];
   const [selectedBossId, setSelectedBossId] = useState(null);
+  const chartGradId = useId().replace(/:/g, '');
 
   useEffect(() => {
     if (!bosses.length) {
@@ -60,10 +114,24 @@ export default function BossesAnalytics({ data }) {
     [bosses, selectedBossId]
   );
 
-  const detailSeries = useMemo(() => (selected ? encounterSeriesForBoss(selected) : []), [selected]);
-  const avgSec = useMemo(() => Math.round(meanSeconds(detailSeries)), [detailSeries]);
-  const avgLabel = formatSecondsAsHMS(avgSec);
-  const totalEncounters = detailSeries.length;
+  const globalSeconds = useMemo(
+    () => (selected ? collectGlobalLifespanSeconds(selected.id, dashboard) : []),
+    [selected, dashboard]
+  );
+
+  const globalAvgSec = useMemo(() => Math.round(meanSeconds(globalSeconds)), [globalSeconds]);
+  const globalAvgLabel = formatSecondsAsHMS(globalAvgSec);
+  const globalEncounterCount = globalSeconds.length;
+
+  const histogramData = useMemo(() => lifespanHistogramData(globalSeconds), [globalSeconds]);
+
+  const survivalRank = useMemo(
+    () =>
+      selected
+        ? survivalRankTopPercent(selected.id, dashboard)
+        : { topPct: null, rank: null, total: 0, singleCohort: false },
+    [selected, dashboard]
+  );
 
   return (
     <div className="space-y-6">
@@ -78,7 +146,9 @@ export default function BossesAnalytics({ data }) {
           Tactical command · master detail
         </h3>
         <p className="font-data mt-2 text-sm text-slate-500">
-          Select a target in the rail. Source: <code className="text-cyan-600/90">dashboard.bosses</code>
+          Global aggregates from{' '}
+          <code className="text-cyan-600/90">dashboard.bosses</code> +{' '}
+          <code className="text-cyan-600/90">dashboard.runsHistory</code>
         </p>
       </header>
 
@@ -151,7 +221,7 @@ export default function BossesAnalytics({ data }) {
             className="gl-terminal-scanlines pointer-events-none absolute inset-0 rounded-none opacity-70 lg:rounded-r-2xl"
             aria-hidden
           />
-          <div className="relative flex flex-1 flex-col p-4 md:p-6 lg:p-8">
+          <div className="relative flex flex-1 flex-col p-4 backdrop-blur-sm md:p-6 lg:p-8">
             <AnimatePresence mode="wait">
               {!selected ? (
                 <motion.div
@@ -173,72 +243,103 @@ export default function BossesAnalytics({ data }) {
                   transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                   className="flex flex-1 flex-col gap-8"
                 >
-                  <div>
-                    <h2 className="font-display text-3xl font-black uppercase tracking-[0.18em] text-white [text-shadow:0_0_40px_rgba(34,211,238,0.25)] md:text-4xl lg:text-5xl">
-                      {selected.name}
-                    </h2>
-                    <p className="font-data mt-2 text-xs uppercase tracking-[0.25em] text-cyan-500/70">
-                      Classified engagement dossier
-                    </p>
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <h2 className="font-display text-3xl font-black uppercase tracking-[0.18em] text-white [text-shadow:0_0_40px_rgba(34,211,238,0.25)] md:text-4xl lg:text-5xl">
+                        {selected.name}
+                      </h2>
+                      <p className="font-data mt-2 text-xs uppercase tracking-[0.25em] text-cyan-500/70">
+                        Global performance metrics
+                      </p>
+                    </div>
+                    {(survivalRank.topPct != null || survivalRank.singleCohort) && (
+                      <div className="flex items-center gap-3 rounded-xl border border-slate-700/90 bg-slate-950/55 px-4 py-3 ring-1 ring-cyan-500/10 backdrop-blur-md">
+                        <Award className="h-8 w-8 shrink-0 text-cyan-400/90" strokeWidth={1.15} aria-hidden />
+                        <div>
+                          <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                            Survival rank
+                          </p>
+                          {survivalRank.singleCohort ? (
+                            <p className="font-data text-sm text-slate-400">Baseline — single boss in dataset</p>
+                          ) : (
+                            <>
+                              <p className="font-data text-lg font-bold tabular-nums text-cyan-100">
+                                Top {survivalRank.topPct}%
+                              </p>
+                              <p className="font-data text-[10px] tabular-nums text-slate-500">
+                                #{survivalRank.rank} of {survivalRank.total} by mean lifespan
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-                    <div className="rounded-2xl border border-cyan-500/20 bg-slate-900/50 p-6 shadow-[0_0_40px_rgba(34,211,238,0.08),inset_0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-cyan-500/10">
+                    <div className="rounded-2xl border border-cyan-500/20 bg-slate-900/50 p-6 shadow-[0_0_40px_rgba(34,211,238,0.08),inset_0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-cyan-500/10 backdrop-blur-md">
                       <div className="mb-4 flex items-center gap-2">
                         <Timer className="h-5 w-5 text-cyan-300" strokeWidth={1.25} aria-hidden />
                         <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200/90">
-                          Average lifespan
+                          Global average lifespan
                         </h3>
                       </div>
                       <p className="font-data text-[10px] uppercase tracking-wider text-slate-500">
-                        Mean survival time · aggregated users
+                        Mean encounter duration · full dataset
                       </p>
                       <p
                         className="mt-4 font-data text-4xl font-bold tabular-nums tracking-tight text-cyan-100 md:text-5xl lg:text-6xl"
                         style={{ textShadow: '0 0 32px rgba(34, 211, 238, 0.35)' }}
                       >
-                        {avgLabel}
+                        {globalAvgLabel}
                       </p>
                       <p className="font-data mt-2 text-xs tabular-nums text-slate-500">
-                        {avgSec > 0 ? `${secondsToMinutes(avgSec)} min mean` : '—'}
+                        {globalAvgSec > 0 ? `${secondsToMinutes(globalAvgSec)} min mean` : '—'}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 md:flex-col md:items-stretch md:px-5 md:py-4">
+                    <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 backdrop-blur-md md:flex-col md:items-stretch md:px-5 md:py-4">
                       <div className="flex items-center gap-2 text-slate-500">
-                        <Users className="h-4 w-4 shrink-0 text-cyan-500/80" strokeWidth={1.25} aria-hidden />
+                        <Globe className="h-4 w-4 shrink-0 text-cyan-500/80" strokeWidth={1.25} aria-hidden />
                         <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                          Observed
+                          Global
                         </span>
                       </div>
                       <p className="font-data text-2xl font-bold tabular-nums text-white md:text-3xl">
-                        {totalEncounters}
+                        {globalEncounterCount}
                       </p>
                       <p className="font-data text-[10px] uppercase tracking-wider text-slate-600">
-                        Total encounters
+                        Encounter count
                       </p>
                     </div>
                   </div>
 
-                  <div className="min-h-0 flex-1 rounded-2xl border border-slate-800/90 bg-slate-950/35 p-4 backdrop-blur-sm md:p-5">
-                    <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-                      <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">
-                        Lifespan per run / user
-                      </h3>
-                      <span className="font-data text-[10px] text-slate-500">Minutes · discrete samples</span>
+                  <div className="min-h-0 flex-1 rounded-2xl border border-slate-800/90 bg-slate-950/35 p-4 backdrop-blur-md md:p-5">
+                    <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <ChartColumn className="h-4 w-4 text-cyan-400/90" strokeWidth={1.25} aria-hidden />
+                        <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">
+                          Lifespan frequency distribution
+                        </h3>
+                      </div>
+                      <span className="font-data text-[10px] text-slate-500">Time bracket · occurrences</span>
                     </div>
+                    <p className="font-data mb-4 text-[10px] text-slate-600">
+                      Encounters bucketed by fight length — highlights consistency vs. variance in the global
+                      dataset.
+                    </p>
                     <div className="h-[280px] w-full min-w-0 md:h-[300px]">
-                      {detailSeries.length === 0 ? (
+                      {globalEncounterCount === 0 ? (
                         <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800">
-                          <p className="font-data text-sm text-slate-500">No duration samples.</p>
+                          <p className="font-data text-sm text-slate-500">No global samples for this boss.</p>
                         </div>
                       ) : (
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={detailSeries} margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
+                          <BarChart data={histogramData} margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
                             <defs>
-                              <linearGradient id="bossBarGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.95} />
-                                <stop offset="100%" stopColor="#6366f1" stopOpacity={0.85} />
+                              <linearGradient id={chartGradId} x1="0" y1="0" x2="1" y2="0">
+                                <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.92} />
+                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.88} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid
@@ -248,17 +349,18 @@ export default function BossesAnalytics({ data }) {
                               vertical={false}
                             />
                             <XAxis
-                              dataKey="label"
-                              tick={{ fill: '#cbd5e1', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
+                              dataKey="bracket"
+                              tick={{ fill: '#e2e8f0', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
                               axisLine={{ stroke: '#475569' }}
                               tickLine={{ stroke: '#475569' }}
                             />
                             <YAxis
+                              allowDecimals={false}
                               tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
                               axisLine={{ stroke: '#475569' }}
                               tickLine={{ stroke: '#475569' }}
                               label={{
-                                value: 'Minutes',
+                                value: 'Occurrences',
                                 angle: -90,
                                 position: 'insideLeft',
                                 fill: '#64748b',
@@ -274,21 +376,21 @@ export default function BossesAnalytics({ data }) {
                                 return (
                                   <div className="rounded-lg border border-cyan-900/50 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
                                     <p className="font-data text-[10px] font-semibold uppercase tracking-wider text-cyan-400/90">
-                                      Sample {row.label}
+                                      {row.bracket}
                                     </p>
                                     <p className="font-data mt-1 tabular-nums text-sm text-white">
-                                      {row.raw} · {formatSecondsAsHMS(row.seconds)}
+                                      {row.count} occurrence{row.count === 1 ? '' : 's'}
                                     </p>
                                   </div>
                                 );
                               }}
                             />
                             <Bar
-                              dataKey="minutes"
-                              name="Lifespan"
-                              fill="url(#bossBarGrad)"
+                              dataKey="count"
+                              name="Occurrences"
+                              fill={`url(#${chartGradId})`}
                               radius={[6, 6, 0, 0]}
-                              maxBarSize={48}
+                              maxBarSize={72}
                             />
                           </BarChart>
                         </ResponsiveContainer>
