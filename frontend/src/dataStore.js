@@ -58,10 +58,23 @@ export const initialData = {
    * BOSSES global intel merges dashboard.bosses with per-session bossEncounters on runsHistory.
    */
   dashboard: {
+    /**
+     * Item catalog. category: offensive | defensive | utility (Synergy Lab filters).
+     * logicTag: short combat label for UI tooltips.
+     */
     items: [
-      { id: 1, name: 'Power Potion', popularity: 85, impact: 'High' },
-      { id: 2, name: 'Fire Sword', popularity: 40, impact: 'Medium' },
-      { id: 3, name: 'Tower Shield', popularity: 62, impact: 'Medium' },
+      { id: 1, name: 'Power Potion', popularity: 85, impact: 'High', category: 'utility', logicTag: 'Burst sustain' },
+      { id: 2, name: 'Fire Sword', popularity: 40, impact: 'Medium', category: 'offensive', logicTag: 'High damage' },
+      { id: 3, name: 'Tower Shield', popularity: 62, impact: 'Medium', category: 'defensive', logicTag: 'Block stability' },
+      { id: 4, name: 'Frost Dagger', popularity: 55, impact: 'Medium', category: 'offensive', logicTag: 'Slow procs' },
+      { id: 5, name: 'Arcane Focus', popularity: 48, impact: 'High', category: 'utility', logicTag: 'Spell amp' },
+      { id: 6, name: 'Heavy Plate', popularity: 71, impact: 'High', category: 'defensive', logicTag: 'Damage soak' },
+      { id: 7, name: 'Venom Flask', popularity: 33, impact: 'Medium', category: 'offensive', logicTag: 'DoT pressure' },
+      { id: 8, name: 'Healing Draught', popularity: 90, impact: 'High', category: 'utility', logicTag: 'Recovery' },
+      { id: 9, name: 'Thunder Mallet', popularity: 28, impact: 'Medium', category: 'offensive', logicTag: 'Stagger' },
+      { id: 10, name: 'Void Charm', popularity: 52, impact: 'Low', category: 'utility', logicTag: 'Resource regen' },
+      { id: 11, name: 'Buckler', popularity: 44, impact: 'Medium', category: 'defensive', logicTag: 'Parry window' },
+      { id: 12, name: 'Explosive Seed', popularity: 22, impact: 'Low', category: 'offensive', logicTag: 'AoE chip' },
     ],
     /**
      * Boss catalog. globalLifespanSamples: merged with bossEncounters for lifespan stats.

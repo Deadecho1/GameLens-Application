@@ -13,20 +13,28 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Award,
+  Bomb,
   ChartColumn,
   Crosshair,
   FlaskConical,
+  Gem,
   Globe,
+  Hammer,
+  Heart,
   Layers2,
+  LayoutGrid,
   Package,
   Radar,
   RotateCcw,
+  Search,
   Shield,
   Sparkles,
   Sword,
   Swords,
   Target,
   Timer,
+  Wand2,
+  Wrench,
   Zap,
 } from 'lucide-react';
 import { durationToSeconds, formatSecondsAsHMS, secondsToMinutes } from '../../utils/duration';
@@ -110,11 +118,32 @@ function survivalRankTopPercent(bossId, dashboard) {
 
 function pickItemIcon(name) {
   const n = String(name ?? '').toLowerCase();
-  if (n.includes('sword')) return Sword;
-  if (n.includes('potion')) return FlaskConical;
-  if (n.includes('shield')) return Shield;
+  if (n.includes('mallet') || n.includes('hammer')) return Hammer;
+  if (n.includes('dagger') || n.includes('sword')) return Sword;
+  if (n.includes('seed') || n.includes('explosive')) return Bomb;
+  if (n.includes('charm') || n.includes('void')) return Gem;
+  if (n.includes('healing') || n.includes('draught')) return Heart;
+  if (n.includes('focus') || n.includes('arcane')) return Wand2;
+  if (n.includes('venom') || n.includes('flask') || n.includes('potion')) return FlaskConical;
+  if (n.includes('buckler') || n.includes('shield') || n.includes('plate')) return Shield;
   if (n.includes('power')) return Zap;
   return Package;
+}
+
+function inferItemCategory(item) {
+  if (item.category) return item.category;
+  const n = String(item.name ?? '').toLowerCase();
+  if (/(shield|plate|buckler)/.test(n)) return 'defensive';
+  if (/(sword|dagger|mallet|venom|explosive|thunder|fire|frost)/.test(n)) return 'offensive';
+  return 'utility';
+}
+
+function itemLogicTag(item) {
+  if (item.logicTag) return item.logicTag;
+  const imp = String(item.impact ?? '').toLowerCase();
+  if (imp === 'high') return 'High impact';
+  if (imp === 'low') return 'Support chip';
+  return 'Balanced kit';
 }
 
 /** Client-side mock: positive total = shorter projected engagement (percent points vs baseline). */
@@ -124,14 +153,21 @@ function mockSynergyTimeReductionPct(itemIds, catalog) {
     if (id == null) continue;
     const item = catalog.find((i) => i.id === id);
     if (!item) continue;
-    const n = String(item.name ?? '').toLowerCase();
-    if (n.includes('sword')) pct += 15;
-    else if (n.includes('potion')) pct += 8;
-    else if (n.includes('shield')) pct -= 5;
+    const cat = inferItemCategory(item);
+    if (cat === 'offensive') pct += 15;
+    else if (cat === 'defensive') pct -= 5;
+    else if (cat === 'utility') pct += 8;
     else pct += 5;
   }
   return pct;
 }
+
+const LIBRARY_CATEGORY_TABS = [
+  { id: 'all', label: 'All', Icon: LayoutGrid },
+  { id: 'offensive', label: 'Offensive', Icon: Swords },
+  { id: 'defensive', label: 'Defensive', Icon: Shield },
+  { id: 'utility', label: 'Utility', Icon: Wrench },
+];
 
 /** Cross-reference dashboard.items with boss gearSynergies + itemEffectiveness. */
 function buildGearAnalysis(selectedBoss, items) {
@@ -185,6 +221,8 @@ export default function BossesAnalytics({ data }) {
   const [selectedBossId, setSelectedBossId] = useState(null);
   /** Synergy Lab: up to 3 equipped item ids (inventory slots). */
   const [simSlots, setSimSlots] = useState([null, null, null]);
+  const [libraryQuery, setLibraryQuery] = useState('');
+  const [libraryCategory, setLibraryCategory] = useState('all');
   const chartGradId = useId().replace(/:/g, '');
   const simCompareChartId = useId().replace(/:/g, '');
 
@@ -201,6 +239,8 @@ export default function BossesAnalytics({ data }) {
 
   useEffect(() => {
     setSimSlots([null, null, null]);
+    setLibraryQuery('');
+    setLibraryCategory('all');
   }, [selectedBossId]);
 
   const selected = useMemo(
@@ -284,6 +324,16 @@ export default function BossesAnalytics({ data }) {
   };
 
   const clearSimLoadout = () => setSimSlots([null, null, null]);
+
+  const filteredLibraryItems = useMemo(() => {
+    const q = libraryQuery.trim().toLowerCase();
+    return itemsCatalog.filter((item) => {
+      const cat = inferItemCategory(item);
+      if (libraryCategory !== 'all' && cat !== libraryCategory) return false;
+      if (q && !String(item.name ?? '').toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [itemsCatalog, libraryQuery, libraryCategory]);
 
   return (
     <div className="space-y-6">
@@ -709,8 +759,8 @@ export default function BossesAnalytics({ data }) {
                     </div>
                   </section>
 
-                  <section className="rounded-2xl border border-slate-800/90 bg-slate-950/50 p-4 ring-1 ring-cyan-500/15 backdrop-blur-md md:p-6">
-                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <section className="rounded-2xl border border-slate-800/90 bg-slate-950/40 p-4 ring-1 ring-cyan-500/15 backdrop-blur-md md:p-6">
+                    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <Zap className="h-5 w-5 text-cyan-400" strokeWidth={1.25} aria-hidden />
                         <div>
@@ -718,7 +768,7 @@ export default function BossesAnalytics({ data }) {
                             {'Synergy Lab: Item Impact Simulator'}
                           </h3>
                           <p className="font-data mt-1 text-[10px] text-slate-500">
-                            Mock projection from catalog · max 3 pieces
+                            Scalable armory · mock projection · max 3 equipped
                           </p>
                         </div>
                       </div>
@@ -728,194 +778,287 @@ export default function BossesAnalytics({ data }) {
                         className="flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-200"
                       >
                         <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                        Reset loadout
+                        Clear all
                       </button>
                     </div>
 
-                    <div className="mb-5 flex flex-wrap justify-center gap-3 sm:justify-start">
-                      {simSlots.map((slotId, slotIndex) => {
-                        const item = slotId != null ? itemsCatalog.find((i) => i.id === slotId) : null;
-                        const Icon = item ? pickItemIcon(item.name) : Package;
-                        return (
-                          <button
-                            key={`slot-${slotIndex}`}
-                            type="button"
-                            onClick={() => {
-                              if (slotId != null) {
-                                setSimSlots((s) => {
-                                  const next = [...s];
-                                  next[slotIndex] = null;
-                                  return next;
-                                });
-                              }
-                            }}
-                            className={`relative flex h-24 w-24 flex-col items-center justify-center rounded-xl border-2 border-dashed transition sm:h-28 sm:w-28 ${
-                              item
-                                ? 'border-cyan-400/55 bg-slate-900/90 shadow-[0_0_28px_rgba(34,211,238,0.25),inset_0_0_24px_rgba(34,211,238,0.06)]'
-                                : 'border-slate-600 bg-slate-950/70 hover:border-slate-500'
-                            } `}
-                            aria-label={item ? `Remove ${item.name} from slot ${slotIndex + 1}` : `Empty slot ${slotIndex + 1}`}
-                          >
-                            {item ? (
-                              <>
-                                <Icon className="h-8 w-8 text-cyan-200" strokeWidth={1.15} aria-hidden />
-                                <span className="font-data mt-2 max-w-22 truncate px-1 text-center text-[9px] text-slate-400">
-                                  {item.name}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="font-data text-[10px] uppercase tracking-wider text-slate-600">
-                                Empty
-                              </span>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <p className="font-display mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                      Armory grid
-                    </p>
-                    <div className="mb-6 max-h-48 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60 p-2 [scrollbar-color:rgba(51,65,85,0.85)_transparent]">
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-                        {itemsCatalog.map((item) => {
-                          const inLoadout = simSlots.includes(item.id);
-                          const Icon = pickItemIcon(item.name);
-                          return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => toggleSimItem(item.id)}
-                              className={`flex items-center gap-2 rounded-lg border px-2 py-2.5 text-left transition ${
-                                inLoadout
-                                  ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[0_0_16px_rgba(34,211,238,0.15)]'
-                                  : 'border-slate-700 bg-slate-900/50 hover:border-slate-500 hover:bg-slate-900/80'
-                              } `}
-                            >
-                              <Icon className="h-5 w-5 shrink-0 text-cyan-400/90" strokeWidth={1.15} aria-hidden />
-                              <span className="font-data truncate text-[11px] text-slate-200">{item.name}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 backdrop-blur-sm md:p-5">
-                      <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
-                        Predicted combat outcome
-                      </h4>
-                      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:gap-8">
+                      <div className="min-w-0 flex-1 space-y-4">
                         <div>
-                          <p className="font-data text-[9px] uppercase tracking-wider text-slate-500">Global average</p>
-                          <p className="font-data mt-1 text-xl font-bold tabular-nums text-slate-200">
-                            {globalAvgSec > 0 ? globalAvgLabel : '—'}
+                          <p className="font-display mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                            Loadout
                           </p>
-                        </div>
-                        <div>
-                          <p className="font-data text-[9px] uppercase tracking-wider text-slate-500">
-                            Synergy lifespan
-                          </p>
-                          <p
-                            className={`font-data mt-1 text-xl font-bold tabular-nums ${
-                              equippedIds.length === 0
-                                ? 'text-slate-400'
-                                : synergyFaster
-                                  ? 'text-cyan-300'
-                                  : 'text-orange-300'
-                            }`}
-                          >
-                            {globalAvgSec > 0 ? formatSecondsAsHMS(synergyProjectedSec) : '—'}
-                          </p>
-                          {equippedIds.length > 0 && globalAvgSec > 0 && (
-                            <p className="font-data mt-2 text-[10px] tabular-nums text-slate-500">
-                              Mock loadout delta:{' '}
-                              <span className={synergyFaster ? 'text-cyan-400' : 'text-orange-400'}>
-                                {synergyReductionPct > 0 ? '−' : synergyReductionPct < 0 ? '+' : ''}
-                                {Math.abs(synergyReductionPct)}% vs baseline
-                              </span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-6 h-[220px] w-full min-w-0">
-                        {globalAvgSec <= 0 ? (
-                          <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-800">
-                            <p className="font-data text-sm text-slate-500">No baseline duration for comparison.</p>
+                          <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
+                            {simSlots.map((slotId, slotIndex) => {
+                              const item = slotId != null ? itemsCatalog.find((i) => i.id === slotId) : null;
+                              const Icon = item ? pickItemIcon(item.name) : Package;
+                              return (
+                                <motion.button
+                                  key={`slot-${slotIndex}`}
+                                  type="button"
+                                  animate={
+                                    item
+                                      ? {
+                                          boxShadow: [
+                                            '0 0 0 0 rgba(34,211,238,0)',
+                                            '0 0 28px rgba(34,211,238,0.35)',
+                                            '0 0 0 0 rgba(34,211,238,0)',
+                                          ],
+                                        }
+                                      : {}
+                                  }
+                                  transition={
+                                    item ? { duration: 2.2, repeat: Infinity, ease: 'easeInOut' } : undefined
+                                  }
+                                  onClick={() => {
+                                    if (slotId != null) {
+                                      setSimSlots((s) => {
+                                        const next = [...s];
+                                        next[slotIndex] = null;
+                                        return next;
+                                      });
+                                    }
+                                  }}
+                                  className={`relative flex h-24 w-24 flex-col items-center justify-center rounded-xl border-2 border-dashed transition sm:h-28 sm:w-28 ${
+                                    item
+                                      ? 'border-cyan-400/55 bg-slate-900/90 shadow-[0_0_24px_rgba(34,211,238,0.2),inset_0_0_24px_rgba(34,211,238,0.06)]'
+                                      : 'border-slate-600 bg-slate-950/80 hover:border-slate-500'
+                                  } `}
+                                  aria-label={
+                                    item ? `Remove ${item.name} from slot ${slotIndex + 1}` : `Empty slot ${slotIndex + 1}`
+                                  }
+                                >
+                                  {item ? (
+                                    <>
+                                      <Icon className="h-8 w-8 text-cyan-200" strokeWidth={1.15} aria-hidden />
+                                      <span className="font-data mt-2 max-w-22 truncate px-1 text-center text-[9px] text-slate-400">
+                                        {item.name}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="font-data text-[10px] uppercase tracking-wider text-slate-600">
+                                      Empty
+                                    </span>
+                                  )}
+                                </motion.button>
+                              );
+                            })}
                           </div>
-                        ) : (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={compareBarData} margin={{ top: 8, right: 12, left: 4, bottom: 56 }}>
-                              <defs>
-                                <linearGradient id={simCompareChartId} x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.85} />
-                                  <stop offset="100%" stopColor="#0891b2" stopOpacity={0.5} />
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid
-                                strokeDasharray="3 6"
-                                stroke="#334155"
-                                strokeOpacity={0.5}
-                                vertical={false}
+                        </div>
+
+                        <div className="flex max-h-[min(420px,52vh)] flex-col overflow-hidden rounded-xl border border-slate-800/90 bg-slate-950/75 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)] backdrop-blur-md">
+                          <div className="shrink-0 border-b border-slate-800/80 p-3">
+                            <label className="relative block">
+                              <Search
+                                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-500/60"
+                                strokeWidth={1.5}
+                                aria-hidden
                               />
-                              <XAxis
-                                dataKey="label"
-                                tick={{ fill: '#94a3b8', fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
-                                axisLine={{ stroke: '#475569' }}
-                                tickLine={{ stroke: '#475569' }}
-                                interval={0}
-                                angle={-12}
-                                textAnchor="end"
-                                height={52}
+                              <input
+                                type="search"
+                                value={libraryQuery}
+                                onChange={(e) => setLibraryQuery(e.target.value)}
+                                placeholder="Search item library…"
+                                className="w-full rounded-lg border border-cyan-500/35 bg-slate-950/85 py-2.5 pl-10 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-600 shadow-[0_0_20px_rgba(34,211,238,0.06)] outline-none ring-0 transition focus:border-cyan-400/65 focus:shadow-[0_0_24px_rgba(34,211,238,0.12)]"
                               />
-                              <YAxis
-                                tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
-                                axisLine={{ stroke: '#475569' }}
-                                tickLine={{ stroke: '#475569' }}
-                                label={{
-                                  value: 'Minutes',
-                                  angle: -90,
-                                  position: 'insideLeft',
-                                  fill: '#64748b',
-                                  fontSize: 10,
-                                  fontFamily: 'JetBrains Mono, monospace',
-                                }}
-                              />
-                              <Tooltip
-                                cursor={{ fill: 'rgba(51, 65, 85, 0.2)' }}
-                                content={({ active, payload }) => {
-                                  if (!active || !payload?.length) return null;
-                                  const row = payload[0].payload;
+                            </label>
+                            <div className="mt-3 flex flex-wrap gap-1.5" role="tablist" aria-label="Item categories">
+                              {LIBRARY_CATEGORY_TABS.map((tab) => {
+                                const active = libraryCategory === tab.id;
+                                const TabIcon = tab.Icon;
+                                return (
+                                  <button
+                                    key={tab.id}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={active}
+                                    onClick={() => setLibraryCategory(tab.id)}
+                                    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] transition ${
+                                      active
+                                        ? 'border-cyan-400/50 bg-cyan-500/15 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.2)]'
+                                        : 'border-slate-700/90 bg-slate-900/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                                    } `}
+                                  >
+                                    <TabIcon className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                                    {tab.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-color:rgba(51,65,85,0.85)_transparent]">
+                            <p className="font-display mb-2 px-0.5 text-[8px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                              Item library
+                            </p>
+                            {filteredLibraryItems.length === 0 ? (
+                              <p className="font-data py-8 text-center text-sm text-slate-500">No items match filters.</p>
+                            ) : (
+                              <div className="grid grid-cols-4 gap-2 pb-16 sm:grid-cols-5 md:grid-cols-6">
+                                {filteredLibraryItems.map((item) => {
+                                  const inLoadout = simSlots.includes(item.id);
+                                  const Icon = pickItemIcon(item.name);
                                   return (
-                                    <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
-                                      <p className="font-data text-[10px] font-semibold text-slate-300">{row.label}</p>
-                                      <p className="font-data mt-1 tabular-nums text-sm text-white">
-                                        {formatSecondsAsHMS(row.seconds)}
-                                      </p>
-                                      <p className="font-data text-[10px] text-slate-500">{row.minutes} min</p>
+                                    <div key={item.id} className="group relative aspect-square">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleSimItem(item.id)}
+                                        className={`relative flex h-full w-full flex-col items-center justify-center rounded-lg border p-1 transition ${
+                                          inLoadout
+                                            ? 'border-cyan-400/55 bg-cyan-500/15 shadow-[0_0_18px_rgba(34,211,238,0.25)]'
+                                            : 'border-slate-700/90 bg-slate-900/60 hover:border-slate-500 hover:bg-slate-900/85'
+                                        } `}
+                                        aria-label={`${inLoadout ? 'Remove' : 'Equip'} ${item.name}`}
+                                      >
+                                        <Icon className="h-6 w-6 text-cyan-300/95 sm:h-7 sm:w-7" strokeWidth={1.1} aria-hidden />
+                                      </button>
+                                      <div className="pointer-events-none absolute left-1/2 top-full z-80 mt-1 w-max max-w-52 -translate-x-1/2 scale-95 rounded-lg border border-cyan-500/25 bg-slate-950/95 px-2.5 py-2 opacity-0 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md transition duration-150 group-hover:scale-100 group-hover:opacity-100">
+                                        <p className="font-display text-[10px] font-bold uppercase tracking-wide text-cyan-100">
+                                          {item.name}
+                                        </p>
+                                        <p className="font-data mt-1 text-[10px] tabular-nums text-slate-400">
+                                          Popularity <span className="text-slate-200">{item.popularity}</span>
+                                        </p>
+                                        <p className="font-data mt-1 border-t border-slate-800 pt-1 text-[9px] text-slate-500">
+                                          <span className="text-cyan-500/90">Logic</span>{' '}
+                                          <span className="text-slate-300">{itemLogicTag(item)}</span>
+                                        </p>
+                                      </div>
                                     </div>
                                   );
-                                }}
-                              />
-                              <Bar dataKey="minutes" radius={[6, 6, 0, 0]} maxBarSize={56}>
-                                {compareBarData.map((row) => (
-                                  <Cell
-                                    key={row.key}
-                                    fill={
-                                      row.key === 'synergy' && equippedIds.length > 0 && synergyFaster
-                                        ? `url(#${simCompareChartId})`
-                                        : row.fill
-                                    }
-                                  />
-                                ))}
-                              </Bar>
-                            </BarChart>
-                          </ResponsiveContainer>
-                        )}
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <p className="font-data mt-2 text-[10px] text-slate-600">
-                        Synergy bar: cyan when projected engagement is shorter than global average, orange when longer.
-                      </p>
+
+                      <div className="w-full shrink-0 xl:sticky xl:top-3 xl:w-[min(100%,22rem)]">
+                        <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 backdrop-blur-sm md:p-5">
+                          <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                            Predicted combat outcome
+                          </h4>
+                          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                            <div>
+                              <p className="font-data text-[9px] uppercase tracking-wider text-slate-500">
+                                Global average
+                              </p>
+                              <p className="font-data mt-1 text-xl font-bold tabular-nums text-slate-200">
+                                {globalAvgSec > 0 ? globalAvgLabel : '—'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="font-data text-[9px] uppercase tracking-wider text-slate-500">
+                                Synergy lifespan
+                              </p>
+                              <p
+                                className={`font-data mt-1 text-xl font-bold tabular-nums ${
+                                  equippedIds.length === 0
+                                    ? 'text-slate-400'
+                                    : synergyFaster
+                                      ? 'text-cyan-300'
+                                      : 'text-orange-300'
+                                }`}
+                              >
+                                {globalAvgSec > 0 ? formatSecondsAsHMS(synergyProjectedSec) : '—'}
+                              </p>
+                              {equippedIds.length > 0 && globalAvgSec > 0 && (
+                                <p className="font-data mt-2 text-[10px] tabular-nums text-slate-500">
+                                  Mock loadout delta:{' '}
+                                  <span className={synergyFaster ? 'text-cyan-400' : 'text-orange-400'}>
+                                    {synergyReductionPct > 0 ? '−' : synergyReductionPct < 0 ? '+' : ''}
+                                    {Math.abs(synergyReductionPct)}% vs baseline
+                                  </span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <p className="font-display mt-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                            Impact chart
+                          </p>
+                          <div className="mt-2 h-[200px] w-full min-w-0 sm:h-[220px]">
+                            {globalAvgSec <= 0 ? (
+                              <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-800">
+                                <p className="font-data px-2 text-center text-sm text-slate-500">
+                                  No baseline duration for comparison.
+                                </p>
+                              </div>
+                            ) : (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={compareBarData} margin={{ top: 8, right: 8, left: 4, bottom: 48 }}>
+                                  <defs>
+                                    <linearGradient id={simCompareChartId} x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.85} />
+                                      <stop offset="100%" stopColor="#0891b2" stopOpacity={0.5} />
+                                    </linearGradient>
+                                  </defs>
+                                  <CartesianGrid
+                                    strokeDasharray="3 6"
+                                    stroke="#334155"
+                                    strokeOpacity={0.5}
+                                    vertical={false}
+                                  />
+                                  <XAxis
+                                    dataKey="label"
+                                    tick={{ fill: '#94a3b8', fontSize: 8, fontFamily: 'JetBrains Mono, monospace' }}
+                                    axisLine={{ stroke: '#475569' }}
+                                    tickLine={{ stroke: '#475569' }}
+                                    interval={0}
+                                    angle={-14}
+                                    textAnchor="end"
+                                    height={48}
+                                  />
+                                  <YAxis
+                                    tick={{ fill: '#94a3b8', fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
+                                    axisLine={{ stroke: '#475569' }}
+                                    tickLine={{ stroke: '#475569' }}
+                                    label={{
+                                      value: 'Minutes',
+                                      angle: -90,
+                                      position: 'insideLeft',
+                                      fill: '#64748b',
+                                      fontSize: 9,
+                                      fontFamily: 'JetBrains Mono, monospace',
+                                    }}
+                                  />
+                                  <Tooltip
+                                    cursor={{ fill: 'rgba(51, 65, 85, 0.2)' }}
+                                    content={({ active, payload }) => {
+                                      if (!active || !payload?.length) return null;
+                                      const row = payload[0].payload;
+                                      return (
+                                        <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
+                                          <p className="font-data text-[10px] font-semibold text-slate-300">{row.label}</p>
+                                          <p className="font-data mt-1 tabular-nums text-sm text-white">
+                                            {formatSecondsAsHMS(row.seconds)}
+                                          </p>
+                                          <p className="font-data text-[10px] text-slate-500">{row.minutes} min</p>
+                                        </div>
+                                      );
+                                    }}
+                                  />
+                                  <Bar dataKey="minutes" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                                    {compareBarData.map((row) => (
+                                      <Cell
+                                        key={row.key}
+                                        fill={
+                                          row.key === 'synergy' && equippedIds.length > 0 && synergyFaster
+                                            ? `url(#${simCompareChartId})`
+                                            : row.fill
+                                        }
+                                      />
+                                    ))}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                            )}
+                          </div>
+                          <p className="font-data mt-2 text-[9px] leading-relaxed text-slate-600">
+                            Cyan synergy bar = faster clear vs global average; orange = slower. Updates live as you
+                            change loadout.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </section>
                 </motion.div>
