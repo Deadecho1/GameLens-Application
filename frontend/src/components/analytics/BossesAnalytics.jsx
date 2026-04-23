@@ -7,9 +7,26 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Cell,
+  ReferenceLine,
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Award, ChartColumn, Crosshair, Globe, Radar, Swords, Target, Timer } from 'lucide-react';
+import {
+  Award,
+  ChartColumn,
+  Crosshair,
+  FlaskConical,
+  Globe,
+  Layers2,
+  Package,
+  Radar,
+  Shield,
+  Sparkles,
+  Sword,
+  Swords,
+  Target,
+  Timer,
+} from 'lucide-react';
 import { durationToSeconds, formatSecondsAsHMS, secondsToMinutes } from '../../utils/duration';
 
 /** Seconds from all analyzed sessions (runsHistory.bossEncounters) plus boss.globalLifespanSamples; fallback: single lifespan. */
@@ -89,12 +106,63 @@ function survivalRankTopPercent(bossId, dashboard) {
   return { topPct, rank, total: bosses.length, singleCohort: false };
 }
 
+function pickItemIcon(name) {
+  const n = String(name ?? '').toLowerCase();
+  if (n.includes('sword')) return Sword;
+  if (n.includes('potion')) return FlaskConical;
+  if (n.includes('shield')) return Shield;
+  return Package;
+}
+
+/** Cross-reference dashboard.items with boss gearSynergies + itemEffectiveness. */
+function buildGearAnalysis(selectedBoss, items) {
+  const catalog = items ?? [];
+  const byId = Object.fromEntries(catalog.map((i) => [i.id, i]));
+  if (!selectedBoss) return { synergies: [], itemRows: [], effDomain: [0, 1] };
+
+  const synergies = (selectedBoss.gearSynergies ?? []).map((s) => ({
+    label: (s.itemIds ?? []).map((id) => byId[id]?.name ?? `#${id}`).join(' + '),
+    timeReductionPct: Number(s.timeReductionPct) || 0,
+  }));
+
+  const itemRows = (selectedBoss.itemEffectiveness ?? [])
+    .map((row) => {
+      const item = byId[row.itemId];
+      const eff = Number(row.timeReductionVsGlobalPct) || 0;
+      let fill = '#64748b';
+      if (eff >= 6) fill = '#34d399';
+      else if (eff <= -2) fill = '#f87171';
+      return {
+        id: row.itemId,
+        name: item?.name ?? `Item ${row.itemId}`,
+        effectiveness: eff,
+        fill,
+        correlationLabel:
+          eff >= 6 ? 'High Threat to Boss' : eff <= -2 ? 'Extended engagement' : 'Neutral footprint',
+      };
+    })
+    .sort((a, b) => b.effectiveness - a.effectiveness);
+
+  const vals = itemRows.map((r) => r.effectiveness);
+  let effDomain = [0, 1];
+  if (vals.length) {
+    const min = Math.min(0, ...vals);
+    const max = Math.max(0, ...vals);
+    const span = max - min || 10;
+    const pad = Math.max(2, span * 0.12);
+    effDomain = [min - pad, max + pad];
+  }
+
+  return { synergies, itemRows, effDomain };
+}
+
 /**
- * BOSSES — Master-detail tactical intel. Global aggregates from dashboard.bosses + runsHistory.
+ * BOSSES — Master-detail tactical intel. dashboard.bosses + runsHistory + dashboard.items (gear).
  */
 export default function BossesAnalytics({ data }) {
   const dashboard = data.dashboard;
   const bosses = dashboard.bosses ?? [];
+  const itemsCatalog = dashboard.items ?? [];
   const [selectedBossId, setSelectedBossId] = useState(null);
   const chartGradId = useId().replace(/:/g, '');
 
@@ -133,6 +201,13 @@ export default function BossesAnalytics({ data }) {
     [selected, dashboard]
   );
 
+  const gearAnalysis = useMemo(
+    () => buildGearAnalysis(selected, itemsCatalog),
+    [selected, itemsCatalog]
+  );
+
+  const impactChartHeight = Math.max(200, gearAnalysis.itemRows.length * 44);
+
   return (
     <div className="space-y-6">
       <header>
@@ -147,8 +222,9 @@ export default function BossesAnalytics({ data }) {
         </h3>
         <p className="font-data mt-2 text-sm text-slate-500">
           Global aggregates from{' '}
-          <code className="text-cyan-600/90">dashboard.bosses</code> +{' '}
-          <code className="text-cyan-600/90">dashboard.runsHistory</code>
+          <code className="text-cyan-600/90">dashboard.bosses</code>,{' '}
+          <code className="text-cyan-600/90">dashboard.runsHistory</code>, and{' '}
+          <code className="text-cyan-600/90">dashboard.items</code>
         </p>
       </header>
 
@@ -397,6 +473,164 @@ export default function BossesAnalytics({ data }) {
                       )}
                     </div>
                   </div>
+
+                  <section className="rounded-2xl border border-slate-800/90 bg-slate-950/40 p-4 ring-1 ring-cyan-500/10 backdrop-blur-md md:p-6">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <Layers2 className="h-4 w-4 text-cyan-400" strokeWidth={1.25} aria-hidden />
+                      <p className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                        {'Gear & synergy impact'}
+                      </p>
+                    </div>
+                    <h3 className="font-display text-sm font-bold uppercase tracking-[0.18em] text-cyan-100/95 md:text-base">
+                      Equipment influence on lifespan
+                    </h3>
+                    <p className="font-data mt-2 max-w-3xl text-[10px] leading-relaxed text-slate-500">
+                      Correlation vs global average encounter length for this target. Positive time reduction
+                      indicates shorter engagements when the loadout is present.
+                    </p>
+
+                    <div className="mt-6 grid gap-8 lg:grid-cols-2 lg:gap-10">
+                      <div>
+                        <div className="mb-3 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-cyan-500/80" strokeWidth={1.25} aria-hidden />
+                          <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                            Synergy table
+                          </h4>
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/50">
+                          {gearAnalysis.synergies.length === 0 ? (
+                            <p className="font-data p-4 text-sm text-slate-500">No combination data linked.</p>
+                          ) : (
+                            <table className="w-full text-left font-data text-xs">
+                              <thead>
+                                <tr className="border-b border-slate-800 bg-slate-900/80 text-[10px] uppercase tracking-wider text-slate-500">
+                                  <th className="px-3 py-2.5 font-medium">Item combination</th>
+                                  <th className="px-3 py-2.5 font-medium tabular-nums">Time reduction %</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {gearAnalysis.synergies.map((row) => (
+                                  <tr
+                                    key={row.label}
+                                    className="border-b border-slate-800/80 last:border-0 hover:bg-slate-900/40"
+                                  >
+                                    <td className="px-3 py-3">
+                                      <span className="flex items-center gap-2 text-slate-200">
+                                        <Sparkles className="h-3.5 w-3.5 shrink-0 text-cyan-500/70" aria-hidden />
+                                        {row.label}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-3 tabular-nums text-cyan-200">{row.timeReductionPct}%</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="mb-3 flex items-center gap-2">
+                          <ChartColumn className="h-4 w-4 text-emerald-500/80" strokeWidth={1.25} aria-hidden />
+                          <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                            Item effectiveness
+                          </h4>
+                        </div>
+                        <p className="font-data mb-2 text-[10px] text-slate-600">
+                          Horizontal axis: time reduction % vs global average (green shortens, red prolongs).
+                        </p>
+                        <div style={{ height: impactChartHeight }} className="w-full min-w-0">
+                          {gearAnalysis.itemRows.length === 0 ? (
+                            <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800">
+                              <p className="font-data text-sm text-slate-500">No per-item effectiveness rows.</p>
+                            </div>
+                          ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart
+                                layout="vertical"
+                                data={gearAnalysis.itemRows}
+                                margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
+                              >
+                                <CartesianGrid
+                                  strokeDasharray="3 6"
+                                  stroke="#334155"
+                                  strokeOpacity={0.45}
+                                  horizontal={false}
+                                />
+                                <XAxis
+                                  type="number"
+                                  domain={gearAnalysis.effDomain}
+                                  tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
+                                  axisLine={{ stroke: '#475569' }}
+                                  tickLine={{ stroke: '#475569' }}
+                                  tickFormatter={(v) => `${v}%`}
+                                  label={{
+                                    value: 'Time reduction %',
+                                    position: 'insideBottom',
+                                    offset: -2,
+                                    fill: '#64748b',
+                                    fontSize: 10,
+                                    fontFamily: 'JetBrains Mono, monospace',
+                                  }}
+                                />
+                                <YAxis
+                                  type="category"
+                                  dataKey="name"
+                                  width={108}
+                                  tick={{ fill: '#e2e8f0', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
+                                  axisLine={{ stroke: '#475569' }}
+                                  tickLine={false}
+                                />
+                                <Tooltip
+                                  cursor={{ fill: 'rgba(51, 65, 85, 0.15)' }}
+                                  content={({ active, payload }) => {
+                                    if (!active || !payload?.length) return null;
+                                    const row = payload[0].payload;
+                                    const TipIcon = pickItemIcon(row.name);
+                                    return (
+                                      <div className="max-w-xs rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
+                                        <div className="flex items-center gap-2">
+                                          <TipIcon className="h-4 w-4 text-cyan-400" aria-hidden />
+                                          <p className="font-data text-xs font-semibold text-white">{row.name}</p>
+                                        </div>
+                                        <p className="font-data mt-1 tabular-nums text-sm text-cyan-200">
+                                          {row.effectiveness > 0 ? '+' : ''}
+                                          {row.effectiveness}% vs average
+                                        </p>
+                                        <p className="font-data mt-1 text-[10px] text-slate-500">{row.correlationLabel}</p>
+                                      </div>
+                                    );
+                                  }}
+                                />
+                                <ReferenceLine
+                                  x={0}
+                                  stroke="#475569"
+                                  strokeDasharray="4 4"
+                                  strokeOpacity={0.9}
+                                />
+                                <Bar dataKey="effectiveness" name="Effectiveness" radius={[0, 4, 4, 0]} barSize={18}>
+                                  {gearAnalysis.itemRows.map((row) => (
+                                    <Cell key={row.id} fill={row.fill} stroke={row.fill} strokeOpacity={0.35} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          )}
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-4 font-data text-[10px] text-slate-500">
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-4 rounded-sm bg-emerald-400/90" /> Shortens engagement
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-4 rounded-sm bg-slate-500" /> Neutral
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-4 rounded-sm bg-red-400/90" /> Prolongs engagement
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
                 </motion.div>
               )}
             </AnimatePresence>

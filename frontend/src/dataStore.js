@@ -59,13 +59,15 @@ export const initialData = {
    */
   dashboard: {
     items: [
-      { id: 1, name: 'Health Potion', popularity: 85, impact: 'High' },
-      { id: 2, name: 'Iron Sword', popularity: 40, impact: 'Medium' },
-      { id: 3, name: 'Shield', popularity: 62, impact: 'Medium' },
+      { id: 1, name: 'Power Potion', popularity: 85, impact: 'High' },
+      { id: 2, name: 'Fire Sword', popularity: 40, impact: 'Medium' },
+      { id: 3, name: 'Tower Shield', popularity: 62, impact: 'Medium' },
     ],
     /**
-     * Boss catalog. globalLifespanSamples: optional extra detections (same time format as lifespan)
-     * merged with all matching bossEncounters across runsHistory for aggregate BOSSES analytics.
+     * Boss catalog. globalLifespanSamples: merged with bossEncounters for lifespan stats.
+     * gearSynergies: itemIds index dashboard.items; timeReductionPct vs global avg when combo present.
+     * itemEffectiveness: per-item timeReductionVsGlobalPct (positive = shorter fights vs baseline).
+     * status: used by GENERAL analytics only — not shown on BOSSES tab.
      */
     bosses: [
       {
@@ -74,6 +76,15 @@ export const initialData = {
         lifespan: '05:20',
         status: 'Defeated',
         globalLifespanSamples: ['05:08', '06:01'],
+        gearSynergies: [
+          { itemIds: [2, 1], timeReductionPct: 19 },
+          { itemIds: [2, 3], timeReductionPct: 11 },
+        ],
+        itemEffectiveness: [
+          { itemId: 2, timeReductionVsGlobalPct: 22 },
+          { itemId: 1, timeReductionVsGlobalPct: 14 },
+          { itemId: 3, timeReductionVsGlobalPct: -5 },
+        ],
       },
       {
         id: 2,
@@ -81,6 +92,15 @@ export const initialData = {
         lifespan: '02:15',
         status: 'Alive',
         globalLifespanSamples: ['00:45', '01:12'],
+        gearSynergies: [
+          { itemIds: [2, 1], timeReductionPct: 16 },
+          { itemIds: [1, 3], timeReductionPct: 7 },
+        ],
+        itemEffectiveness: [
+          { itemId: 2, timeReductionVsGlobalPct: 17 },
+          { itemId: 1, timeReductionVsGlobalPct: 9 },
+          { itemId: 3, timeReductionVsGlobalPct: 3 },
+        ],
       },
     ],
     /**

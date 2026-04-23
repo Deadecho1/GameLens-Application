@@ -12,7 +12,7 @@ const SUB_TABS = [
 /**
  * ANALYTICS — secondary nav + sub-views. Writes ui.analyticsSubTab.
  * GENERAL: dashboard.runsHistory, dashboard.bosses, dashboard.items.
- * BOSSES: dashboard.bosses + dashboard.runsHistory (bossEncounters).
+ * BOSSES: dashboard.bosses + runsHistory + dashboard.items (gear correlations).
  */
 export default function AnalyticsTab({ data, onPatch }) {
   const sub = data.ui.analyticsSubTab;
