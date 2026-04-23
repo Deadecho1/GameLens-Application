@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -7,308 +7,300 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Cell,
 } from 'recharts';
-import { motion } from 'framer-motion';
-import { Swords, Skull, Timer, Target } from 'lucide-react';
-import { useCountUp } from '../../hooks/useCountUp';
-import { durationToSeconds, formatSecondsAsHMS } from '../../utils/duration';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Crosshair, Radar, Swords, Target, Timer, Users } from 'lucide-react';
+import { durationToSeconds, formatSecondsAsHMS, secondsToMinutes } from '../../utils/duration';
 
-const BAR_FILLS = ['#3b82f6', '#4f46e5', '#7c3aed', '#9333ea', '#a855f7', '#6366f1'];
+function encounterSeriesForBoss(boss) {
+  const list =
+    Array.isArray(boss.lifespansByUser) && boss.lifespansByUser.length > 0
+      ? boss.lifespansByUser
+      : boss.lifespan
+        ? [boss.lifespan]
+        : [];
+  return list.map((raw, i) => {
+    const sec = durationToSeconds(raw);
+    return {
+      id: `${boss.id}-${i}`,
+      label: `U${String(i + 1).padStart(2, '0')}`,
+      minutes: secondsToMinutes(sec),
+      seconds: sec,
+      raw,
+    };
+  });
+}
 
-function isDefeatedStatus(status) {
-  return String(status ?? '').toLowerCase() === 'defeated';
+function meanSeconds(series) {
+  if (!series.length) return 0;
+  return series.reduce((a, r) => a + r.seconds, 0) / series.length;
 }
 
 /**
- * BOSSES — Tactical gallery + duration chart. Data: dashboard.bosses (name, lifespan, status only).
+ * BOSSES — Master-detail tactical intel. Sidebar selection + detail deck.
+ * Data: dashboard.bosses (status is not shown in UI per product spec).
  */
 export default function BossesAnalytics({ data }) {
   const bosses = data.dashboard.bosses ?? [];
+  const [selectedBossId, setSelectedBossId] = useState(null);
 
-  const enriched = useMemo(() => {
-    return bosses.map((b, i) => {
-      const sec = durationToSeconds(b.lifespan);
-      const defeated = isDefeatedStatus(b.status);
-      return {
-        ...b,
-        lifespanSec: sec,
-        defeated,
-        winRatePct: defeated ? 100 : 0,
-        encounters: 1,
-        barFill: BAR_FILLS[i % BAR_FILLS.length],
-      };
+  useEffect(() => {
+    if (!bosses.length) {
+      setSelectedBossId(null);
+      return;
+    }
+    setSelectedBossId((prev) => {
+      if (prev != null && bosses.some((b) => b.id === prev)) return prev;
+      return bosses[0].id;
     });
   }, [bosses]);
 
-  const maxLifespanSec = useMemo(
-    () => enriched.reduce((m, b) => Math.max(m, b.lifespanSec), 0),
-    [enriched]
+  const selected = useMemo(
+    () => bosses.find((b) => b.id === selectedBossId) ?? null,
+    [bosses, selectedBossId]
   );
 
-  const totalEncounters = bosses.length;
-  const defeatedCount = enriched.filter((b) => b.defeated).length;
-  const globalKillRatePct =
-    totalEncounters > 0 ? Math.round((defeatedCount / totalEncounters) * 100) : 0;
-
-  const deadliest = useMemo(() => {
-    if (!enriched.length) return { name: '—', detail: 'No boss data' };
-    const minWin = Math.min(...enriched.map((b) => b.winRatePct));
-    const pool = enriched.filter((b) => b.winRatePct === minWin);
-    if (minWin === 100) {
-      return { name: '—', detail: 'All targets defeated' };
-    }
-    const top = pool.reduce((a, b) => (b.lifespanSec > a.lifespanSec ? b : a));
-    return { name: top.name, detail: 'Lowest clear rate (active)' };
-  }, [enriched]);
-
-  const chartData = useMemo(
-    () =>
-      enriched.map((b) => ({
-        name: b.name,
-        minutes: Math.round((b.lifespanSec / 60) * 100) / 100,
-        seconds: b.lifespanSec,
-        lifespanLabel: b.lifespan,
-        fill: b.barFill,
-      })),
-    [enriched]
-  );
-
-  const totalAnimated = useCountUp(totalEncounters, 1200);
-  const killRateAnimated = useCountUp(globalKillRatePct, 1400);
+  const detailSeries = useMemo(() => (selected ? encounterSeriesForBoss(selected) : []), [selected]);
+  const avgSec = useMemo(() => Math.round(meanSeconds(detailSeries)), [detailSeries]);
+  const avgLabel = formatSecondsAsHMS(avgSec);
+  const totalEncounters = detailSeries.length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <header>
         <div className="flex items-center gap-2">
           <Swords className="h-5 w-5 text-cyan-400" strokeWidth={1.25} aria-hidden />
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
-            Boss analytics
+          <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-cyan-500/80">
+            Boss intelligence
           </p>
         </div>
         <h3 className="mt-2 font-display text-xl font-bold text-slate-100 md:text-2xl">
-          Threat assessment grid
+          Tactical command · master detail
         </h3>
         <p className="font-data mt-2 text-sm text-slate-500">
-          Sourced from <code className="text-cyan-700/90">dashboard.bosses</code> · name, lifespan,
-          status
+          Select a target in the rail. Source: <code className="text-cyan-600/90">dashboard.bosses</code>
         </p>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SummaryMetric
-          icon={Target}
-          title="Total boss encounters"
-          subtitle="Entries in boss history"
-          accent="cyan"
-        >
-          <p className="font-data text-3xl font-bold tabular-nums text-cyan-200 md:text-4xl">
-            {totalAnimated}
-          </p>
-        </SummaryMetric>
-
-        <SummaryMetric
-          icon={Skull}
-          title="Global kill rate"
-          subtitle='Share with status "Defeated"'
-          accent="blue"
-        >
-          <div className="flex items-baseline gap-1">
-            <span className="font-data text-3xl font-bold tabular-nums text-slate-100 md:text-4xl">
-              {killRateAnimated}
+      <div className="flex min-h-[min(640px,75vh)] flex-col gap-4 lg:flex-row lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-800/90 lg:bg-slate-950/40 lg:shadow-[inset_0_1px_0_rgba(34,211,238,0.06)]">
+        <aside className="flex w-full flex-col border-slate-800/80 lg:w-[25%] lg:min-w-[220px] lg:max-w-[320px] lg:border-r lg:bg-slate-950/50">
+          <div className="flex items-center gap-2 border-b border-slate-800/80 px-4 py-3">
+            <Radar className="h-4 w-4 text-cyan-400/90" strokeWidth={1.25} aria-hidden />
+            <span className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+              Target rail
             </span>
-            <span className="font-data text-xl font-semibold text-blue-400/80">%</span>
           </div>
-        </SummaryMetric>
-
-        <SummaryMetric icon={Timer} title="Deadliest boss" subtitle={deadliest.detail} accent="slate">
-          <p className="font-display text-lg font-bold uppercase tracking-wide text-slate-100 md:text-xl">
-            {deadliest.name}
-          </p>
-        </SummaryMetric>
-      </div>
-
-      <div>
-        <h4 className="font-display mb-4 text-xs font-bold uppercase tracking-[0.2em] text-blue-400/90">
-          Boss gallery
-        </h4>
-        {enriched.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 py-16 text-center">
-            <p className="font-data text-sm text-slate-500">No bosses in catalog.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {enriched.map((boss) => (
-              <BossProfileCard key={boss.id ?? boss.name} boss={boss} maxLifespanSec={maxLifespanSec} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="rounded-2xl border border-slate-800 bg-transparent p-4 backdrop-blur-md md:p-6">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Timer className="h-4 w-4 text-blue-400" strokeWidth={1.25} aria-hidden />
-            <h4 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-blue-400/90">
-              Avg. fight duration per boss
-            </h4>
-          </div>
-          <span className="font-data text-[10px] text-slate-600">Lifespan · minutes</span>
-        </div>
-        <div className="h-[320px] w-full min-w-0">
-          {chartData.length === 0 ? (
-            <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
-              <p className="font-data text-sm text-slate-500">No chart data.</p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 48 }}>
-                <CartesianGrid strokeDasharray="3 6" stroke="#334155" strokeOpacity={0.6} vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
-                  axisLine={{ stroke: '#475569' }}
-                  tickLine={{ stroke: '#475569' }}
-                  angle={-28}
-                  textAnchor="end"
-                  height={56}
-                  interval={0}
-                />
-                <YAxis
-                  tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
-                  axisLine={{ stroke: '#475569' }}
-                  tickLine={{ stroke: '#475569' }}
-                  label={{
-                    value: 'Minutes',
-                    angle: -90,
-                    position: 'insideLeft',
-                    fill: '#64748b',
-                    fontSize: 10,
-                    fontFamily: 'JetBrains Mono, monospace',
-                  }}
-                />
-                <Tooltip
-                  cursor={{ fill: 'rgba(51, 65, 85, 0.25)' }}
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const row = payload[0].payload;
-                    return (
-                      <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
-                        <p className="font-data text-xs font-semibold text-cyan-200">{row.name}</p>
-                        <p className="font-data mt-1 tabular-nums text-sm text-slate-200">
-                          {row.lifespanLabel} · {formatSecondsAsHMS(row.seconds)}
-                        </p>
-                        <p className="font-data text-[10px] text-slate-500">{row.minutes} min</p>
-                      </div>
-                    );
-                  }}
-                />
-                <Bar dataKey="minutes" name="Duration" radius={[6, 6, 0, 0]} maxBarSize={56}>
-                  {chartData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SummaryMetric({ icon: Icon, title, subtitle, accent, children }) {
-  const ring = {
-    cyan: 'ring-cyan-500/20',
-    blue: 'ring-blue-500/20',
-    slate: 'ring-slate-600/30',
-  };
-  const iconCls = {
-    cyan: 'text-cyan-400',
-    blue: 'text-blue-400',
-    slate: 'text-slate-400',
-  };
-
-  return (
-    <div
-      className={`rounded-2xl border border-slate-800 bg-slate-900/25 p-5 backdrop-blur-md ring-1 ${ring[accent]}`}
-    >
-      <div className="mb-3 flex items-center gap-2">
-        <Icon className={`h-5 w-5 ${iconCls[accent]}`} strokeWidth={1.25} />
-        <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-          {title}
-        </h3>
-      </div>
-      <p className="font-data mb-3 text-[10px] text-slate-600">{subtitle}</p>
-      <div className="font-data">{children}</div>
-    </div>
-  );
-}
-
-function BossProfileCard({ boss, maxLifespanSec }) {
-  const defeated = boss.defeated;
-  const badgeLabel = defeated ? 'DEFEATED' : 'ACTIVE';
-  const badgeClass = defeated
-    ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.45)]'
-    : 'border-red-500/50 bg-red-500/15 text-red-300 shadow-[0_0_16px_rgba(248,113,113,0.4)]';
-
-  const gaugePct = maxLifespanSec > 0 ? Math.round((boss.lifespanSec / maxLifespanSec) * 100) : 0;
-
-  return (
-    <motion.article
-      initial={false}
-      whileHover={{ scale: 1.03 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 24 }}
-      className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/30 p-5 shadow-[0_0_0_1px_rgba(15,23,42,0.8)] backdrop-blur-md ring-1 ring-slate-700/40 hover:border-cyan-500/25 hover:shadow-[0_0_28px_rgba(59,130,246,0.22),0_0_48px_rgba(139,92,246,0.12)]"
-    >
-      <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-        <div className="absolute inset-0 bg-linear-to-br from-blue-500/5 via-transparent to-purple-500/8" />
-      </div>
-
-      <div className="relative flex flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <h3 className="font-display text-lg font-extrabold uppercase tracking-[0.12em] text-slate-100 md:text-xl">
-            {boss.name}
-          </h3>
-          <span
-            className={`shrink-0 rounded-md border px-2.5 py-1 font-display text-[9px] font-bold tracking-[0.25em] ${badgeClass}`}
+          <nav
+            className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3 [scrollbar-color:rgba(51,65,85,0.8)_transparent]"
+            aria-label="Boss list"
           >
-            {badgeLabel}
-          </span>
-        </div>
+            {bosses.length === 0 ? (
+              <p className="font-data px-2 py-6 text-center text-sm text-slate-500">No bosses listed.</p>
+            ) : (
+              bosses.map((boss) => {
+                const active = boss.id === selectedBossId;
+                return (
+                  <motion.button
+                    key={boss.id}
+                    type="button"
+                    onClick={() => setSelectedBossId(boss.id)}
+                    whileHover={{ x: 4 }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                    className={`group relative flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-[filter,box-shadow,border-color,background-color] ${
+                      active
+                        ? 'border-cyan-400/45 bg-cyan-500/12 shadow-[0_0_24px_rgba(34,211,238,0.28),inset_0_0_20px_rgba(34,211,238,0.06)] brightness-110'
+                        : 'border-slate-700/90 bg-slate-900/40 brightness-100 hover:border-slate-600 hover:bg-slate-900/70 hover:brightness-125'
+                    } `}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="boss-rail-glow"
+                        className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-cyan-400/35"
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
+                        active
+                          ? 'border-cyan-400/40 bg-cyan-500/15 text-cyan-200'
+                          : 'border-slate-700 bg-slate-950/60 text-slate-500 group-hover:text-slate-300'
+                      }`}
+                    >
+                      {active ? (
+                        <Target className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                      ) : (
+                        <Crosshair className="h-4 w-4 opacity-70" strokeWidth={1.25} aria-hidden />
+                      )}
+                    </span>
+                    <span
+                      className={`font-display text-xs font-bold uppercase tracking-[0.14em] ${
+                        active ? 'text-cyan-100' : 'text-slate-400 group-hover:text-slate-200'
+                      }`}
+                    >
+                      {boss.name}
+                    </span>
+                  </motion.button>
+                );
+              })
+            )}
+          </nav>
+        </aside>
 
-        <div>
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span className="font-data text-[10px] font-medium uppercase tracking-wider text-slate-500">
-              Avg. lifespan
-            </span>
-            <span className="font-data text-xs tabular-nums text-cyan-200/90">{boss.lifespan}</span>
-          </div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-slate-800/90">
-            <motion.div
-              className="h-full rounded-full bg-linear-to-r from-blue-500 via-indigo-500 to-purple-500 shadow-[0_0_12px_rgba(99,102,241,0.5)]"
-              initial={{ width: 0 }}
-              animate={{ width: `${gaugePct}%` }}
-              transition={{ duration: 0.9, ease: 'easeOut' }}
-            />
-          </div>
-        </div>
+        <section className="relative flex min-h-[480px] flex-1 flex-col lg:w-[75%]">
+          <div
+            className="gl-terminal-scanlines pointer-events-none absolute inset-0 rounded-none opacity-70 lg:rounded-r-2xl"
+            aria-hidden
+          />
+          <div className="relative flex flex-1 flex-col p-4 md:p-6 lg:p-8">
+            <AnimatePresence mode="wait">
+              {!selected ? (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-1 items-center justify-center"
+                >
+                  <p className="font-data text-sm text-slate-500">Select a boss from the rail.</p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={selected.id}
+                  initial={{ opacity: 0, x: 18 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -14 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                  className="flex flex-1 flex-col gap-8"
+                >
+                  <div>
+                    <h2 className="font-display text-3xl font-black uppercase tracking-[0.18em] text-white [text-shadow:0_0_40px_rgba(34,211,238,0.25)] md:text-4xl lg:text-5xl">
+                      {selected.name}
+                    </h2>
+                    <p className="font-data mt-2 text-xs uppercase tracking-[0.25em] text-cyan-500/70">
+                      Classified engagement dossier
+                    </p>
+                  </div>
 
-        <div className="flex gap-6 border-t border-slate-800/80 pt-3">
-          <div>
-            <p className="font-data text-[9px] uppercase tracking-wider text-slate-600">Total encounters</p>
-            <p className="font-data mt-0.5 text-sm font-semibold tabular-nums text-slate-200">
-              {boss.encounters}
-            </p>
+                  <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                    <div className="rounded-2xl border border-cyan-500/20 bg-slate-900/50 p-6 shadow-[0_0_40px_rgba(34,211,238,0.08),inset_0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-cyan-500/10">
+                      <div className="mb-4 flex items-center gap-2">
+                        <Timer className="h-5 w-5 text-cyan-300" strokeWidth={1.25} aria-hidden />
+                        <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200/90">
+                          Average lifespan
+                        </h3>
+                      </div>
+                      <p className="font-data text-[10px] uppercase tracking-wider text-slate-500">
+                        Mean survival time · aggregated users
+                      </p>
+                      <p
+                        className="mt-4 font-data text-4xl font-bold tabular-nums tracking-tight text-cyan-100 md:text-5xl lg:text-6xl"
+                        style={{ textShadow: '0 0 32px rgba(34, 211, 238, 0.35)' }}
+                      >
+                        {avgLabel}
+                      </p>
+                      <p className="font-data mt-2 text-xs tabular-nums text-slate-500">
+                        {avgSec > 0 ? `${secondsToMinutes(avgSec)} min mean` : '—'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 md:flex-col md:items-stretch md:px-5 md:py-4">
+                      <div className="flex items-center gap-2 text-slate-500">
+                        <Users className="h-4 w-4 shrink-0 text-cyan-500/80" strokeWidth={1.25} aria-hidden />
+                        <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                          Observed
+                        </span>
+                      </div>
+                      <p className="font-data text-2xl font-bold tabular-nums text-white md:text-3xl">
+                        {totalEncounters}
+                      </p>
+                      <p className="font-data text-[10px] uppercase tracking-wider text-slate-600">
+                        Total encounters
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="min-h-0 flex-1 rounded-2xl border border-slate-800/90 bg-slate-950/35 p-4 backdrop-blur-sm md:p-5">
+                    <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                      <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">
+                        Lifespan per run / user
+                      </h3>
+                      <span className="font-data text-[10px] text-slate-500">Minutes · discrete samples</span>
+                    </div>
+                    <div className="h-[280px] w-full min-w-0 md:h-[300px]">
+                      {detailSeries.length === 0 ? (
+                        <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800">
+                          <p className="font-data text-sm text-slate-500">No duration samples.</p>
+                        </div>
+                      ) : (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={detailSeries} margin={{ top: 8, right: 8, left: 4, bottom: 8 }}>
+                            <defs>
+                              <linearGradient id="bossBarGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.95} />
+                                <stop offset="100%" stopColor="#6366f1" stopOpacity={0.85} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 6"
+                              stroke="#334155"
+                              strokeOpacity={0.55}
+                              vertical={false}
+                            />
+                            <XAxis
+                              dataKey="label"
+                              tick={{ fill: '#cbd5e1', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
+                              axisLine={{ stroke: '#475569' }}
+                              tickLine={{ stroke: '#475569' }}
+                            />
+                            <YAxis
+                              tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
+                              axisLine={{ stroke: '#475569' }}
+                              tickLine={{ stroke: '#475569' }}
+                              label={{
+                                value: 'Minutes',
+                                angle: -90,
+                                position: 'insideLeft',
+                                fill: '#64748b',
+                                fontSize: 10,
+                                fontFamily: 'JetBrains Mono, monospace',
+                              }}
+                            />
+                            <Tooltip
+                              cursor={{ fill: 'rgba(51, 65, 85, 0.2)' }}
+                              content={({ active, payload }) => {
+                                if (!active || !payload?.length) return null;
+                                const row = payload[0].payload;
+                                return (
+                                  <div className="rounded-lg border border-cyan-900/50 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
+                                    <p className="font-data text-[10px] font-semibold uppercase tracking-wider text-cyan-400/90">
+                                      Sample {row.label}
+                                    </p>
+                                    <p className="font-data mt-1 tabular-nums text-sm text-white">
+                                      {row.raw} · {formatSecondsAsHMS(row.seconds)}
+                                    </p>
+                                  </div>
+                                );
+                              }}
+                            />
+                            <Bar
+                              dataKey="minutes"
+                              name="Lifespan"
+                              fill="url(#bossBarGrad)"
+                              radius={[6, 6, 0, 0]}
+                              maxBarSize={48}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-          <div>
-            <p className="font-data text-[9px] uppercase tracking-wider text-slate-600">Win rate</p>
-            <p className="font-data mt-0.5 text-sm font-semibold tabular-nums text-slate-200">
-              {boss.winRatePct}%
-            </p>
-          </div>
-        </div>
+        </section>
       </div>
-    </motion.article>
+    </div>
   );
 }

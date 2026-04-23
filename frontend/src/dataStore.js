@@ -62,9 +62,25 @@ export const initialData = {
       { id: 2, name: 'Iron Sword', popularity: 40, impact: 'Medium' },
       { id: 3, name: 'Shield', popularity: 62, impact: 'Medium' },
     ],
+    /**
+     * Boss intel. Core fields: id, name, lifespan, status.
+     * Optional lifespansByUser: per-user/run fight durations (same time format as lifespan) for BOSSES analytics chart.
+     */
     bosses: [
-      { id: 1, name: 'Malenia', lifespan: '05:20', status: 'Defeated' },
-      { id: 2, name: 'Radahn', lifespan: '02:15', status: 'Alive' },
+      {
+        id: 1,
+        name: 'Malenia',
+        lifespan: '05:20',
+        status: 'Defeated',
+        lifespansByUser: ['04:48', '05:55', '05:20', '06:02', '04:31'],
+      },
+      {
+        id: 2,
+        name: 'Radahn',
+        lifespan: '02:15',
+        status: 'Alive',
+        lifespansByUser: ['01:50', '02:15', '02:40', '01:58', '02:22', '01:44'],
+      },
     ],
     runsHistory: [
       { id: 'RUN-001', date: '2024-05-18', duration: '00:28:00' },
