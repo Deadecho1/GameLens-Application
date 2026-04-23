@@ -13,7 +13,7 @@ const SUB_TABS = [
  * ANALYTICS — secondary nav + sub-views. Writes ui.analyticsSubTab.
  * GENERAL: dashboard.runsHistory, dashboard.bosses, dashboard.items.
  * BOSSES: dashboard.bosses + runsHistory + dashboard.items (gear correlations).
- * ITEMS: dashboard.items — Item Power Lab sandbox.
+ * ITEMS: dashboard.items + runsHistory — run duration / survival simulator.
  */
 export default function AnalyticsTab({ data, onPatch }) {
   const sub = data.ui.analyticsSubTab;

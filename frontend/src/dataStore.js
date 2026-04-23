@@ -59,7 +59,8 @@ export const initialData = {
    */
   dashboard: {
     /**
-     * Item catalog. category / logicTag / rarity / avgPossessionMinutes used by Item Power Lab + BOSSES.
+     * Item catalog. category for filters; rarity / avgPossessionMinutes for other views; run-duration stats
+     * on ITEMS tab come from runsHistory loadouts.
      */
     items: [
       { id: 1, name: 'Power Potion', popularity: 85, impact: 'High', category: 'utility', logicTag: 'Burst sustain', rarity: 'Legendary', avgPossessionMinutes: 18 },
