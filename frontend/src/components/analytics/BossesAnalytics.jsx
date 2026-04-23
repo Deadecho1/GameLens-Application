@@ -378,12 +378,7 @@ export default function BossesAnalytics({ data }) {
         <h3 className="mt-2 font-display text-xl font-bold text-slate-100 md:text-2xl">
           Tactical command · master detail
         </h3>
-        <p className="font-data mt-2 text-sm text-slate-500">
-          Global aggregates from{' '}
-          <code className="text-cyan-600/90">dashboard.bosses</code>,{' '}
-          <code className="text-cyan-600/90">dashboard.runsHistory</code>, and{' '}
-          <code className="text-cyan-600/90">dashboard.items</code>
-        </p>
+
       </header>
 
       <div className="flex min-h-[min(640px,75vh)] flex-col gap-4 lg:flex-row lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-800/90 lg:bg-slate-950/40 lg:shadow-[inset_0_1px_0_rgba(34,211,238,0.06)]">
@@ -741,7 +736,7 @@ export default function BossesAnalytics({ data }) {
                               {'Synergy Lab: Item Impact Simulator'}
                             </h3>
                             <p className="font-data mt-1 text-[10px] text-slate-500">
-                              Scalable armory · mock projection · max 3 equipped
+                              Scalable armory · max 3 equipped
                             </p>
                           </div>
                         </div>

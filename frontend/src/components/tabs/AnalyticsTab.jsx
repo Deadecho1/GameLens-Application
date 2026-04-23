@@ -32,9 +32,7 @@ export default function AnalyticsTab({ data, onPatch }) {
         <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
           Analytics deck
         </h2>
-        <p className="font-data mt-2 text-sm text-slate-500">
-          Sub-tabs sync to <code className="text-cyan-700/90">ui.analyticsSubTab</code>
-        </p>
+
       </header>
 
       <nav

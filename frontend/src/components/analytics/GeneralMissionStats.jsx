@@ -95,11 +95,7 @@ export default function GeneralMissionStats({ data }) {
         <h3 className="mt-2 font-display text-xl font-bold text-slate-100 md:text-2xl">
           Run command deck
         </h3>
-        <p className="font-data mt-2 text-sm text-slate-500">
-          Metrics from <code className="text-cyan-700/90">runsHistory</code>,{' '}
-          <code className="text-cyan-700/90">bosses</code>, and{' '}
-          <code className="text-cyan-700/90">items</code>
-        </p>
+
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
