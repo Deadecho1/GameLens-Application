@@ -250,7 +250,7 @@ export default function ItemsPowerLab({ data }) {
           Run duration lab
         </h3>
         <p className="font-data mt-2 text-sm text-slate-500">
-          Global baseline from <code className="text-slate-400">dashboard.runsHistory</code> · build estimate
+          build estimate
           from per-item run averages in history
         </p>
       </header>
