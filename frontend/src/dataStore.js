@@ -59,22 +59,21 @@ export const initialData = {
    */
   dashboard: {
     /**
-     * Item catalog. category: offensive | defensive | utility (Synergy Lab filters).
-     * logicTag: short combat label for UI tooltips.
+     * Item catalog. category / logicTag / rarity / avgPossessionMinutes used by Item Power Lab + BOSSES.
      */
     items: [
-      { id: 1, name: 'Power Potion', popularity: 85, impact: 'High', category: 'utility', logicTag: 'Burst sustain' },
-      { id: 2, name: 'Fire Sword', popularity: 40, impact: 'Medium', category: 'offensive', logicTag: 'High damage' },
-      { id: 3, name: 'Tower Shield', popularity: 62, impact: 'Medium', category: 'defensive', logicTag: 'Block stability' },
-      { id: 4, name: 'Frost Dagger', popularity: 55, impact: 'Medium', category: 'offensive', logicTag: 'Slow procs' },
-      { id: 5, name: 'Arcane Focus', popularity: 48, impact: 'High', category: 'utility', logicTag: 'Spell amp' },
-      { id: 6, name: 'Heavy Plate', popularity: 71, impact: 'High', category: 'defensive', logicTag: 'Damage soak' },
-      { id: 7, name: 'Venom Flask', popularity: 33, impact: 'Medium', category: 'offensive', logicTag: 'DoT pressure' },
-      { id: 8, name: 'Healing Draught', popularity: 90, impact: 'High', category: 'utility', logicTag: 'Recovery' },
-      { id: 9, name: 'Thunder Mallet', popularity: 28, impact: 'Medium', category: 'offensive', logicTag: 'Stagger' },
-      { id: 10, name: 'Void Charm', popularity: 52, impact: 'Low', category: 'utility', logicTag: 'Resource regen' },
-      { id: 11, name: 'Buckler', popularity: 44, impact: 'Medium', category: 'defensive', logicTag: 'Parry window' },
-      { id: 12, name: 'Explosive Seed', popularity: 22, impact: 'Low', category: 'offensive', logicTag: 'AoE chip' },
+      { id: 1, name: 'Power Potion', popularity: 85, impact: 'High', category: 'utility', logicTag: 'Burst sustain', rarity: 'Legendary', avgPossessionMinutes: 18 },
+      { id: 2, name: 'Fire Sword', popularity: 40, impact: 'Medium', category: 'offensive', logicTag: 'High damage', rarity: 'Rare', avgPossessionMinutes: 42 },
+      { id: 3, name: 'Tower Shield', popularity: 62, impact: 'Medium', category: 'defensive', logicTag: 'Block stability', rarity: 'Rare', avgPossessionMinutes: 55 },
+      { id: 4, name: 'Frost Dagger', popularity: 55, impact: 'Medium', category: 'offensive', logicTag: 'Slow procs', rarity: 'Rare', avgPossessionMinutes: 38 },
+      { id: 5, name: 'Arcane Focus', popularity: 48, impact: 'High', category: 'utility', logicTag: 'Spell amp', rarity: 'Rare', avgPossessionMinutes: 33 },
+      { id: 6, name: 'Heavy Plate', popularity: 71, impact: 'High', category: 'defensive', logicTag: 'Damage soak', rarity: 'Legendary', avgPossessionMinutes: 62 },
+      { id: 7, name: 'Venom Flask', popularity: 33, impact: 'Medium', category: 'offensive', logicTag: 'DoT pressure', rarity: 'Common', avgPossessionMinutes: 24 },
+      { id: 8, name: 'Healing Draught', popularity: 90, impact: 'High', category: 'utility', logicTag: 'Recovery', rarity: 'Legendary', avgPossessionMinutes: 14 },
+      { id: 9, name: 'Thunder Mallet', popularity: 28, impact: 'Medium', category: 'offensive', logicTag: 'Stagger', rarity: 'Common', avgPossessionMinutes: 48 },
+      { id: 10, name: 'Void Charm', popularity: 52, impact: 'Low', category: 'utility', logicTag: 'Resource regen', rarity: 'Rare', avgPossessionMinutes: 29 },
+      { id: 11, name: 'Buckler', popularity: 44, impact: 'Medium', category: 'defensive', logicTag: 'Parry window', rarity: 'Common', avgPossessionMinutes: 51 },
+      { id: 12, name: 'Explosive Seed', popularity: 22, impact: 'Low', category: 'offensive', logicTag: 'AoE chip', rarity: 'Common', avgPossessionMinutes: 19 },
     ],
     /**
      * Boss catalog. globalLifespanSamples: merged with bossEncounters for lifespan stats.

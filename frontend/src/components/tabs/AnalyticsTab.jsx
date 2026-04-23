@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { LayoutGrid, Package } from 'lucide-react';
 import GeneralMissionStats from '../analytics/GeneralMissionStats';
 import BossesAnalytics from '../analytics/BossesAnalytics';
+import ItemsPowerLab from '../analytics/ItemsPowerLab';
 
 const SUB_TABS = [
   { id: 'general', label: 'GENERAL' },
@@ -13,6 +13,7 @@ const SUB_TABS = [
  * ANALYTICS — secondary nav + sub-views. Writes ui.analyticsSubTab.
  * GENERAL: dashboard.runsHistory, dashboard.bosses, dashboard.items.
  * BOSSES: dashboard.bosses + runsHistory + dashboard.items (gear correlations).
+ * ITEMS: dashboard.items — Item Power Lab sandbox.
  */
 export default function AnalyticsTab({ data, onPatch }) {
   const sub = data.ui.analyticsSubTab;
@@ -41,6 +42,7 @@ export default function AnalyticsTab({ data, onPatch }) {
       >
         {SUB_TABS.map((t) => {
           const active = sub === t.id;
+          const itemsTab = t.id === 'items';
           return (
             <button
               key={t.id}
@@ -49,7 +51,9 @@ export default function AnalyticsTab({ data, onPatch }) {
               aria-selected={active}
               className={`relative flex-1 rounded-lg px-4 py-2.5 font-display text-[10px] font-bold tracking-[0.2em] transition sm:flex-none sm:min-w-[100px] ${
                 active
-                  ? 'bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/35'
+                  ? itemsTab
+                    ? 'bg-violet-500/15 text-violet-200 ring-1 ring-violet-500/40'
+                    : 'bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/35'
                   : 'text-slate-500 hover:bg-slate-900/60 hover:text-slate-300'
               }`}
               onClick={() =>
@@ -74,32 +78,8 @@ export default function AnalyticsTab({ data, onPatch }) {
 
         {sub === 'bosses' && <BossesAnalytics data={data} />}
 
-        {sub === 'items' && (
-          <PlaceholderPanel
-            icon={Package}
-            title="Items"
-            hint="Next: dashboard.items[] — popularity, impact, and drop analytics."
-          />
-        )}
+        {sub === 'items' && <ItemsPowerLab data={data} />}
       </motion.div>
     </motion.div>
-  );
-}
-
-function PlaceholderPanel({ icon: Icon, title, hint }) {
-  return (
-    <div className="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/30 p-10 text-center backdrop-blur-md">
-      <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl border border-slate-800 bg-slate-950/60 text-slate-500">
-        <Icon className="h-7 w-7" />
-      </div>
-      <h3 className="font-display text-lg font-bold uppercase tracking-widest text-slate-400">
-        {title}
-      </h3>
-      <p className="font-data mt-3 max-w-md text-sm text-slate-500">{hint}</p>
-      <div className="mt-6 flex items-center gap-2 text-slate-600">
-        <LayoutGrid className="h-4 w-4" />
-        <span className="font-data text-xs">Coming soon</span>
-      </div>
-    </div>
   );
 }
