@@ -60,7 +60,26 @@ export const initialData = {
       totalItemsFound: 154,
       /** Latest finished pipeline succeeded (BACKEND: set from last job result) */
       lastRunSuccessful: true,
+      /**
+       * GENERAL briefing — mock pipeline efficiency (0–100).
+       * BACKEND: replace with model-derived score.
+       */
+      efficiencyScore: 94,
+      /**
+       * GENERAL briefing — human-readable fleet health (e.g. Optimized | Degraded).
+       * BACKEND: derive from SLO checks.
+       */
+      systemHealthLabel: 'Optimized',
     },
+    /**
+     * Action-type mix for GENERAL briefing chart (percentages should sum ~100).
+     * BACKEND: aggregate from event classifier.
+     */
+    actionTypeDistribution: [
+      { name: 'Combat', value: 60, fill: '#22d3ee' },
+      { name: 'Exploration', value: 30, fill: '#3b82f6' },
+      { name: 'Menu', value: 10, fill: '#818cf8' },
+    ],
     items: [
       { id: 1, name: 'Health Potion', popularity: 85, impact: 'High' },
       { id: 2, name: 'Iron Sword', popularity: 40, impact: 'Medium' },

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useId } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -7,294 +7,325 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import { motion } from 'framer-motion';
-import { Radar, Trophy, Timer, Activity, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Activity, Clock, TrendingUp, Layers } from 'lucide-react';
 import { useCountUp } from '../../hooks/useCountUp';
 import { durationToSeconds, secondsToMinutes, formatSecondsAsHMS } from '../../utils/duration';
 
 /**
- * GENERAL sub-tab — Command Center grid + Run Duration History chart.
- * Data: dashboard.stats, dashboard.runsHistory, processing.status (live), dashboard.stats.lastRunSuccessful.
+ * GENERAL — System Mission Briefing.
+ * Total time = sum(dashboard.runsHistory[].duration); counts & scores from dashboard.stats;
+ * distribution from dashboard.actionTypeDistribution.
  */
 export default function GeneralMissionStats({ data }) {
-  const { stats, runsHistory } = data.dashboard;
-  const { processing } = data;
+  const svgIds = useId().replace(/:/g, '');
+  const areaFillId = `${svgIds}-area-fill`;
+  const areaGlowId = `${svgIds}-area-glow`;
 
-  const totalRunsAnimated = useCountUp(stats.totalRuns, 1500);
+  const { stats, runsHistory, actionTypeDistribution } = data.dashboard;
+
+  const totalSecondsFromHistory = useMemo(
+    () => runsHistory.reduce((acc, run) => acc + durationToSeconds(run.duration), 0),
+    [runsHistory]
+  );
+
+  const totalTimeAnimated = useCountUp(totalSecondsFromHistory, 1800);
+  const analysisCountAnimated = useCountUp(stats.totalRuns, 1400);
+  const efficiencyAnimated = useCountUp(stats.efficiencyScore, 1600);
 
   const chartData = useMemo(
     () =>
       runsHistory.map((run) => ({
-        label: run.id,
-        subtitle: run.date,
+        runId: run.id,
+        date: run.date,
         minutes: secondsToMinutes(durationToSeconds(run.duration)),
         durationRaw: run.duration,
       })),
     [runsHistory]
   );
 
-  const avgSec = durationToSeconds(stats.averageRunTime);
-  const longSec = durationToSeconds(stats.longestRun);
-  const gaugePercent = longSec > 0 ? Math.min(100, Math.round((avgSec / longSec) * 100)) : 0;
-
-  const runStatus = useMemo(() => {
-    if (processing.status === 'running') {
-      return {
-        label: 'Pipeline in progress',
-        tone: 'progress',
-        success: null,
-      };
-    }
-    if (processing.status === 'completed') {
-      return { label: 'Latest run: successful', tone: 'ok', success: true };
-    }
-    if (processing.status === 'stopped') {
-      return { label: 'Latest run: halted', tone: 'bad', success: false };
-    }
-    return {
-      label: stats.lastRunSuccessful ? 'Last run: successful' : 'Last run: failed',
-      tone: stats.lastRunSuccessful ? 'ok' : 'bad',
-      success: stats.lastRunSuccessful,
-    };
-  }, [processing.status, stats.lastRunSuccessful]);
+  const pieData = useMemo(
+    () =>
+      (actionTypeDistribution || []).map((row) => ({
+        name: row.name,
+        value: row.value,
+        fill: row.fill,
+      })),
+    [actionTypeDistribution]
+  );
 
   return (
-    <div className="space-y-6">
-      <p className="font-data text-sm text-slate-500">
-        Command center metrics from{' '}
-        <code className="text-cyan-700/90">dashboard.stats</code> and{' '}
-        <code className="text-cyan-700/90">dashboard.runsHistory</code>.
-      </p>
+    <div className="space-y-8">
+      <header>
+        <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
+          System mission briefing
+        </p>
+        <h3 className="mt-2 font-display text-xl font-bold text-slate-100 md:text-2xl">
+          Command dashboard
+        </h3>
+        <p className="font-data mt-2 text-sm text-slate-500">
+          Aggregate time from <code className="text-cyan-700/90">runsHistory</code> · KPIs from{' '}
+          <code className="text-cyan-700/90">dashboard.stats</code>
+        </p>
+      </header>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Total runs"
-          icon={Radar}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <BriefMetricCard
+          title="Total game time"
+          subtitle="Sum of session durations"
+          icon={Clock}
           accent="cyan"
-          className="sm:col-span-1"
+          hero
         >
           <motion.p
-            className="font-display text-4xl font-black tabular-nums text-cyan-300 [text-shadow:0_0_24px_rgba(34,211,238,0.45)] md:text-5xl"
-            initial={{ opacity: 0.6, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
+            className="font-data text-2xl font-bold tabular-nums tracking-tight text-cyan-200 md:text-3xl"
+            animate={{
+              textShadow: [
+                '0 0 20px rgba(34,211,238,0.35)',
+                '0 0 32px rgba(34,211,238,0.55)',
+                '0 0 20px rgba(34,211,238,0.35)',
+              ],
+            }}
+            transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
           >
-            {totalRunsAnimated}
+            {formatSecondsAsHMS(totalTimeAnimated)}
           </motion.p>
-        </StatCard>
+        </BriefMetricCard>
 
-        <StatCard
-          title="Longest run"
-          icon={Trophy}
-          accent="gold"
-          className="sm:col-span-1"
+        <BriefMetricCard
+          title="Analysis count"
+          subtitle="Total runs recorded"
+          icon={Activity}
+          accent="blue"
         >
-          <p className="font-data text-3xl font-bold tabular-nums text-amber-200 [text-shadow:0_0_20px_rgba(251,191,36,0.35)] md:text-4xl">
-            {stats.longestRun}
+          <p className="font-data text-3xl font-bold tabular-nums text-slate-100 md:text-4xl">
+            {analysisCountAnimated}
           </p>
-          <p className="font-data mt-2 text-[10px] uppercase tracking-wider text-amber-500/60">
-            Gold / cyan highlight
-          </p>
-        </StatCard>
+        </BriefMetricCard>
 
-        <StatCard title="Average run time" icon={Timer} accent="blue" className="sm:col-span-1">
-          <div className="flex flex-col items-center gap-3">
-            <AverageGauge percent={gaugePercent} label={stats.averageRunTime} />
-            <p className="font-data text-center text-[10px] text-slate-500">
-              vs longest ({stats.longestRun}) · gauge = avg / longest
+        <BriefMetricCard
+          title="Efficiency score"
+          subtitle="Model confidence (mock)"
+          icon={TrendingUp}
+          accent="emerald"
+        >
+          <div className="flex items-baseline gap-2">
+            <p className="font-data text-3xl font-bold tabular-nums text-emerald-300 md:text-4xl">
+              {efficiencyAnimated}
             </p>
+            <span className="font-data text-lg font-semibold text-emerald-500/80">%</span>
+            <TrendingUp className="mb-1 ml-1 h-5 w-5 text-emerald-400" aria-hidden />
           </div>
-        </StatCard>
+        </BriefMetricCard>
 
-        <StatCard title="Current run status" icon={Activity} accent="slate" className="sm:col-span-1">
-          <RunStatusBar status={runStatus} />
-        </StatCard>
+        <BriefMetricCard
+          title="System health"
+          subtitle="Fleet posture"
+          icon={Layers}
+          accent="slate"
+        >
+          <p className="font-data text-xl font-bold uppercase tracking-wider text-cyan-200 md:text-2xl">
+            {stats.systemHealthLabel}
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+            <span className="font-data text-[10px] uppercase tracking-wider text-slate-500">
+              Nominal
+            </span>
+          </div>
+        </BriefMetricCard>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4 backdrop-blur-md md:p-6">
-        <div className="mb-4 flex items-center justify-between gap-2">
-          <h3 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-blue-400/90">
-            Run duration history
-          </h3>
-          <span className="font-data text-[10px] text-slate-600">Neon trace · minutes</span>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <div className="rounded-2xl border border-slate-800 bg-transparent p-4 backdrop-blur-md md:p-6">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+              <h4 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-blue-400/90">
+                Session duration trends
+              </h4>
+              <span className="font-data text-[10px] text-slate-600">Run ID · minutes</span>
+            </div>
+            <div className="h-[320px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
+                  <defs>
+                    <linearGradient id={areaFillId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#1d4ed8" stopOpacity={0.55} />
+                      <stop offset="45%" stopColor="#1e3a8a" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#0f172a" stopOpacity={0} />
+                    </linearGradient>
+                    <filter id={areaGlowId} x="-30%" y="-30%" width="160%" height="160%">
+                      <feGaussianBlur stdDeviation="2.5" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 6" stroke="#334155" strokeOpacity={0.6} vertical={false} />
+                  <XAxis
+                    dataKey="runId"
+                    name="Run ID"
+                    tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
+                    axisLine={{ stroke: '#475569' }}
+                    tickLine={{ stroke: '#475569' }}
+                    label={{
+                      value: 'Run ID',
+                      position: 'insideBottom',
+                      offset: -2,
+                      fill: '#64748b',
+                      fontSize: 10,
+                      fontFamily: 'JetBrains Mono, monospace',
+                    }}
+                  />
+                  <YAxis
+                    tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
+                    axisLine={{ stroke: '#475569' }}
+                    tickLine={{ stroke: '#475569' }}
+                    tickFormatter={(v) => `${v}`}
+                    label={{
+                      value: 'Duration (min)',
+                      angle: -90,
+                      position: 'insideLeft',
+                      fill: '#64748b',
+                      fontSize: 10,
+                      fontFamily: 'JetBrains Mono, monospace',
+                    }}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: '#475569', strokeDasharray: '4 4' }}
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const row = payload[0].payload;
+                      const sec = durationToSeconds(row.durationRaw);
+                      return (
+                        <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
+                          <p className="font-data text-xs font-semibold text-cyan-200">{row.runId}</p>
+                          <p className="font-data text-[10px] text-slate-500">{row.date}</p>
+                          <p className="font-data mt-1 text-sm text-slate-200">
+                            Duration:{' '}
+                            <span className="tabular-nums text-blue-300">{row.durationRaw}</span>
+                          </p>
+                          <p className="font-data text-[10px] text-slate-500">
+                            {formatSecondsAsHMS(sec)} · {row.minutes} min
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="minutes"
+                    name="Duration (min)"
+                    stroke="#22d3ee"
+                    strokeWidth={2.5}
+                    fill={`url(#${areaFillId})`}
+                    filter={`url(#${areaGlowId})`}
+                    dot={{ r: 3, fill: '#a5f3fc', stroke: '#0891b2', strokeWidth: 1 }}
+                    activeDot={{ r: 5, fill: '#ecfeff', stroke: '#22d3ee', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
-        <div className="h-[300px] w-full min-w-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-              <defs>
-                <linearGradient id="missionNeonFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.45} />
-                  <stop offset="55%" stopColor="#3b82f6" stopOpacity={0.12} />
-                  <stop offset="100%" stopColor="#1e3a8a" stopOpacity={0} />
-                </linearGradient>
-                <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feMerge>
-                    <feMergeNode in="blur" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-              </defs>
-              <CartesianGrid strokeDasharray="3 6" stroke="#1e293b" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
-                axisLine={{ stroke: '#334155' }}
-                tickLine={{ stroke: '#334155' }}
-              />
-              <YAxis
-                tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
-                axisLine={{ stroke: '#334155' }}
-                tickLine={{ stroke: '#334155' }}
-                tickFormatter={(v) => `${v}m`}
-              />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const row = payload[0].payload;
-                  const sec = durationToSeconds(row.durationRaw);
-                  return (
-                    <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
-                      <p className="font-data text-xs font-semibold text-cyan-200">{row.label}</p>
-                      <p className="font-data text-[10px] text-slate-500">{row.subtitle}</p>
-                      <p className="font-data mt-1 text-sm text-slate-200">
-                        Duration: <span className="text-blue-300">{row.durationRaw}</span> (
-                        {formatSecondsAsHMS(sec)})
-                      </p>
-                    </div>
-                  );
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="minutes"
-                stroke="#38bdf8"
-                strokeWidth={2.5}
-                fill="url(#missionNeonFill)"
-                filter="url(#lineGlow)"
-                dot={{ r: 3, fill: '#7dd3fc', stroke: '#0ea5e9', strokeWidth: 1 }}
-                activeDot={{ r: 5, fill: '#e0f2fe', stroke: '#38bdf8', strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+
+        <div className="rounded-2xl border border-slate-800 bg-transparent p-4 backdrop-blur-md md:p-6">
+          <h4 className="font-display mb-1 text-xs font-bold uppercase tracking-[0.2em] text-blue-400/90">
+            Action type distribution
+          </h4>
+          <p className="font-data mb-4 text-[10px] text-slate-600">Mock mix · dashboard.actionTypeDistribution</p>
+          <div className="h-[280px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={58}
+                  outerRadius={88}
+                  paddingAngle={2}
+                  stroke="none"
+                >
+                  {pieData.map((entry, i) => (
+                    <Cell key={`cell-${entry.name}-${i}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (!active || !payload?.length) return null;
+                    const p = payload[0];
+                    return (
+                      <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 backdrop-blur-md">
+                        <p className="font-data text-xs font-semibold text-slate-200">{p.name}</p>
+                        <p className="font-data tabular-nums text-sm text-cyan-300">{p.value}%</p>
+                      </div>
+                    );
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <ul className="font-data mt-2 space-y-1.5 text-[11px] text-slate-400">
+            {pieData.map((row) => (
+              <li key={row.name} className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.fill }} />
+                  {row.name}
+                </span>
+                <span className="tabular-nums text-slate-300">{row.value}%</span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ title, icon: Icon, children, accent, className = '' }) {
-  const ring =
-    accent === 'gold'
-      ? 'shadow-[inset_0_0_0_1px_rgba(251,191,36,0.15)]'
-      : accent === 'cyan'
-        ? 'shadow-[inset_0_0_0_1px_rgba(34,211,238,0.12)]'
-        : accent === 'blue'
-          ? 'shadow-[inset_0_0_0_1px_rgba(59,130,246,0.12)]'
-          : '';
-  const iconColor =
-    accent === 'gold'
-      ? 'text-amber-400'
-      : accent === 'cyan'
-        ? 'text-cyan-400'
-        : accent === 'blue'
-          ? 'text-blue-400'
-          : 'text-slate-400';
+function BriefMetricCard({ title, subtitle, icon: Icon, children, accent, hero = false, className = '' }) {
+  const ring = {
+    cyan: 'ring-cyan-500/20',
+    blue: 'ring-blue-500/20',
+    emerald: 'ring-emerald-500/20',
+    slate: 'ring-slate-600/30',
+  };
+  const iconCls = {
+    cyan: 'text-cyan-400',
+    blue: 'text-blue-400',
+    emerald: 'text-emerald-400',
+    slate: 'text-slate-400',
+  };
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/35 p-5 backdrop-blur-md ${ring} ${className}`}
+      className={`relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/25 p-5 backdrop-blur-md ring-1 ${ring[accent]} ${className}`}
     >
-      <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-blue-500/5 blur-2xl" />
-      <div className="relative mb-3 flex items-center gap-2">
-        <Icon className={`h-5 w-5 ${iconColor}`} strokeWidth={1.25} />
-        <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
-          {title}
-        </h3>
-      </div>
-      <div className="relative">{children}</div>
-    </div>
-  );
-}
-
-function AverageGauge({ percent, label }) {
-  const r = 52;
-  const c = 2 * Math.PI * r;
-  const offset = c - (percent / 100) * c;
-
-  return (
-    <div className="relative flex h-36 w-36 items-center justify-center">
-      <svg className="h-36 w-36 -rotate-90" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r={r} fill="none" stroke="#1e293b" strokeWidth="10" />
-        <circle
-          cx="60"
-          cy="60"
-          r={r}
-          fill="none"
-          stroke="url(#gaugeGrad)"
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          className="transition-all duration-1000 ease-out"
-          filter="url(#gaugeGlow)"
-        />
-        <defs>
-          <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#22d3ee" />
-            <stop offset="100%" stopColor="#3b82f6" />
-          </linearGradient>
-          <filter id="gaugeGlow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="2.5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <p className="font-data text-lg font-bold tabular-nums text-cyan-100">{label}</p>
-        <p className="font-data text-[10px] text-slate-500">{percent}% of longest</p>
-      </div>
-    </div>
-  );
-}
-
-function RunStatusBar({ status }) {
-  const { label, tone, success } = status;
-
-  const barClass =
-    tone === 'progress'
-      ? 'from-cyan-600/40 to-blue-600/30'
-      : tone === 'ok'
-        ? 'from-emerald-600/50 to-cyan-600/30'
-        : 'from-red-600/45 to-amber-600/25';
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        {tone === 'progress' && <Loader2 className="h-5 w-5 animate-spin text-cyan-400" />}
-        {success === true && <CheckCircle2 className="h-5 w-5 text-emerald-400" />}
-        {success === false && <XCircle className="h-5 w-5 text-red-400" />}
-        {success === null && tone !== 'progress' && (
-          <Activity className="h-5 w-5 text-slate-500" />
-        )}
-        <p className="font-data text-sm font-medium text-slate-200">{label}</p>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-900 ring-1 ring-slate-800">
+      {hero && (
         <motion.div
-          className={`h-full rounded-full bg-gradient-to-r ${barClass}`}
-          initial={{ width: '0%' }}
-          animate={{ width: tone === 'progress' ? '72%' : '100%' }}
-          transition={{ duration: 0.9, ease: 'easeOut' }}
+          className="pointer-events-none absolute inset-0 rounded-2xl border border-cyan-500/20"
+          animate={{ opacity: [0.35, 0.65, 0.35] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
         />
+      )}
+      <div className="relative mb-3 flex items-start justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2">
+            <Icon className={`h-5 w-5 ${iconCls[accent]}`} strokeWidth={1.25} />
+            <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+              {title}
+            </h3>
+          </div>
+          <p className="font-data mt-1 text-[10px] text-slate-600">{subtitle}</p>
+        </div>
       </div>
-      <p className="font-data text-[10px] text-slate-600">
-        Live: <code className="text-slate-500">processing.status</code> · Snapshot:{' '}
-        <code className="text-slate-500">dashboard.stats.lastRunSuccessful</code>
-      </p>
+      <div className="relative font-data">{children}</div>
     </div>
   );
 }
