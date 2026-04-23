@@ -111,8 +111,7 @@ export default function WorkflowTab({
           Workflow sequence
         </h2>
         <p className="font-data mt-2 text-sm text-slate-500">
-          Step <span className="text-cyan-400">{step}</span> of 3 · synced to{' '}
-          <code className="rounded bg-slate-900 px-1 text-cyan-700/90">ui.workflowStep</code>
+          Step <span className="text-cyan-400">{step}</span> of 3 {' '}
         </p>
       </header>
 
@@ -175,7 +174,7 @@ export default function WorkflowTab({
             <div className="grid gap-6 md:grid-cols-2">
               <SelectionCard
                 icon={Gamepad2}
-                kicker="Mission"
+                kicker="Game"
                 value={setup.selectedGame}
                 onChange={() => onPatch({ ui: { ...ui, changePicker: 'game' } })}
                 onAdd={onAddGame}
@@ -183,7 +182,7 @@ export default function WorkflowTab({
               />
               <SelectionCard
                 icon={GitBranch}
-                kicker="Build"
+                kicker="version"
                 value={setup.selectedVersion}
                 onChange={() => onPatch({ ui: { ...ui, changePicker: 'version' } })}
                 onAdd={onAddVersion}
@@ -266,9 +265,7 @@ export default function WorkflowTab({
                 <p className="font-display mt-4 text-sm font-bold uppercase tracking-wider text-slate-200">
                   Drop video clip
                 </p>
-                <p className="font-data mt-2 text-xs text-slate-500">
-                  Writes to <code className="text-cyan-700/80">processing.videoFiles</code>
-                </p>
+               { /*  Writes to processing.videoFiles*/}
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <button
@@ -277,7 +274,7 @@ export default function WorkflowTab({
                   onClick={onChooseFolder}
                 >
                   <FolderOpen className="h-4 w-4" />
-                  Pipeline path (mock)
+                  Pipeline path 
                 </button>
                 <code className="font-data max-w-full flex-1 truncate rounded-lg border border-slate-800 bg-black/50 px-3 py-2 text-[11px] text-cyan-600/80">
                   {processing.pipelinePath}
@@ -323,7 +320,7 @@ export default function WorkflowTab({
                 ))}
               </div>
               <p className="font-data mt-6 text-xs text-slate-600">
-                Mission: <span className="text-cyan-500/80">{setup.selectedGame}</span> · Build:{' '}
+                Game: <span className="text-cyan-500/80">{setup.selectedGame}</span> · Version:{' '}
                 <span className="text-blue-400/80">{setup.selectedVersion}</span>
               </p>
               <div className="mt-auto flex flex-col gap-3 pt-8">

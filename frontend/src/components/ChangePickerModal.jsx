@@ -10,7 +10,7 @@ export default function ChangePickerModal({ data, onPatch }) {
   const open = kind === 'game' || kind === 'version';
 
   const items = kind === 'game' ? setup.games : kind === 'version' ? setup.versions : [];
-  const title = kind === 'game' ? 'Select mission' : kind === 'version' ? 'Select build' : '';
+  const title = kind === 'game' ? 'Select game' : kind === 'version' ? 'Select version' : '';
 
   const select = (value) => {
     if (kind === 'game') {

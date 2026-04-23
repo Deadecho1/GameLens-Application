@@ -30,6 +30,11 @@ export const initialData = {
     addVersionModalOpen: false,
     newGameNameDraft: '',
     newVersionNameDraft: '',
+    /**
+     * Analytics deck sub-view: 'general' | 'bosses' | 'items'
+     * BACKEND: optional; omit when syncing API payloads.
+     */
+    analyticsSubTab: 'general',
   },
 
   setup: {
@@ -53,6 +58,8 @@ export const initialData = {
       averageRunTime: '00:42:15',
       longestRun: '01:15:30',
       totalItemsFound: 154,
+      /** Latest finished pipeline succeeded (BACKEND: set from last job result) */
+      lastRunSuccessful: true,
     },
     items: [
       { id: 1, name: 'Health Potion', popularity: 85, impact: 'High' },
@@ -64,8 +71,12 @@ export const initialData = {
       { id: 2, name: 'Radahn', lifespan: '02:15', status: 'Alive' },
     ],
     runsHistory: [
-      { id: 'RUN-001', date: '2024-05-20', duration: '00:30:00' },
-      { id: 'RUN-002', date: '2024-05-21', duration: '01:10:00' },
+      { id: 'RUN-001', date: '2024-05-18', duration: '00:28:00' },
+      { id: 'RUN-002', date: '2024-05-19', duration: '00:45:30' },
+      { id: 'RUN-003', date: '2024-05-20', duration: '00:30:00' },
+      { id: 'RUN-004', date: '2024-05-20', duration: '00:52:10' },
+      { id: 'RUN-005', date: '2024-05-21', duration: '01:10:00' },
+      { id: 'RUN-006', date: '2024-05-22', duration: '00:38:45' },
     ],
   },
 };

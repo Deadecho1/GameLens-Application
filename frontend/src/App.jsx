@@ -194,7 +194,9 @@ function App() {
                 onClearLogs={handleClearLogs}
               />
             )}
-            {tab === 'analytics' && <AnalyticsTab key="analytics" data={data} />}
+            {tab === 'analytics' && (
+              <AnalyticsTab key="analytics" data={data} onPatch={mergePatch} />
+            )}
           </AnimatePresence>
         </div>
 
@@ -202,7 +204,7 @@ function App() {
 
         <AddItemModal
           open={data.ui.addGameModalOpen}
-          title="Register mission"
+          title="Register game"
           draftValue={data.ui.newGameNameDraft}
           onDraftChange={(v) =>
             setData((prev) => ({ ...prev, ui: { ...prev.ui, newGameNameDraft: v } }))
@@ -215,7 +217,7 @@ function App() {
         />
         <AddItemModal
           open={data.ui.addVersionModalOpen}
-          title="Register build"
+          title="Register Version"
           draftValue={data.ui.newVersionNameDraft}
           onDraftChange={(v) =>
             setData((prev) => ({ ...prev, ui: { ...prev.ui, newVersionNameDraft: v } }))
