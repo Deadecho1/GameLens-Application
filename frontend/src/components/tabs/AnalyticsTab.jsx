@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
-import { LayoutGrid, Swords, Package } from 'lucide-react';
+import { LayoutGrid, Package } from 'lucide-react';
 import GeneralMissionStats from '../analytics/GeneralMissionStats';
+import BossesAnalytics from '../analytics/BossesAnalytics';
 
 const SUB_TABS = [
   { id: 'general', label: 'GENERAL' },
@@ -11,6 +12,7 @@ const SUB_TABS = [
 /**
  * ANALYTICS — secondary nav + sub-views. Writes ui.analyticsSubTab.
  * GENERAL: dashboard.runsHistory, dashboard.bosses, dashboard.items.
+ * BOSSES: dashboard.bosses (name, lifespan, status).
  */
 export default function AnalyticsTab({ data, onPatch }) {
   const sub = data.ui.analyticsSubTab;
@@ -72,13 +74,7 @@ export default function AnalyticsTab({ data, onPatch }) {
       >
         {sub === 'general' && <GeneralMissionStats data={data} />}
 
-        {sub === 'bosses' && (
-          <PlaceholderPanel
-            icon={Swords}
-            title="Bosses"
-            hint="Next: dashboard.bosses[] — tactical breakdown and timelines."
-          />
-        )}
+        {sub === 'bosses' && <BossesAnalytics data={data} />}
 
         {sub === 'items' && (
           <PlaceholderPanel
