@@ -84,33 +84,32 @@ function App() {
   const mergePatch = useCallback(
     async (patch) => {
       try {
-        if (patch.ui) {
-          const state = await ipcRequest("ui:patch", patch.ui);
-          setData(state);
-          return;
-        }
+        let latestState = null;
 
         if (patch.setup?.selectedGame) {
-          const state = await ipcRequest("setup:select_game", {
+          latestState = await ipcRequest("setup:select_game", {
             game: patch.setup.selectedGame,
           });
-          setData(state);
-          return;
         }
 
         if (patch.setup?.selectedVersion) {
-          const state = await ipcRequest("setup:select_version", {
+          latestState = await ipcRequest("setup:select_version", {
             version: patch.setup.selectedVersion,
           });
-          setData(state);
-          return;
         }
 
         if (patch.processing?.selectedOption) {
-          const state = await ipcRequest("processing:set_option", {
+          latestState = await ipcRequest("processing:set_option", {
             option: patch.processing.selectedOption,
           });
-          setData(state);
+        }
+
+        if (patch.ui) {
+          latestState = await ipcRequest("ui:patch", patch.ui);
+        }
+
+        if (latestState) {
+          setData(latestState);
           return;
         }
 
@@ -284,12 +283,13 @@ function App() {
           open={data.ui.addGameModalOpen}
           title="Register game"
           draftValue={data.ui.newGameNameDraft}
-          onDraftChange={(v) =>
+          onDraftChange={(v) => {
             setData((prev) => ({
               ...prev,
               ui: { ...prev.ui, newGameNameDraft: v },
-            }))
-          }
+            }));
+            mergePatch({ ui: { newGameNameDraft: v } });
+          }}
           onClose={() =>
             mergePatch({ ui: { ...data.ui, addGameModalOpen: false } })
           }
@@ -300,12 +300,13 @@ function App() {
           open={data.ui.addVersionModalOpen}
           title="Register Version"
           draftValue={data.ui.newVersionNameDraft}
-          onDraftChange={(v) =>
+          onDraftChange={(v) => {
             setData((prev) => ({
               ...prev,
               ui: { ...prev.ui, newVersionNameDraft: v },
-            }))
-          }
+            }));
+            mergePatch({ ui: { newVersionNameDraft: v } });
+          }}
           onClose={() =>
             mergePatch({ ui: { ...data.ui, addVersionModalOpen: false } })
           }
