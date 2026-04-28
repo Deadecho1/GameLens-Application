@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+from datetime import date
+from pathlib import Path
+
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QComboBox,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QInputDialog,
     QLabel,
     QMainWindow,
@@ -16,11 +21,12 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
-    QHeaderView,
 )
 
-from app_core.formatting import format_seconds
 from app_core.analytics import AnalyticsService
+from app_core.formatting import format_seconds
+from app_core.models import DashboardStats, GameInfo, RunSummary, VersionInfo
+
 from .config import (
     APP_NAME,
     DEFAULT_WINDOW_HEIGHT,
@@ -28,7 +34,8 @@ from .config import (
     MAX_FONT_SIZE,
     MIN_FONT_SIZE,
 )
-from app_core.models import DashboardStats, GameInfo, RunSummary, VersionInfo
+from .models import PipelineConfig
+from .pipeline_runner import PipelineRunner
 from .process_clips_dialog import ProcessClipsDialog
 from .protocols import AnalyticsReader, GameRepo
 from .repository import GameRepository
@@ -47,15 +54,36 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self.resize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)
 
         from .config import GAMES_ROOT
+
         self._repo: GameRepo = repo or GameRepository(root_dir=GAMES_ROOT)
         self._analytics: AnalyticsReader = analytics or AnalyticsService()
         self._games: list[GameInfo] = []
         self._versions: list[VersionInfo] = []
         self._current_runs: list[RunSummary] = []
+        self._ipc_ui_state: dict = {
+            "activeMainTab": "workflow",
+            "workflowStep": 1,
+            "completionCelebrationActive": False,
+            "changePicker": None,
+            "addGameModalOpen": False,
+            "addVersionModalOpen": False,
+            "newGameNameDraft": "",
+            "newVersionNameDraft": "",
+            "analyticsSubTab": "general",
+        }
+        self._processing_state: dict = {
+            "pipelinePath": "",
+            "videoFiles": [],
+            "selectedOption": "only event",
+            "status": "idle",
+            "logs": ["[INFO] System ready..."],
+        }
+        self._pipeline_runner = PipelineRunner()
 
         self._setup_font_timer()
         self._build_ui()
         self._connect_signals()
+        self._connect_pipeline_signals()
         self._load_games()
         self._apply_responsive_fonts()
 
@@ -101,10 +129,18 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self.max_duration_value = QLabel("0s")
         self.popular_item_value = QLabel("—")
 
-        dashboard_layout.addWidget(self._make_stat_card("Runs", self.total_runs_value), 0, 0)
-        dashboard_layout.addWidget(self._make_stat_card("Average Duration", self.avg_duration_value), 0, 1)
-        dashboard_layout.addWidget(self._make_stat_card("Longest Run", self.max_duration_value), 0, 2)
-        dashboard_layout.addWidget(self._make_stat_card("Most Popular Item", self.popular_item_value), 0, 3)
+        dashboard_layout.addWidget(
+            self._make_stat_card("Runs", self.total_runs_value), 0, 0
+        )
+        dashboard_layout.addWidget(
+            self._make_stat_card("Average Duration", self.avg_duration_value), 0, 1
+        )
+        dashboard_layout.addWidget(
+            self._make_stat_card("Longest Run", self.max_duration_value), 0, 2
+        )
+        dashboard_layout.addWidget(
+            self._make_stat_card("Most Popular Item", self.popular_item_value), 0, 3
+        )
 
         # Runs table
         runs_group = QGroupBox("Runs")
@@ -113,14 +149,18 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self.runs_table = QTableWidget(0, 2)
         self.runs_table.setHorizontalHeaderLabels(["Run ID", "Duration"])
         self.runs_table.verticalHeader().setVisible(False)
-        self.runs_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.runs_table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.runs_table.setSelectionMode(QTableWidget.SingleSelection)
+        self.runs_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.runs_table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.runs_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
         self.runs_table.setAlternatingRowColors(True)
 
         header = self.runs_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setStretchLastSection(False)
 
         runs_layout.addWidget(self.runs_table)
@@ -132,7 +172,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
     def _make_stat_card(self, title: str, value_label: QLabel) -> QGroupBox:
         box = QGroupBox(title)
         layout = QVBoxLayout(box)
-        value_label.setAlignment(Qt.AlignCenter)
+        value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(value_label)
         return box
 
@@ -143,6 +183,11 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self.add_version_button.clicked.connect(self._add_version)
         self.process_button.clicked.connect(self._open_process_dialog)
         self.runs_table.cellDoubleClicked.connect(self._on_run_double_clicked)
+
+    def _connect_pipeline_signals(self) -> None:
+        self._pipeline_runner.log_message.connect(self._on_pipeline_log)
+        self._pipeline_runner.stage_changed.connect(self._on_pipeline_stage_changed)
+        self._pipeline_runner.pipeline_finished.connect(self._on_pipeline_finished)
 
     def _load_games(self) -> None:
         current_game = self.game_combo.currentText().strip()
@@ -164,6 +209,86 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             current_version,
         )
         self._refresh_dashboard()
+
+    def _format_mm_ss(self, seconds: float) -> str:
+        total = max(0, int(round(seconds)))
+        minutes, sec = divmod(total, 60)
+        return f"{minutes:02d}:{sec:02d}"
+
+    def _build_dashboard_payload(self, version: VersionInfo | None) -> dict:
+        if version is None:
+            return {"items": [], "bosses": [], "runsHistory": []}
+
+        runs = self._analytics.load_run_summaries(version)
+
+        item_counter: dict[str, int] = {}
+        for run in runs:
+            for item in run.selected_items:
+                cleaned = item.strip() or "Unknown"
+                item_counter[cleaned] = item_counter.get(cleaned, 0) + 1
+
+        items = []
+        sorted_items = sorted(item_counter.items(), key=lambda x: x[1], reverse=True)
+        max_count = sorted_items[0][1] if sorted_items else 1
+        for index, (name, count) in enumerate(sorted_items, start=1):
+            popularity = int(round((count / max_count) * 100)) if max_count > 0 else 0
+            items.append(
+                {
+                    "id": index,
+                    "name": name,
+                    "popularity": popularity,
+                    "impact": "Medium",
+                    "category": "utility",
+                    "logicTag": "Detected from run choices",
+                    "rarity": "Common",
+                    "avgPossessionMinutes": 0,
+                }
+            )
+
+        item_id_by_name = {item["name"]: item["id"] for item in items}
+        runs_history = []
+        for idx, run in enumerate(runs, start=1):
+            loadout = [
+                item_id_by_name[name]
+                for name in run.selected_items
+                if name in item_id_by_name
+            ][:3]
+            runs_history.append(
+                {
+                    "id": f"RUN-{idx:03d}",
+                    "date": str(date.today()),
+                    "duration": self._format_mm_ss(run.duration_seconds),
+                    "bossEncounters": [
+                        {
+                            "bossId": 1,
+                            "lifespan": self._format_mm_ss(run.duration_seconds),
+                            "loadout": loadout,
+                        }
+                    ]
+                    if items
+                    else [],
+                }
+            )
+
+        bosses = []
+        if runs_history:
+            bosses.append(
+                {
+                    "id": 1,
+                    "name": "Session Boss",
+                    "lifespan": runs_history[0]["duration"],
+                    "status": "Defeated",
+                    "globalLifespanSamples": [r["duration"] for r in runs_history],
+                    "gearSynergies": [],
+                    "itemEffectiveness": [],
+                }
+            )
+
+        return {
+            "items": items,
+            "bosses": bosses,
+            "runsHistory": runs_history,
+        }
 
     def _current_game(self) -> GameInfo | None:
         index = self.game_combo.currentIndex()
@@ -200,9 +325,35 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
     def _set_stats(self, stats: DashboardStats) -> None:
         self.total_runs_value.setText(str(stats.total_runs))
-        self.avg_duration_value.setText(format_seconds(stats.average_run_duration_seconds))
+        self.avg_duration_value.setText(
+            format_seconds(stats.average_run_duration_seconds)
+        )
         self.max_duration_value.setText(format_seconds(stats.max_run_duration_seconds))
         self.popular_item_value.setText(stats.most_popular_item)
+
+    @Slot(str)
+    def _on_pipeline_log(self, text: str) -> None:
+        for line in text.splitlines():
+            if line.strip():
+                self._processing_state["logs"].append(line)
+
+    @Slot(str)
+    def _on_pipeline_stage_changed(self, stage: str) -> None:
+        if stage in {"Finished"}:
+            self._processing_state["status"] = "completed"
+        elif stage in {"Stopped"}:
+            self._processing_state["status"] = "stopped"
+        elif stage in {"Failed", "Error"}:
+            self._processing_state["status"] = "stopped"
+        else:
+            self._processing_state["status"] = "running"
+
+    @Slot(bool, str)
+    def _on_pipeline_finished(self, success: bool, message: str) -> None:
+        self._processing_state["logs"].append(message)
+        self._processing_state["status"] = "completed" if success else "stopped"
+        if success:
+            self._refresh_dashboard()
 
     def _populate_runs(self, runs: list[RunSummary]) -> None:
         self.runs_table.clearContents()
@@ -210,7 +361,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
         for row, run in enumerate(runs):
             self.runs_table.setItem(row, 0, QTableWidgetItem(run.run_name))
-            self.runs_table.setItem(row, 1, QTableWidgetItem(format_seconds(run.duration_seconds)))
+            self.runs_table.setItem(
+                row, 1, QTableWidgetItem(format_seconds(run.duration_seconds))
+            )
 
         self.runs_table.resizeRowsToContents()
         self.runs_table.viewport().update()
@@ -245,7 +398,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             QMessageBox.warning(self, APP_NAME, "Please add and select a game first.")
             return
 
-        version_name, ok = QInputDialog.getText(self, APP_NAME, "Enter new version name:")
+        version_name, ok = QInputDialog.getText(
+            self, APP_NAME, "Enter new version name:"
+        )
         if not ok:
             return
 
@@ -255,7 +410,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             return
 
         if any(v.name == version_name for v in self._versions):
-            QMessageBox.warning(self, APP_NAME, f"Version '{version_name}' already exists.")
+            QMessageBox.warning(
+                self, APP_NAME, f"Version '{version_name}' already exists."
+            )
             return
 
         self._repo.ensure_version(game, version_name)
@@ -270,7 +427,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
     def _open_process_dialog(self) -> None:
         version = self._current_version()
         if version is None:
-            QMessageBox.warning(self, APP_NAME, "Please add and select a game and version first.")
+            QMessageBox.warning(
+                self, APP_NAME, "Please add and select a game and version first."
+            )
             return
 
         dialog = ProcessClipsDialog(version, self)
@@ -303,11 +462,109 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         super().resizeEvent(event)
         self._schedule_font_update()
 
+    # ---- IPC public API ----
+    def patch_ui_from_ipc(self, ui_patch: dict) -> None:
+        self._ipc_ui_state = {**self._ipc_ui_state, **ui_patch}
+
+    def select_game_from_ipc(self, game_name: str) -> None:
+        index = self.game_combo.findText(game_name)
+        if index >= 0:
+            self.game_combo.setCurrentIndex(index)
+            self._load_versions()
+
+    def select_version_from_ipc(self, version_name: str) -> None:
+        index = self.version_combo.findText(version_name)
+        if index >= 0:
+            self.version_combo.setCurrentIndex(index)
+            self._refresh_dashboard()
+
+    def add_game_from_ipc(self, game_name: str) -> None:
+        cleaned = game_name.strip()
+        if not cleaned:
+            raise ValueError("Game name cannot be empty.")
+        self._repo.ensure_game(cleaned)
+        self._load_games()
+        self.select_game_from_ipc(cleaned)
+
+    def add_version_from_ipc(self, game_name: str, version_name: str) -> None:
+        cleaned_game = game_name.strip()
+        cleaned_version = version_name.strip()
+        if not cleaned_game or not cleaned_version:
+            raise ValueError("game_name and version_name are required")
+        game = next(
+            (g for g in self._repo.list_games() if g.name == cleaned_game), None
+        )
+        if game is None:
+            game = self._repo.ensure_game(cleaned_game)
+        self._repo.ensure_version(game, cleaned_version)
+        self._load_games()
+        self.select_game_from_ipc(cleaned_game)
+        self.select_version_from_ipc(cleaned_version)
+
+    def stage_folder_from_ipc(self, pipeline_path: str) -> None:
+        path = Path(pipeline_path)
+        if not path.exists() or not path.is_dir():
+            raise ValueError(f"Invalid folder: {pipeline_path}")
+        files = sorted([p.name for p in path.glob("*.mp4")])
+        self._processing_state["pipelinePath"] = str(path)
+        self._processing_state["videoFiles"] = files
+
+    def set_processing_option_from_ipc(self, option: str) -> None:
+        self._processing_state["selectedOption"] = option
+
+    def run_pipeline_from_ipc(self) -> None:
+        version = self._current_version()
+        if version is None:
+            raise ValueError("Select a game version before running the pipeline")
+
+        pipeline_path = str(self._processing_state.get("pipelinePath") or "").strip()
+        if not pipeline_path:
+            raise ValueError("Pipeline path is not set")
+
+        config = PipelineConfig(
+            video_dir=Path(pipeline_path),
+            event_json_dir=version.event_json_dir,
+            run_json_dir=version.run_json_dir,
+            only_events=self._processing_state.get("selectedOption") == "only event",
+            only_export=self._processing_state.get("selectedOption") == "only export",
+            verbose=self._processing_state.get("selectedOption") == "verbose",
+        )
+        self._processing_state["status"] = "running"
+        self._processing_state["logs"].append("[RUN] Started from Electron")
+        self._pipeline_runner.start_pipeline(config)
+
+    def stop_pipeline_from_ipc(self) -> None:
+        self._pipeline_runner.stop_pipeline()
+
+    def clear_processing_logs_from_ipc(self) -> None:
+        self._processing_state["logs"] = []
+
+    def get_frontend_state_from_ipc(self) -> dict:
+        current_game = self._current_game()
+        current_version = self._current_version()
+        dashboard = self._build_dashboard_payload(current_version)
+
+        setup = {
+            "games": [g.name for g in self._games],
+            "versions": [v.name for v in self._versions],
+            "selectedGame": current_game.name if current_game else "",
+            "selectedVersion": current_version.name if current_version else "",
+        }
+
+        return {
+            "ui": dict(self._ipc_ui_state),
+            "setup": setup,
+            "processing": dict(self._processing_state),
+            "dashboard": dashboard,
+        }
+
     def _apply_responsive_fonts(self) -> None:
         min_fs, max_fs, min_w, min_h, w_ratio, h_ratio = self._font_scale_params()
         width = max(self.width(), min_w)
         height = max(self.height(), min_h)
-        point_size = max(min_fs, min(max_fs, int(min(width / w_ratio, height / h_ratio))))
+        point_size = max(
+            min_fs, min(max_fs, int(min(width / w_ratio, height / h_ratio)))
+        )
 
         self._apply_font_recursive(self.centralWidget(), point_size)
 
