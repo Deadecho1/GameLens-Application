@@ -104,6 +104,38 @@ function App() {
           });
         }
 
+        const hasProcessingPatch =
+          patch.processing && typeof patch.processing === "object";
+
+        if (
+          hasProcessingPatch &&
+          Object.prototype.hasOwnProperty.call(
+            patch.processing,
+            "pipelinePath",
+          ) &&
+          typeof patch.processing.pipelinePath === "string"
+        ) {
+          latestState = await ipcRequest("processing:set_pipeline_path", {
+            pipeline_path: patch.processing.pipelinePath,
+          });
+        }
+
+        if (
+          hasProcessingPatch &&
+          Object.prototype.hasOwnProperty.call(
+            patch.processing,
+            "videoFiles",
+          ) &&
+          Array.isArray(patch.processing.videoFiles)
+        ) {
+          latestState = await ipcRequest("processing:stage_files", {
+            file_names: patch.processing.videoFiles,
+            file_paths: Array.isArray(patch.processing.videoFilePaths)
+              ? patch.processing.videoFilePaths
+              : [],
+          });
+        }
+
         if (patch.ui) {
           latestState = await ipcRequest("ui:patch", patch.ui);
         }
@@ -135,7 +167,7 @@ function App() {
     try {
       const folder = await window.gamelens?.chooseFolder?.();
       if (!folder) return;
-      const state = await ipcRequest("processing:stage_folder", {
+      const state = await ipcRequest("processing:set_pipeline_path", {
         pipeline_path: folder,
       });
       setData(state);
@@ -176,10 +208,10 @@ function App() {
       const name = data.ui.newGameNameDraft.trim();
       if (!name) return;
       const state = await ipcRequest("setup:add_game", { name });
-      setData((prev) => ({
+      setData({
         ...state,
         ui: { ...state.ui, addGameModalOpen: false, newGameNameDraft: "" },
-      }));
+      });
       await ipcRequest("ui:patch", {
         addGameModalOpen: false,
         newGameNameDraft: "",
@@ -197,14 +229,14 @@ function App() {
         game_name: data.setup.selectedGame,
         version_name: name,
       });
-      setData((prev) => ({
+      setData({
         ...state,
         ui: {
           ...state.ui,
           addVersionModalOpen: false,
           newVersionNameDraft: "",
         },
-      }));
+      });
       await ipcRequest("ui:patch", {
         addVersionModalOpen: false,
         newVersionNameDraft: "",

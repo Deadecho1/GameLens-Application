@@ -93,6 +93,26 @@ class IpcBridge(QObject):
             self._window.stage_folder_from_ipc(str(params["pipeline_path"]))
             return self._window.get_frontend_state_from_ipc()
 
+        if method == "processing:set_pipeline_path":
+            self._window.set_pipeline_path_from_ipc(str(params["pipeline_path"]))
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "processing:stage_files":
+            raw_files = params.get("file_names") or []
+            if not isinstance(raw_files, list):
+                raise ValueError("file_names must be an array")
+            raw_file_paths = params.get("file_paths") or []
+            if not isinstance(raw_file_paths, list):
+                raise ValueError("file_paths must be an array")
+            raw_path = params.get("pipeline_path")
+            pipeline_path = str(raw_path) if raw_path is not None else None
+            self._window.stage_files_from_ipc(
+                [str(name) for name in raw_files],
+                pipeline_path=pipeline_path,
+                file_paths=[str(p) for p in raw_file_paths],
+            )
+            return self._window.get_frontend_state_from_ipc()
+
         if method == "processing:set_option":
             self._window.set_processing_option_from_ipc(str(params["option"]))
             return self._window.get_frontend_state_from_ipc()

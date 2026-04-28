@@ -1,5 +1,5 @@
-import { useCallback, useRef, useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useCallback, useRef, useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   SlidersHorizontal,
   Rocket,
@@ -15,30 +15,30 @@ import {
   Trash2,
   Film,
   ChevronRight,
-} from 'lucide-react';
+} from "lucide-react";
 
 const OPTIONS = [
-  { value: 'only event', label: 'Only event' },
-  { value: 'only export', label: 'Only export' },
-  { value: 'verbose', label: 'Verbose' },
+  { value: "only event", label: "Only event" },
+  { value: "only export", label: "Only export" },
+  { value: "verbose", label: "Verbose" },
 ];
 
 const STEPS = [
-  { n: 1, label: 'CONFIGURE', short: 'Configure', icon: SlidersHorizontal },
-  { n: 2, label: 'INITIALIZE', short: 'Initialize', icon: Rocket },
-  { n: 3, label: 'EXECUTE', short: 'Execute', icon: Zap },
+  { n: 1, label: "CONFIGURE", short: "Configure", icon: SlidersHorizontal },
+  { n: 2, label: "INITIALIZE", short: "Initialize", icon: Rocket },
+  { n: 3, label: "EXECUTE", short: "Execute", icon: Zap },
 ];
 
 const GLOW = {
-  blue: 'from-blue-600/25 via-blue-500/5 to-transparent',
-  cyan: 'from-cyan-500/20 via-blue-600/5 to-transparent',
+  blue: "from-blue-600/25 via-blue-500/5 to-transparent",
+  cyan: "from-cyan-500/20 via-blue-600/5 to-transparent",
 };
 
 const STATUS_LABEL = {
-  idle: 'READY',
-  running: 'RUNNING',
-  stopped: 'HALTED',
-  completed: 'COMPLETE',
+  idle: "READY",
+  running: "RUNNING",
+  stopped: "HALTED",
+  completed: "COMPLETE",
 };
 
 /**
@@ -69,31 +69,51 @@ export default function WorkflowTab({
   const ingestFiles = useCallback(
     (fileList) => {
       const files = Array.from(fileList || []).filter(
-        (f) => f.type.startsWith('video/') || /\.(mp4|webm|mov|mkv|avi)$/i.test(f.name)
+        (f) =>
+          f.type.startsWith("video/") ||
+          /\.(mp4|webm|mov|mkv|avi)$/i.test(f.name),
       );
       if (files.length === 0) return;
+
       const names = files.map((f) => f.name);
-      onPatch({
-        processing: {
-          ...processing,
-          videoFiles: [...new Set([...processing.videoFiles, ...names])],
-          pipelinePath: `LOCAL_STAGING://${names[0]}`,
-        },
-      });
+      const filePaths = files
+        .map((f) => (typeof f.path === "string" ? f.path : ""))
+        .filter(Boolean);
+
+      const getDir = (p) => {
+        const normalized = String(p).replace(/\\/g, "/");
+        const idx = normalized.lastIndexOf("/");
+        return idx > 0 ? normalized.slice(0, idx) : "";
+      };
+
+      const dirs = [...new Set(filePaths.map(getDir).filter(Boolean))];
+      const nextVideoFiles = [...new Set([...processing.videoFiles, ...names])];
+
+      const processingPatch = {
+        videoFiles: nextVideoFiles,
+        videoFilePaths: filePaths,
+      };
+
+      if (dirs.length === 1) {
+        processingPatch.pipelinePath = dirs[0];
+      }
+
+      onPatch({ processing: processingPatch });
     },
-    [onPatch, processing]
+    [onPatch, processing],
   );
 
   const progressVisual = useMemo(() => {
     const s = processing.status;
-    if (s === 'completed') return { width: '100%', variant: 'done' };
-    if (s === 'stopped') return { width: '32%', variant: 'warn' };
-    if (s === 'running') return { width: null, variant: 'pulse' };
-    return { width: '12%', variant: 'idle' };
+    if (s === "completed") return { width: "100%", variant: "done" };
+    if (s === "stopped") return { width: "32%", variant: "warn" };
+    if (s === "running") return { width: null, variant: "pulse" };
+    return { width: "12%", variant: "idle" };
   }, [processing.status]);
 
   const configureReady =
-    Boolean(setup.selectedGame?.trim()) && Boolean(setup.selectedVersion?.trim());
+    Boolean(setup.selectedGame?.trim()) &&
+    Boolean(setup.selectedVersion?.trim());
 
   return (
     <motion.div
@@ -111,7 +131,7 @@ export default function WorkflowTab({
           Workflow sequence
         </h2>
         <p className="font-data mt-2 text-sm text-slate-500">
-          Step <span className="text-cyan-400">{step}</span> of 3 {' '}
+          Step <span className="text-cyan-400">{step}</span> of 3{" "}
         </p>
       </header>
 
@@ -129,15 +149,22 @@ export default function WorkflowTab({
                   <motion.div
                     className={`relative z-[1] flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 transition md:h-14 md:w-14 ${
                       active
-                        ? 'border-cyan-400 bg-cyan-500/15 text-cyan-300 shadow-[0_0_24px_rgba(34,211,238,0.35)]'
+                        ? "border-cyan-400 bg-cyan-500/15 text-cyan-300 shadow-[0_0_24px_rgba(34,211,238,0.35)]"
                         : done
-                          ? 'border-blue-500/50 bg-blue-500/10 text-blue-300'
-                          : 'border-slate-800 bg-slate-900/80 text-slate-600'
+                          ? "border-blue-500/50 bg-blue-500/10 text-blue-300"
+                          : "border-slate-800 bg-slate-900/80 text-slate-600"
                     }`}
                     animate={active ? { scale: [1, 1.04, 1] } : {}}
-                    transition={{ duration: 2, repeat: active ? Infinity : 0, ease: 'easeInOut' }}
+                    transition={{
+                      duration: 2,
+                      repeat: active ? Infinity : 0,
+                      ease: "easeInOut",
+                    }}
                   >
-                    <Icon className="h-5 w-5 md:h-6 md:w-6" strokeWidth={1.25} />
+                    <Icon
+                      className="h-5 w-5 md:h-6 md:w-6"
+                      strokeWidth={1.25}
+                    />
                   </motion.div>
                   <p className="font-display mt-2 hidden text-center text-[9px] font-bold tracking-wider text-slate-500 sm:block md:text-[10px]">
                     {s.label}
@@ -151,8 +178,12 @@ export default function WorkflowTab({
                     <motion.div
                       className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500 shadow-[0_0_12px_rgba(34,211,238,0.5)]"
                       initial={false}
-                      animate={{ width: step > s.n ? '100%' : '0%' }}
-                      transition={{ type: 'spring', stiffness: 200, damping: 26 }}
+                      animate={{ width: step > s.n ? "100%" : "0%" }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 200,
+                        damping: 26,
+                      }}
                     />
                   </div>
                 )}
@@ -176,7 +207,9 @@ export default function WorkflowTab({
                 icon={Gamepad2}
                 kicker="Game"
                 value={setup.selectedGame}
-                onChange={() => onPatch({ ui: { ...ui, changePicker: 'game' } })}
+                onChange={() =>
+                  onPatch({ ui: { ...ui, changePicker: "game" } })
+                }
                 onAdd={onAddGame}
                 glowVariant="blue"
               />
@@ -184,7 +217,9 @@ export default function WorkflowTab({
                 icon={GitBranch}
                 kicker="version"
                 value={setup.selectedVersion}
-                onChange={() => onPatch({ ui: { ...ui, changePicker: 'version' } })}
+                onChange={() =>
+                  onPatch({ ui: { ...ui, changePicker: "version" } })
+                }
                 onAdd={onAddVersion}
                 glowVariant="cyan"
               />
@@ -227,7 +262,8 @@ export default function WorkflowTab({
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click();
+                  if (e.key === "Enter" || e.key === " ")
+                    inputRef.current?.click();
                 }}
                 onDragEnter={(e) => {
                   e.preventDefault();
@@ -235,7 +271,8 @@ export default function WorkflowTab({
                 }}
                 onDragLeave={(e) => {
                   e.preventDefault();
-                  if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false);
+                  if (!e.currentTarget.contains(e.relatedTarget))
+                    setDragOver(false);
                 }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
@@ -246,8 +283,8 @@ export default function WorkflowTab({
                 onClick={() => inputRef.current?.click()}
                 className={`relative cursor-pointer rounded-2xl border-2 border-dashed px-6 py-12 text-center transition md:py-14 ${
                   dragOver
-                    ? 'border-cyan-400 bg-cyan-500/10'
-                    : 'border-blue-500/35 bg-slate-950/40 gl-upload-pulse hover:border-cyan-400/45'
+                    ? "border-cyan-400 bg-cyan-500/10"
+                    : "border-blue-500/35 bg-slate-950/40 gl-upload-pulse hover:border-cyan-400/45"
                 }`}
               >
                 <input
@@ -258,14 +295,17 @@ export default function WorkflowTab({
                   className="hidden"
                   onChange={(e) => {
                     ingestFiles(e.target.files);
-                    e.target.value = '';
+                    e.target.value = "";
                   }}
                 />
-                <UploadCloud className="mx-auto h-10 w-10 text-cyan-400/90" strokeWidth={1.15} />
+                <UploadCloud
+                  className="mx-auto h-10 w-10 text-cyan-400/90"
+                  strokeWidth={1.15}
+                />
                 <p className="font-display mt-4 text-sm font-bold uppercase tracking-wider text-slate-200">
                   Drop video clip
                 </p>
-               { /*  Writes to processing.videoFiles*/}
+                {/*  Writes to processing.videoFiles*/}
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <button
@@ -274,7 +314,7 @@ export default function WorkflowTab({
                   onClick={onChooseFolder}
                 >
                   <FolderOpen className="h-4 w-4" />
-                  Pipeline path 
+                  Pipeline path
                 </button>
                 <code className="font-data max-w-full flex-1 truncate rounded-lg border border-slate-800 bg-black/50 px-3 py-2 text-[11px] text-cyan-600/80">
                   {processing.pipelinePath}
@@ -282,10 +322,15 @@ export default function WorkflowTab({
               </div>
               <ul className="font-data mt-4 max-h-28 space-y-1 overflow-y-auto rounded-xl border border-slate-800 bg-black/35 p-2 text-xs">
                 {processing.videoFiles.length === 0 ? (
-                  <li className="py-4 text-center text-slate-600">No clips staged</li>
+                  <li className="py-4 text-center text-slate-600">
+                    No clips staged
+                  </li>
                 ) : (
                   processing.videoFiles.map((f) => (
-                    <li key={f} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-cyan-100/80">
+                    <li
+                      key={f}
+                      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-cyan-100/80"
+                    >
                       <Film className="h-3.5 w-3.5 shrink-0 text-blue-400/70" />
                       {f}
                     </li>
@@ -311,7 +356,7 @@ export default function WorkflowTab({
                       checked={processing.selectedOption === opt.value}
                       onChange={() =>
                         onPatch({
-                          processing: { ...processing, selectedOption: opt.value },
+                          processing: { selectedOption: opt.value },
                         })
                       }
                     />
@@ -320,8 +365,12 @@ export default function WorkflowTab({
                 ))}
               </div>
               <p className="font-data mt-6 text-xs text-slate-600">
-                Game: <span className="text-cyan-500/80">{setup.selectedGame}</span> · Version:{' '}
-                <span className="text-blue-400/80">{setup.selectedVersion}</span>
+                Game:{" "}
+                <span className="text-cyan-500/80">{setup.selectedGame}</span> ·
+                Version:{" "}
+                <span className="text-blue-400/80">
+                  {setup.selectedVersion}
+                </span>
               </p>
               <div className="mt-auto flex flex-col gap-3 pt-8">
                 <button
@@ -365,28 +414,32 @@ export default function WorkflowTab({
                 </span>
               </div>
               <div className="relative h-2 overflow-hidden rounded-full bg-black/50 ring-1 ring-slate-800">
-                {progressVisual.variant === 'pulse' ? (
+                {progressVisual.variant === "pulse" ? (
                   <motion.div
                     className="gl-neon-bar-fill absolute top-0 h-full rounded-full"
-                    initial={{ left: '0%', width: '38%' }}
+                    initial={{ left: "0%", width: "38%" }}
                     animate={{
-                      left: ['0%', '52%', '8%', '44%'],
-                      width: ['36%', '44%', '40%', '38%'],
+                      left: ["0%", "52%", "8%", "44%"],
+                      width: ["36%", "44%", "40%", "38%"],
                     }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+                    transition={{
+                      duration: 2.2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
                   />
                 ) : (
                   <motion.div
                     className={`h-full rounded-full ${
-                      progressVisual.variant === 'warn'
-                        ? 'bg-gradient-to-r from-amber-600 to-red-600 shadow-[0_0_16px_rgba(239,68,68,0.35)]'
-                        : progressVisual.variant === 'done'
-                          ? 'gl-neon-bar-fill'
-                          : 'bg-slate-800'
+                      progressVisual.variant === "warn"
+                        ? "bg-gradient-to-r from-amber-600 to-red-600 shadow-[0_0_16px_rgba(239,68,68,0.35)]"
+                        : progressVisual.variant === "done"
+                          ? "gl-neon-bar-fill"
+                          : "bg-slate-800"
                     }`}
                     initial={{ width: 0 }}
                     animate={{ width: progressVisual.width }}
-                    transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+                    transition={{ type: "spring", stiffness: 120, damping: 18 }}
                   />
                 )}
               </div>
@@ -396,10 +449,14 @@ export default function WorkflowTab({
               <div className="gl-radial-glow relative flex-1">
                 <motion.button
                   type="button"
-                  disabled={processing.status === 'running'}
+                  disabled={processing.status === "running"}
                   className="relative z-[1] flex w-full items-center justify-center gap-3 rounded-2xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-800 py-5 font-display text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_0_36px_rgba(16,185,129,0.3)] disabled:cursor-not-allowed disabled:opacity-45"
-                  whileHover={processing.status !== 'running' ? { scale: 1.01 } : {}}
-                  whileTap={processing.status !== 'running' ? { scale: 0.99 } : {}}
+                  whileHover={
+                    processing.status !== "running" ? { scale: 1.01 } : {}
+                  }
+                  whileTap={
+                    processing.status !== "running" ? { scale: 0.99 } : {}
+                  }
                   onClick={onRun}
                 >
                   <Play className="h-6 w-6 fill-current" />
@@ -408,7 +465,7 @@ export default function WorkflowTab({
               </div>
               <button
                 type="button"
-                disabled={processing.status !== 'running'}
+                disabled={processing.status !== "running"}
                 className="flex flex-1 items-center justify-center gap-3 rounded-2xl border border-red-500/45 bg-gradient-to-b from-red-600 to-red-800 py-5 font-display text-sm font-bold uppercase tracking-[0.18em] text-white shadow-[0_0_28px_rgba(239,68,68,0.2)] disabled:cursor-not-allowed disabled:opacity-35"
                 onClick={onStop}
               >
@@ -453,7 +510,9 @@ export default function WorkflowTab({
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.18 }}
                       className={`whitespace-pre-wrap border-l-2 border-transparent pl-2 ${
-                        i === logCount - 1 ? 'gl-log-line-new border-cyan-500/40 text-cyan-200' : ''
+                        i === logCount - 1
+                          ? "gl-log-line-new border-cyan-500/40 text-cyan-200"
+                          : ""
                       }`}
                     >
                       <span className="text-cyan-700/90">&gt; </span>
@@ -470,7 +529,14 @@ export default function WorkflowTab({
   );
 }
 
-function SelectionCard({ icon: Icon, kicker, value, onChange, onAdd, glowVariant }) {
+function SelectionCard({
+  icon: Icon,
+  kicker,
+  value,
+  onChange,
+  onAdd,
+  glowVariant,
+}) {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/40 p-6 shadow-[inset_0_1px_0_rgba(34,211,238,0.06)] backdrop-blur-md transition hover:border-cyan-500/25">
       <div

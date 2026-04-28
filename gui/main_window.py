@@ -74,7 +74,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._processing_state: dict = {
             "pipelinePath": "",
             "videoFiles": [],
-            "selectedOption": "only event",
+            "videoFilePaths": [],
+            "selectedOption": "verbose",
             "status": "idle",
             "logs": ["[INFO] System ready..."],
         }
@@ -508,6 +509,30 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         files = sorted([p.name for p in path.glob("*.mp4")])
         self._processing_state["pipelinePath"] = str(path)
         self._processing_state["videoFiles"] = files
+        self._processing_state["videoFilePaths"] = [str(path / name) for name in files]
+
+    def stage_files_from_ipc(
+        self,
+        file_names: list[str],
+        pipeline_path: str | None = None,
+        file_paths: list[str] | None = None,
+    ) -> None:
+        cleaned = [str(name).strip() for name in file_names if str(name).strip()]
+        self._processing_state["videoFiles"] = sorted(list(dict.fromkeys(cleaned)))
+
+        cleaned_paths = [str(p).strip() for p in (file_paths or []) if str(p).strip()]
+        self._processing_state["videoFilePaths"] = sorted(
+            list(dict.fromkeys(cleaned_paths))
+        )
+
+        if pipeline_path is not None:
+            self._processing_state["pipelinePath"] = str(pipeline_path)
+
+    def set_pipeline_path_from_ipc(self, pipeline_path: str) -> None:
+        path = Path(pipeline_path)
+        if not path.exists() or not path.is_dir():
+            raise ValueError(f"Invalid folder: {pipeline_path}")
+        self._processing_state["pipelinePath"] = str(path)
 
     def set_processing_option_from_ipc(self, option: str) -> None:
         self._processing_state["selectedOption"] = option
@@ -521,16 +546,43 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         if not pipeline_path:
             raise ValueError("Pipeline path is not set")
 
+        video_dir = Path(pipeline_path)
+        if not video_dir.exists() or not video_dir.is_dir():
+            raise ValueError(f"Pipeline path is not a valid folder: {pipeline_path}")
+
+        staged_file_paths = self._processing_state.get("videoFilePaths") or []
+        if isinstance(staged_file_paths, list) and staged_file_paths:
+            parent_dirs = sorted(
+                {
+                    str(Path(p).resolve().parent)
+                    for p in staged_file_paths
+                    if Path(p).exists()
+                }
+            )
+            if len(parent_dirs) == 1:
+                video_dir = Path(parent_dirs[0])
+                self._processing_state["pipelinePath"] = str(video_dir)
+            elif len(parent_dirs) > 1:
+                raise ValueError(
+                    "Staged files come from multiple folders. Please stage files from one folder only, "
+                    "or choose a single pipeline path folder."
+                )
+
+        selected_option = self._processing_state.get("selectedOption")
         config = PipelineConfig(
-            video_dir=Path(pipeline_path),
+            video_dir=video_dir,
             event_json_dir=version.event_json_dir,
             run_json_dir=version.run_json_dir,
-            only_events=self._processing_state.get("selectedOption") == "only event",
-            only_export=self._processing_state.get("selectedOption") == "only export",
-            verbose=self._processing_state.get("selectedOption") == "verbose",
+            only_events=selected_option == "only event",
+            only_export=selected_option == "only export",
+            verbose=selected_option == "verbose",
         )
         self._processing_state["status"] = "running"
         self._processing_state["logs"].append("[RUN] Started from Electron")
+        if config.only_events:
+            self._processing_state["logs"].append(
+                "[INFO] Running event detection only. Analytics will not update until run export is executed."
+            )
         self._pipeline_runner.start_pipeline(config)
 
     def stop_pipeline_from_ipc(self) -> None:
