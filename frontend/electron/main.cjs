@@ -8,11 +8,13 @@ let qtProcess = null;
 
 function spawnQtBackend() {
   const appRoot = path.join(__dirname, "..", "..");
+  const frontendRoot = path.join(__dirname, "..");
   qtProcess = spawn(
     "/home/deadecho/.local/bin/uv",
     ["run", "python", "-m", "gui.main", "--headless"],
     {
-      cwd: appRoot,
+      cwd: frontendRoot,
+      env: { ...process.env, PYTHONPATH: appRoot },
       stdio: ["ignore", "pipe", "pipe"],
       detached: false,
     }
