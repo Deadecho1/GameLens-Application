@@ -139,7 +139,9 @@ curl http://localhost:7761      # Event Extraction
 ## 6. Launch the GUI
 
 ```bash
-python -m gui.main
+cd frontend
+npm install        # first time only
+npm run electron:dev
 ```
 
 The GUI connects to:

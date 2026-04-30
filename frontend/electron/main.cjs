@@ -1,7 +1,33 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { spawn } = require("child_process");
 const WebSocket = require("ws");
+
+let qtProcess = null;
+
+function spawnQtBackend() {
+  const appRoot = path.join(__dirname, "..", "..");
+  qtProcess = spawn(
+    "/home/deadecho/.local/bin/uv",
+    ["run", "python", "-m", "gui.main", "--headless"],
+    {
+      cwd: appRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+      detached: false,
+    }
+  );
+  qtProcess.stdout.on("data", (d) => process.stdout.write("[qt] " + d));
+  qtProcess.stderr.on("data", (d) => process.stderr.write("[qt] " + d));
+  qtProcess.on("error", (e) => console.error("[qt spawn error]", e.message));
+}
+
+app.on("will-quit", () => {
+  if (qtProcess) {
+    qtProcess.kill();
+    qtProcess = null;
+  }
+});
 
 const IPC_URL = "ws://127.0.0.1:8765";
 let ws = null;
@@ -41,7 +67,7 @@ function connectQtIpc() {
 function ipcRequest(method, params = {}) {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     return Promise.reject(
-      new Error("Qt IPC not connected. Start python -m gui.main first."),
+      new Error("Qt IPC not connected. Backend still starting up."),
     );
   }
   const id = String(nextId++);
@@ -79,6 +105,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  spawnQtBackend();
   connectQtIpc();
   createWindow();
 });

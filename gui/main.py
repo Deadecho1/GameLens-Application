@@ -14,6 +14,8 @@ from .repository import GameRepository
 
 
 def main() -> None:
+    headless = "--headless" in sys.argv
+
     config = AppConfig.load()
     repo = GameRepository(root_dir=config.games_root)
     analytics = AnalyticsService()
@@ -26,7 +28,8 @@ def main() -> None:
     window = MainWindow(repo=repo, analytics=analytics)
     ipc = IpcBridge(window=window, host="127.0.0.1", port=8765)
     ipc.start()
-    window.show()
+    if not headless:
+        window.show()
     sys.exit(app.exec())
 
 
