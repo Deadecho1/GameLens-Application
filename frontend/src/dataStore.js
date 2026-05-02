@@ -42,14 +42,22 @@ export const initialData = {
     versions: ['v1.0.1-stable', 'v1.1.0-alpha'],
     selectedGame: 'Elden Ring',
     selectedVersion: 'v1.1.0-alpha',
+    fineTunedModels: [],   // [{name, modelId, dirName}] — populated from models/finetuned/
+    selectedModel: 'base', // 'base' or a dirName from fineTunedModels
   },
 
   processing: {
     pipelinePath: 'C:/Games/Captures/EldenRing',
     videoFiles: ['boss_fight_01.mp4', 'intro_cutscene.mp4'],
     selectedOption: 'only event',
+    selectedModel: 'base',
     status: 'idle',
     logs: ['[INFO] System ready...', '[DEBUG] Waiting for user to click Run...'],
+  },
+
+  tuning: {
+    status: 'idle',   // 'idle' | 'running' | 'completed' | 'stopped'
+    logs: [],
   },
 
   /**

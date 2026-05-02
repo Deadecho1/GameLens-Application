@@ -26,8 +26,15 @@ def main():
     )
     parser.add_argument(
         "--boss-model",
-        required=True,
-        help="Path to the YOLO boss classifier .pt file",
+        required=False,
+        default=None,
+        help="Path to the YOLO boss classifier .pt file (required when --boss-backend=yolo)",
+    )
+    parser.add_argument(
+        "--boss-backend",
+        choices=["yolo", "gemma"],
+        default="yolo",
+        help="Backend to use for boss-fight classification: 'yolo' (default) or 'gemma' (Gemma 4 via Google AI Studio)",
     )
     parser.add_argument(
         "--verbose",
@@ -40,16 +47,12 @@ def main():
 
     run_json_dir = Path(args.run_json_dir)
     video_dir = Path(args.video_dir)
-    boss_model_path = Path(args.boss_model)
 
     if not run_json_dir.exists() or not run_json_dir.is_dir():
         raise FileNotFoundError(f"Run JSON folder not found: {run_json_dir}")
     if not video_dir.exists() or not video_dir.is_dir():
         raise FileNotFoundError(f"Video folder not found: {video_dir}")
-    if not boss_model_path.exists():
-        raise FileNotFoundError(f"Boss model not found: {boss_model_path}")
 
-    from scripts.boss_detector.classifier import BossClassifier
     from scripts.boss_detector.scanner import BossScanner
     from scripts.boss_extractor.extractor import BossNameExtractor
     from scripts.boss_processor.processor import BossProcessor
@@ -57,9 +60,21 @@ def main():
 
     config = AppConfig.load()
 
+    if args.boss_backend == "gemma":
+        from scripts.boss_detector.gemma_classifier import GemmaBossClassifier
+        classifier = GemmaBossClassifier()
+    else:
+        if args.boss_model is None:
+            parser.error("--boss-model is required when --boss-backend=yolo")
+        boss_model_path = Path(args.boss_model)
+        if not boss_model_path.exists():
+            raise FileNotFoundError(f"Boss model not found: {boss_model_path}")
+        from scripts.boss_detector.classifier import BossClassifier
+        classifier = BossClassifier(str(boss_model_path))
+
     processor = BossProcessor(
         frame_provider=VideoFrameProvider(video_dir=video_dir),
-        boss_scanner=BossScanner(classifier=BossClassifier(str(boss_model_path))),
+        boss_scanner=BossScanner(classifier=classifier),
         boss_name_extractor=BossNameExtractor(base_url=config.classifier_base_url),
     )
 

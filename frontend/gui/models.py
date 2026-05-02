@@ -12,3 +12,4 @@ class PipelineConfig:
     only_events: bool
     only_export: bool
     verbose: bool
+    model_dir: Path | None = None  # if set, overrides GAMELENS_EVENT_DETECTOR_MODEL_DIR

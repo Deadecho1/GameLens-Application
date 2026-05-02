@@ -129,4 +129,29 @@ class IpcBridge(QObject):
             self._window.clear_processing_logs_from_ipc()
             return self._window.get_frontend_state_from_ipc()
 
+        if method == "processing:set_model":
+            self._window.set_model_from_ipc(str(params["model"]))
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "tuning:start":
+            raw_videos = params.get("videos")
+            if not isinstance(raw_videos, list):
+                raise ValueError("videos must be an array")
+            raw_model_ids = params.get("enabledModelIds")
+            if not isinstance(raw_model_ids, list):
+                raise ValueError("enabledModelIds must be an array")
+            model_name = str(params.get("modelName") or "").strip()
+            if not model_name:
+                raise ValueError("modelName is required")
+            self._window.start_tuning_from_ipc(raw_videos, raw_model_ids, model_name)
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "tuning:stop":
+            self._window.stop_tuning_from_ipc()
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "tuning:clear_logs":
+            self._window.clear_tuning_logs_from_ipc()
+            return self._window.get_frontend_state_from_ipc()
+
         raise ValueError(f"Unknown IPC method: {method}")

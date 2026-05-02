@@ -2,12 +2,13 @@ import base64
 import gc
 import json
 import os
+import re
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from openai import OpenAI
 from pydantic import BaseModel
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+GOOGLE_AI_STUDIO_API_KEY = os.environ.get("GOOGLE_AI_STUDIO_API_KEY")
 
 DEFAULT_PROMPT_BOSS = """
 You are analyzing a roguelike game screenshot during a boss fight.
@@ -24,10 +25,19 @@ Look for:
 Return all boss names exactly as they appear in the game's UI.
 If no boss name is identifiable, return an empty list.
 If this is not a boss fight screen, return an empty list.
+
+Respond with a JSON object in exactly this format:
+{
+  "boss_names": ["Boss Name"],
+  "reasoning": "describe what UI elements you found the boss names in"
+}
 """
 
 router = APIRouter(prefix="/api/v1/boss", tags=["boss"])
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else OpenAI()
+client = OpenAI(
+    api_key=GOOGLE_AI_STUDIO_API_KEY,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+)
 
 
 class BossNameResponse(BaseModel):
@@ -39,7 +49,7 @@ class BossNameResponse(BaseModel):
 async def extract_boss_name(
     file: UploadFile = File(...),
     prompt: str = DEFAULT_PROMPT_BOSS,
-    model: str = "gpt-5.4-nano",
+    model: str = "models/gemma-4-26b-a4b-it",
 ):
     """
     Analyzes a roguelike game screenshot to extract the names of all bosses being fought.
@@ -55,34 +65,11 @@ async def extract_boss_name(
     b64_encoded = base64.b64encode(image_bytes).decode("ascii")
     data_url = f"data:{file.content_type};base64,{b64_encoded}"
 
-    schema = {
-        "name": "boss_name_extraction",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "boss_names": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "All boss names visible in the game UI, in the order they appear. Empty if none found.",
-                },
-                "reasoning": {
-                    "type": "string",
-                    "description": "Describe what UI elements you found the boss names in.",
-                },
-            },
-            "required": ["boss_names", "reasoning"],
-            "additionalProperties": False,
-        },
-    }
-
     try:
         resp = client.chat.completions.create(
             model=model,
             temperature=0,
-            reasoning_effort="none",
-            prompt_cache_key="gamelens-boss-name-extraction",
-            prompt_cache_retention="24h",
-            response_format={"type": "json_schema", "json_schema": schema},
+            response_format={"type": "json_object"},
             messages=[
                 {
                     "role": "system",
@@ -95,19 +82,23 @@ async def extract_boss_name(
                             "type": "text",
                             "text": "Return all boss names visible in this screenshot.",
                         },
-                        {"type": "image_url", "image_url": {"url": data_url, "detail": "original"}},
+                        {"type": "image_url", "image_url": {"url": data_url}},
                     ],
                 },
             ],
         )
 
         content = resp.choices[0].message.content
-        result = json.loads(content) if isinstance(content, str) else content
+        if isinstance(content, str):
+            content = re.sub(r"^<thought>.*?</thought>", "", content, flags=re.DOTALL).strip()
+            result = json.loads(content)
+        else:
+            result = content
         return result
 
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to process image with OpenAI: {str(e)}"
+            status_code=500, detail=f"Failed to process image with Gemma: {str(e)}"
         )
     finally:
         del image_bytes, b64_encoded, data_url

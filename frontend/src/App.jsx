@@ -8,6 +8,7 @@ import AddItemModal from "./components/AddItemModal";
 import MissionSuccessOverlay from "./components/MissionSuccessOverlay";
 import WorkflowTab from "./components/tabs/WorkflowTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
+import TuningTab from "./components/tabs/TuningTab";
 
 /**
  * GameLens frontend orchestrator.
@@ -101,6 +102,12 @@ function App() {
         if (patch.processing?.selectedOption) {
           latestState = await ipcRequest("processing:set_option", {
             option: patch.processing.selectedOption,
+          });
+        }
+
+        if (patch.processing?.selectedModel !== undefined) {
+          latestState = await ipcRequest("processing:set_model", {
+            model: patch.processing.selectedModel,
           });
         }
 
@@ -305,6 +312,9 @@ function App() {
             )}
             {tab === "analytics" && (
               <AnalyticsTab key="analytics" data={data} onPatch={mergePatch} />
+            )}
+            {tab === "tuning" && (
+              <TuningTab key="tuning" data={data} ipcRequest={ipcRequest} />
             )}
           </AnimatePresence>
         </div>

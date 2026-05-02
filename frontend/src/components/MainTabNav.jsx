@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 const TABS = [
   { id: 'workflow', label: 'MISSION START' },
   { id: 'analytics', label: 'ANALYTICS' },
+  { id: 'tuning', label: 'GAME TUNING' },
 ];
 
 /**

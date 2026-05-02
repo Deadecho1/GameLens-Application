@@ -135,6 +135,8 @@ class PipelineRunner(QObject):
             env.insert("PYTHONPATH", project_root + os.pathsep + existing)
         else:
             env.insert("PYTHONPATH", project_root)
+        if self._config and self._config.model_dir is not None:
+            env.insert("GAMELENS_EVENT_DETECTOR_MODEL_DIR", str(self._config.model_dir))
         return env
 
     @Slot()
