@@ -15,22 +15,53 @@ protocol.registerSchemesAsPrivileged([
 
 let qtProcess = null;
 
+function resolveUv() {
+  // Prefer uv on PATH; fall back to common install locations
+  const { execSync } = require("child_process");
+  try {
+    return execSync("which uv", { encoding: "utf8" }).trim();
+  } catch {
+    for (const p of [
+      "/home/" + (process.env.USER || "") + "/.local/bin/uv",
+      "/usr/local/bin/uv",
+      "/usr/bin/uv",
+    ]) {
+      if (fs.existsSync(p)) return p;
+    }
+    return "uv"; // last resort — let spawn fail with a clear error
+  }
+}
+
 function spawnQtBackend() {
   const appRoot = path.join(__dirname, "..", "..");
   const frontendRoot = path.join(__dirname, "..");
-  qtProcess = spawn(
-    "/home/deadecho/.local/bin/uv",
-    ["run", "python", "-m", "gui.main", "--headless"],
-    {
-      cwd: frontendRoot,
-      env: { ...process.env, PYTHONPATH: appRoot },
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: false,
-    }
-  );
-  qtProcess.stdout.on("data", (d) => process.stdout.write("[qt] " + d));
-  qtProcess.stderr.on("data", (d) => process.stderr.write("[qt] " + d));
-  qtProcess.on("error", (e) => console.error("[qt spawn error]", e.message));
+  const uvBin = resolveUv();
+
+  function trySpawn(pythonCmd) {
+    const proc = spawn(
+      uvBin,
+      ["run", pythonCmd, "-m", "gui.main", "--headless"],
+      {
+        cwd: frontendRoot,
+        env: { ...process.env, PYTHONPATH: appRoot },
+        stdio: ["ignore", "pipe", "pipe"],
+        detached: false,
+      }
+    );
+    proc.stdout.on("data", (d) => process.stdout.write("[qt] " + d));
+    proc.stderr.on("data", (d) => process.stderr.write("[qt] " + d));
+    proc.on("error", (e) => console.error("[qt spawn error]", e.message));
+    proc.on("close", (code) => {
+      if (code === null) return; // killed intentionally
+      if (pythonCmd === "python" && code !== 0) {
+        console.warn("[qt] python failed, retrying with python3");
+        qtProcess = trySpawn("python3");
+      }
+    });
+    return proc;
+  }
+
+  qtProcess = trySpawn("python");
 }
 
 app.on("will-quit", () => {
