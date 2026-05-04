@@ -8,12 +8,23 @@ export const TUNING_MODEL_CONFIGS = [
   {
     id: 'event_detector',
     label: 'Event Detector',
+    annotationType: 'point',
     categories: [
       { id: 'start',  label: 'START',  color: '#22d3ee', key: '1' },
       { id: 'end',    label: 'END',    color: '#f43f5e', key: '2' },
       { id: 'choice', label: 'CHOICE', color: '#f59e0b', key: '3' },
     ],
     minClips: 6,
+  },
+  {
+    id: 'boss_detector',
+    label: 'Boss Detector',
+    annotationType: 'segment',
+    categories: [
+      { id: 'boss', label: 'BOSS FIGHT', color: '#f97316', key: '1' },
+    ],
+    minSegments: 5,
+    minSegmentDuration: 3.0,
   },
 ];
 

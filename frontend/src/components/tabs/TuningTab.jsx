@@ -8,21 +8,20 @@ import {
   Square,
   Trash2,
   Cpu,
-  CheckSquare,
-  Square as SquareIcon,
-  ChevronRight,
   X,
 } from 'lucide-react';
 import { TUNING_MODEL_CONFIGS, TUNING_MODEL_CONFIG_BY_ID, toLocalUrl } from '../tuning/tuningConfig';
 
 const MIN_CLIPS = 6;
+const MIN_SEGMENT_COUNT = 5;
+const MIN_SEGMENT_DURATION = 3.0; // seconds
 
 function generateId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
 export default function TuningTab({ data, ipcRequest }) {
-  // ── Video annotation state (local only) ──────────────────────────────────
+  // ── Video annotation state ────────────────────────────────────────────────
   const [videos, setVideos] = useState([]);
   const [activeVideoId, setActiveVideoId] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -37,6 +36,10 @@ export default function TuningTab({ data, ipcRequest }) {
   const [modelNameDraft, setModelNameDraft] = useState('');
   const [error, setError] = useState('');
 
+  // Segment drag state
+  const [segPreview, setSegPreview] = useState(null); // {start, end} while dragging
+  const dragRef = useRef({ active: false, startTime: 0 });
+
   const videoRef = useRef(null);
   const timelineRef = useRef(null);
   const logRef = useRef(null);
@@ -45,18 +48,20 @@ export default function TuningTab({ data, ipcRequest }) {
   const tuning = data.tuning || { status: 'idle', logs: [] };
   const isTraining = tuning.status === 'running';
 
-  // ── Derived ──────────────────────────────────────────────────────────────
+  // ── Derived ───────────────────────────────────────────────────────────────
   const activeVideo = useMemo(
     () => videos.find((v) => v.id === activeVideoId) || null,
     [videos, activeVideoId],
   );
 
   const activeModelConfig = TUNING_MODEL_CONFIG_BY_ID[activeModelId];
+  const isSegmentModel = activeModelConfig?.annotationType === 'segment';
 
   const clipCounts = useMemo(() => {
     const counts = {};
     for (const video of videos) {
       for (const mark of video.marks) {
+        if (mark.type === 'segment') continue;
         const key = `${mark.modelId}:${mark.categoryId}`;
         counts[key] = (counts[key] || 0) + 1;
       }
@@ -69,13 +74,29 @@ export default function TuningTab({ data, ipcRequest }) {
     [clipCounts],
   );
 
+  const getValidSegments = useCallback(
+    (modelId) =>
+      videos
+        .flatMap((v) => v.marks)
+        .filter(
+          (m) =>
+            m.type === 'segment' &&
+            m.modelId === modelId &&
+            m.end - m.start >= MIN_SEGMENT_DURATION,
+        ),
+    [videos],
+  );
+
   const isModelReady = useCallback(
     (modelId) => {
       const cfg = TUNING_MODEL_CONFIG_BY_ID[modelId];
       if (!cfg) return false;
+      if (cfg.annotationType === 'segment') {
+        return getValidSegments(modelId).length >= MIN_SEGMENT_COUNT;
+      }
       return cfg.categories.every((cat) => getClipCount(modelId, cat.id) >= MIN_CLIPS);
     },
-    [getClipCount],
+    [getClipCount, getValidSegments],
   );
 
   const canStartTraining = useMemo(
@@ -83,11 +104,7 @@ export default function TuningTab({ data, ipcRequest }) {
     [enabledModelIds, isModelReady],
   );
 
-  // ── Video marks on active video ───────────────────────────────────────────
-  const activeVideoMarks = useMemo(
-    () => activeVideo?.marks || [],
-    [activeVideo],
-  );
+  const activeVideoMarks = useMemo(() => activeVideo?.marks || [], [activeVideo]);
 
   // ── Mark / delete helpers ─────────────────────────────────────────────────
   const markCurrentFrame = useCallback(
@@ -95,6 +112,7 @@ export default function TuningTab({ data, ipcRequest }) {
       if (!activeVideo) return;
       const newMark = {
         id: generateId(),
+        type: 'point',
         modelId: modId,
         categoryId: catId,
         time: currentTime,
@@ -126,20 +144,20 @@ export default function TuningTab({ data, ipcRequest }) {
     const handler = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
-      // Number keys: select category + mark
-      const num = parseInt(e.key, 10);
-      if (!isNaN(num) && num >= 1 && activeModelConfig) {
-        const cat = activeModelConfig.categories[num - 1];
-        if (cat) {
-          setActiveCategoryId(cat.id);
-          markCurrentFrame(cat.id, activeModelId);
+      if (!isSegmentModel) {
+        const num = parseInt(e.key, 10);
+        if (!isNaN(num) && num >= 1 && activeModelConfig) {
+          const cat = activeModelConfig.categories[num - 1];
+          if (cat) {
+            setActiveCategoryId(cat.id);
+            markCurrentFrame(cat.id, activeModelId);
+          }
+          return;
         }
-        return;
-      }
-
-      if (e.key === 'm' || e.key === 'M') {
-        markCurrentFrame();
-        return;
+        if (e.key === 'm' || e.key === 'M') {
+          markCurrentFrame();
+          return;
+        }
       }
 
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedMarkId) {
@@ -150,28 +168,32 @@ export default function TuningTab({ data, ipcRequest }) {
       if (e.key === ' ') {
         e.preventDefault();
         if (videoRef.current) {
-          if (isPlaying) {
-            videoRef.current.pause();
-          } else {
-            videoRef.current.play();
-          }
+          if (isPlaying) videoRef.current.pause();
+          else videoRef.current.play();
         }
       }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [activeModelConfig, activeModelId, activeCategoryId, selectedMarkId, isPlaying, markCurrentFrame, deleteSelectedMark]);
+  }, [
+    activeModelConfig,
+    activeModelId,
+    activeCategoryId,
+    selectedMarkId,
+    isPlaying,
+    isSegmentModel,
+    markCurrentFrame,
+    deleteSelectedMark,
+  ]);
 
   // ── Auto-scroll terminal ──────────────────────────────────────────────────
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
   }, [tuning.logs]);
 
-  // ── Focus name input when modal opens ────────────────────────────────────
+  // ── Focus name input when modal opens ─────────────────────────────────────
   useEffect(() => {
-    if (showNameModal) {
-      setTimeout(() => nameInputRef.current?.focus(), 50);
-    }
+    if (showNameModal) setTimeout(() => nameInputRef.current?.focus(), 50);
   }, [showNameModal]);
 
   // ── Seek helper ───────────────────────────────────────────────────────────
@@ -180,27 +202,81 @@ export default function TuningTab({ data, ipcRequest }) {
     setCurrentTime(time);
   }, []);
 
-  // ── Timeline drag ─────────────────────────────────────────────────────────
+  // ── Timeline helpers ──────────────────────────────────────────────────────
+  const timeToPercent = useCallback(
+    (t) => (activeVideo?.duration > 0 ? (t / activeVideo.duration) * 100 : 0),
+    [activeVideo],
+  );
+
+  const clientXToTime = useCallback(
+    (clientX) => {
+      if (!timelineRef.current || !activeVideo?.duration) return 0;
+      const rect = timelineRef.current.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      return pct * activeVideo.duration;
+    },
+    [activeVideo],
+  );
+
+  // ── Timeline pointer events ───────────────────────────────────────────────
   const handleTimelinePointerDown = useCallback(
     (e) => {
       if (!activeVideo || activeVideo.duration <= 0) return;
       e.currentTarget.setPointerCapture(e.pointerId);
-      const rect = timelineRef.current.getBoundingClientRect();
-      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      seekTo(pct * activeVideo.duration);
+      const time = clientXToTime(e.clientX);
+      seekTo(time);
+
+      if (isSegmentModel) {
+        dragRef.current = { active: true, startTime: time };
+        setSegPreview({ start: time, end: time });
+      }
     },
-    [activeVideo, seekTo],
+    [activeVideo, clientXToTime, seekTo, isSegmentModel],
   );
 
   const handleTimelinePointerMove = useCallback(
     (e) => {
-      if (!activeVideo || activeVideo.duration <= 0) return;
-      if (e.buttons === 0) return;
-      const rect = timelineRef.current.getBoundingClientRect();
-      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      seekTo(pct * activeVideo.duration);
+      if (!activeVideo || activeVideo.duration <= 0 || e.buttons === 0) return;
+      const time = clientXToTime(e.clientX);
+
+      if (isSegmentModel && dragRef.current.active) {
+        const start = Math.min(dragRef.current.startTime, time);
+        const end = Math.max(dragRef.current.startTime, time);
+        setSegPreview({ start, end });
+      } else if (!isSegmentModel) {
+        seekTo(time);
+      }
     },
-    [activeVideo, seekTo],
+    [activeVideo, clientXToTime, seekTo, isSegmentModel],
+  );
+
+  const handleTimelinePointerUp = useCallback(
+    (e) => {
+      if (!isSegmentModel || !dragRef.current.active) return;
+      dragRef.current.active = false;
+
+      const preview = segPreview;
+      setSegPreview(null);
+
+      if (!preview || !activeVideo) return;
+      const duration = preview.end - preview.start;
+      if (duration < MIN_SEGMENT_DURATION) return; // too short — treat as seek only
+
+      const newMark = {
+        id: generateId(),
+        type: 'segment',
+        modelId: activeModelId,
+        start: preview.start,
+        end: preview.end,
+      };
+      setVideos((prev) =>
+        prev.map((v) =>
+          v.id === activeVideoId ? { ...v, marks: [...v.marks, newMark] } : v,
+        ),
+      );
+      setSelectedMarkId(newMark.id);
+    },
+    [isSegmentModel, segPreview, activeVideo, activeVideoId, activeModelId],
   );
 
   // ── Add video ─────────────────────────────────────────────────────────────
@@ -343,6 +419,7 @@ export default function TuningTab({ data, ipcRequest }) {
                     setCurrentTime(0);
                     setIsPlaying(false);
                     setSelectedMarkId(null);
+                    setSegPreview(null);
                   }}
                   className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition ${
                     isActive
@@ -426,7 +503,7 @@ export default function TuningTab({ data, ipcRequest }) {
                     className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 font-data text-xs text-red-300 transition hover:border-red-400/50 hover:text-red-200"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Delete mark
+                    Delete {isSegmentModel ? 'segment' : 'mark'}
                   </button>
                 )}
               </div>
@@ -435,9 +512,16 @@ export default function TuningTab({ data, ipcRequest }) {
               <div className="rounded-2xl border border-slate-800/90 bg-slate-900/50 p-4 backdrop-blur-sm">
                 <div
                   ref={timelineRef}
-                  className="relative h-8 cursor-pointer select-none rounded-full bg-slate-800/80"
+                  className={`relative h-8 select-none rounded-full bg-slate-800/80 ${
+                    isSegmentModel ? 'cursor-crosshair' : 'cursor-pointer'
+                  }`}
                   onPointerDown={handleTimelinePointerDown}
                   onPointerMove={handleTimelinePointerMove}
+                  onPointerUp={handleTimelinePointerUp}
+                  onPointerCancel={() => {
+                    dragRef.current.active = false;
+                    setSegPreview(null);
+                  }}
                 >
                   {/* Progress fill */}
                   <div
@@ -445,8 +529,47 @@ export default function TuningTab({ data, ipcRequest }) {
                     style={{ width: `${progress}%` }}
                   />
 
-                  {/* Category marks */}
+                  {/* Segment preview while dragging */}
+                  {segPreview && duration > 0 && (
+                    <div
+                      className="pointer-events-none absolute top-1 bottom-1 rounded-full"
+                      style={{
+                        left: `${timeToPercent(segPreview.start)}%`,
+                        width: `${timeToPercent(segPreview.end) - timeToPercent(segPreview.start)}%`,
+                        backgroundColor: activeModelConfig?.categories[0]?.color || '#f97316',
+                        opacity: 0.35,
+                      }}
+                    />
+                  )}
+
+                  {/* Marks & segments */}
                   {activeVideoMarks.map((mark) => {
+                    if (mark.type === 'segment') {
+                      const startPct = timeToPercent(mark.start);
+                      const widthPct = timeToPercent(mark.end) - startPct;
+                      const cfg = TUNING_MODEL_CONFIG_BY_ID[mark.modelId];
+                      const color = cfg?.categories[0]?.color || '#f97316';
+                      const isSelected = mark.id === selectedMarkId;
+                      return (
+                        <div
+                          key={mark.id}
+                          className="absolute top-1 bottom-1 cursor-pointer rounded-full transition-all"
+                          style={{
+                            left: `${startPct}%`,
+                            width: `${widthPct}%`,
+                            backgroundColor: color,
+                            opacity: isSelected ? 0.75 : 0.45,
+                            boxShadow: isSelected ? `0 0 10px ${color}` : 'none',
+                          }}
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            setSelectedMarkId(mark.id);
+                          }}
+                        />
+                      );
+                    }
+
+                    // Point mark
                     const markPct = duration > 0 ? (mark.time / duration) * 100 : 0;
                     const cat = TUNING_MODEL_CONFIG_BY_ID[mark.modelId]?.categories?.find(
                       (c) => c.id === mark.categoryId,
@@ -473,57 +596,64 @@ export default function TuningTab({ data, ipcRequest }) {
                     );
                   })}
 
-                  {/* Playhead knob */}
+                  {/* Playhead */}
                   <div
                     className="pointer-events-none absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-white shadow-[0_0_12px_rgba(255,255,255,0.4)]"
-                    style={{ left: `${progress}%` }}
+                    style={{ left: `${progress}%`, zIndex: 20 }}
                   />
                 </div>
 
-                {/* Mark controls row */}
+                {/* Controls row */}
                 <div className="mt-3 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => markCurrentFrame()}
-                    className="flex items-center gap-1.5 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/60 hover:text-cyan-100"
-                  >
-                    Mark frame
-                    <span className="rounded border border-cyan-500/30 px-1 font-data text-[10px]">
-                      M
-                    </span>
-                  </button>
-                  <span className="font-data text-xs text-slate-600">
-                    as
-                  </span>
-                  {/* Active category selector */}
-                  <div className="flex gap-1.5">
-                    {activeModelConfig?.categories.map((cat) => (
+                  {isSegmentModel ? (
+                    <p className="font-data text-xs text-slate-500">
+                      <span className="text-slate-400">Drag</span> on timeline to mark boss fight segment ·{' '}
+                      <span className="text-slate-400">Del</span> remove selected ·{' '}
+                      <span className="text-slate-400">Space</span> play/pause
+                    </p>
+                  ) : (
+                    <>
                       <button
-                        key={cat.id}
                         type="button"
-                        onClick={() => setActiveCategoryId(cat.id)}
-                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wider transition ${
-                          activeCategoryId === cat.id
-                            ? 'border-transparent text-slate-900'
-                            : 'border-slate-700 text-slate-500 hover:text-slate-300'
-                        }`}
-                        style={
-                          activeCategoryId === cat.id
-                            ? { backgroundColor: cat.color, borderColor: cat.color }
-                            : {}
-                        }
+                        onClick={() => markCurrentFrame()}
+                        className="flex items-center gap-1.5 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/60 hover:text-cyan-100"
                       >
-                        <span className="rounded border border-current/40 px-0.5 font-data text-[9px] opacity-70">
-                          {cat.key}
+                        Mark frame
+                        <span className="rounded border border-cyan-500/30 px-1 font-data text-[10px]">
+                          M
                         </span>
-                        {cat.label}
                       </button>
-                    ))}
-                  </div>
+                      <span className="font-data text-xs text-slate-600">as</span>
+                      <div className="flex gap-1.5">
+                        {activeModelConfig?.categories.map((cat) => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setActiveCategoryId(cat.id)}
+                            className={`flex items-center gap-1 rounded-lg border px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wider transition ${
+                              activeCategoryId === cat.id
+                                ? 'border-transparent text-slate-900'
+                                : 'border-slate-700 text-slate-500 hover:text-slate-300'
+                            }`}
+                            style={
+                              activeCategoryId === cat.id
+                                ? { backgroundColor: cat.color, borderColor: cat.color }
+                                : {}
+                            }
+                          >
+                            <span className="rounded border border-current/40 px-0.5 font-data text-[9px] opacity-70">
+                              {cat.key}
+                            </span>
+                            {cat.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="ml-auto font-data text-[10px] text-slate-600">
+                        1–3 select &amp; mark · M mark · Del remove · Space play/pause
+                      </p>
+                    </>
+                  )}
                 </div>
-                <p className="mt-2 font-data text-[10px] text-slate-600">
-                  Shortcuts: 1–4 select &amp; mark · M mark · Del remove selected · Space play/pause
-                </p>
               </div>
             </>
           ) : (
@@ -546,10 +676,10 @@ export default function TuningTab({ data, ipcRequest }) {
           )}
         </div>
 
-        {/* ── Right: Category panel ────────────────────────────────────────── */}
+        {/* ── Right: Category / segment panel ─────────────────────────────── */}
         <aside className="flex flex-col gap-3">
           <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-500/80">
-            Categories
+            {isSegmentModel ? 'Segments' : 'Categories'}
           </p>
 
           {/* Model type tabs */}
@@ -561,6 +691,8 @@ export default function TuningTab({ data, ipcRequest }) {
                 onClick={() => {
                   setActiveModelId(cfg.id);
                   setActiveCategoryId(cfg.categories[0].id);
+                  setSegPreview(null);
+                  dragRef.current.active = false;
                 }}
                 className={`rounded-lg border px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider transition ${
                   activeModelId === cfg.id
@@ -573,7 +705,7 @@ export default function TuningTab({ data, ipcRequest }) {
             ))}
           </div>
 
-          {/* Enable checkbox for active model */}
+          {/* Enable checkbox */}
           {activeModelConfig && (
             <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2.5 transition hover:border-slate-700">
               <input
@@ -599,70 +731,83 @@ export default function TuningTab({ data, ipcRequest }) {
             </label>
           )}
 
-          {/* Category list */}
-          <div className="flex flex-col gap-2 rounded-2xl border border-slate-800/90 bg-slate-950/50 p-3 backdrop-blur-xl">
-            {activeModelConfig?.categories.map((cat) => {
-              const count = getClipCount(activeModelId, cat.id);
-              const pct = Math.min(1, count / MIN_CLIPS);
-              const isActive = activeCategoryId === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setActiveCategoryId(cat.id)}
-                  className={`w-full rounded-xl border p-3 text-left transition ${
-                    isActive
-                      ? 'border-transparent'
-                      : 'border-slate-800 hover:border-slate-700'
-                  }`}
-                  style={isActive ? { borderColor: cat.color + '40', backgroundColor: cat.color + '12' } : {}}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="h-3 w-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: cat.color }}
-                    />
-                    <span className="flex-1 font-display text-[10px] font-bold uppercase tracking-wider text-slate-300">
-                      {cat.label}
-                    </span>
-                    <span
-                      className="shrink-0 rounded border px-1 font-data text-[9px] text-slate-600"
-                      style={{ borderColor: cat.color + '40' }}
-                    >
-                      {cat.key}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="flex-1 overflow-hidden rounded-full bg-slate-800 h-1.5">
-                      <motion.div
-                        className="h-full rounded-full"
+          {/* Segment model: segment count progress */}
+          {isSegmentModel ? (
+            <SegmentProgress
+              modelId={activeModelId}
+              modelConfig={activeModelConfig}
+              videos={videos}
+              minCount={MIN_SEGMENT_COUNT}
+              minDuration={MIN_SEGMENT_DURATION}
+            />
+          ) : (
+            /* Point model: category list */
+            <div className="flex flex-col gap-2 rounded-2xl border border-slate-800/90 bg-slate-950/50 p-3 backdrop-blur-xl">
+              {activeModelConfig?.categories.map((cat) => {
+                const count = getClipCount(activeModelId, cat.id);
+                const pct = Math.min(1, count / MIN_CLIPS);
+                const isActive = activeCategoryId === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setActiveCategoryId(cat.id)}
+                    className={`w-full rounded-xl border p-3 text-left transition ${
+                      isActive ? 'border-transparent' : 'border-slate-800 hover:border-slate-700'
+                    }`}
+                    style={
+                      isActive
+                        ? { borderColor: cat.color + '40', backgroundColor: cat.color + '12' }
+                        : {}
+                    }
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 shrink-0 rounded-full"
                         style={{ backgroundColor: cat.color }}
-                        initial={false}
-                        animate={{ width: `${pct * 100}%` }}
-                        transition={{ type: 'spring', stiffness: 200, damping: 28 }}
                       />
+                      <span className="flex-1 font-display text-[10px] font-bold uppercase tracking-wider text-slate-300">
+                        {cat.label}
+                      </span>
+                      <span
+                        className="shrink-0 rounded border px-1 font-data text-[9px] text-slate-600"
+                        style={{ borderColor: cat.color + '40' }}
+                      >
+                        {cat.key}
+                      </span>
                     </div>
-                    <span
-                      className={`shrink-0 font-data text-xs tabular-nums ${
-                        count >= MIN_CLIPS ? 'text-emerald-400' : 'text-slate-500'
-                      }`}
-                    >
-                      {count}/{MIN_CLIPS}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: cat.color }}
+                          initial={false}
+                          animate={{ width: `${pct * 100}%` }}
+                          transition={{ type: 'spring', stiffness: 200, damping: 28 }}
+                        />
+                      </div>
+                      <span
+                        className={`shrink-0 font-data text-xs tabular-nums ${
+                          count >= MIN_CLIPS ? 'text-emerald-400' : 'text-slate-500'
+                        }`}
+                      >
+                        {count}/{MIN_CLIPS}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
-          {/* Total clips summary */}
+          {/* Summary */}
           <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2">
             <p className="font-data text-[10px] text-slate-500">
-              Total marks:{' '}
+              Total:{' '}
               <span className="text-slate-300">
                 {videos.reduce((s, v) => s + v.marks.length, 0)}
               </span>{' '}
-              across{' '}
+              annotations across{' '}
               <span className="text-slate-300">{videos.length}</span> video
               {videos.length !== 1 ? 's' : ''}
             </p>
@@ -670,7 +815,7 @@ export default function TuningTab({ data, ipcRequest }) {
         </aside>
       </div>
 
-      {/* Training terminal — shown when status != idle */}
+      {/* Training terminal */}
       <AnimatePresence>
         {tuning.status !== 'idle' && (
           <motion.section
@@ -711,7 +856,6 @@ export default function TuningTab({ data, ipcRequest }) {
               </div>
             </div>
 
-            {/* Progress bar */}
             <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-black/50 ring-1 ring-slate-800">
               {tuning.status === 'running' ? (
                 <motion.div
@@ -817,5 +961,93 @@ export default function TuningTab({ data, ipcRequest }) {
         )}
       </AnimatePresence>
     </motion.div>
+  );
+}
+
+// ── Segment progress panel ────────────────────────────────────────────────────
+
+function SegmentProgress({ modelId, modelConfig, videos, minCount, minDuration }) {
+  const allSegments = videos.flatMap((v) =>
+    v.marks.filter((m) => m.type === 'segment' && m.modelId === modelId),
+  );
+  const validSegments = allSegments.filter((s) => s.end - s.start >= minDuration);
+  const count = validSegments.length;
+  const pct = Math.min(1, count / minCount);
+  const cat = modelConfig?.categories[0];
+  const color = cat?.color || '#f97316';
+
+  const formatTime = (s) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-slate-800/90 bg-slate-950/50 p-3 backdrop-blur-xl">
+      {/* Progress bar */}
+      <div className="rounded-xl border border-slate-800 p-3" style={{ borderColor: color + '30', backgroundColor: color + '08' }}>
+        <div className="flex items-center gap-2">
+          <div className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+          <span className="flex-1 font-display text-[10px] font-bold uppercase tracking-wider text-slate-300">
+            Boss Fight Segments
+          </span>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+            <motion.div
+              className="h-full rounded-full"
+              style={{ backgroundColor: color }}
+              initial={false}
+              animate={{ width: `${pct * 100}%` }}
+              transition={{ type: 'spring', stiffness: 200, damping: 28 }}
+            />
+          </div>
+          <span
+            className={`shrink-0 font-data text-xs tabular-nums ${
+              count >= minCount ? 'text-emerald-400' : 'text-slate-500'
+            }`}
+          >
+            {count}/{minCount}
+          </span>
+        </div>
+        <p className="mt-1 font-data text-[10px] text-slate-600">
+          Valid = ≥ {minDuration}s · Total drawn: {allSegments.length}
+        </p>
+      </div>
+
+      {/* Segment list */}
+      {allSegments.length > 0 && (
+        <div className="flex flex-col gap-1">
+          {allSegments.map((seg) => {
+            const dur = seg.end - seg.start;
+            const isValid = dur >= minDuration;
+            return (
+              <div
+                key={seg.id}
+                className="flex items-center justify-between rounded-lg border border-slate-800 px-2.5 py-1.5"
+                style={isValid ? { borderColor: color + '30', backgroundColor: color + '0a' } : {}}
+              >
+                <span className="font-data text-[10px] text-slate-400 tabular-nums">
+                  {formatTime(seg.start)} → {formatTime(seg.end)}
+                </span>
+                <span
+                  className={`font-data text-[10px] tabular-nums ${
+                    isValid ? 'text-emerald-400' : 'text-red-400/70'
+                  }`}
+                >
+                  {dur.toFixed(1)}s
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {allSegments.length === 0 && (
+        <p className="py-3 text-center font-data text-[10px] text-slate-600">
+          Drag on timeline to mark boss fights
+        </p>
+      )}
+    </div>
   );
 }

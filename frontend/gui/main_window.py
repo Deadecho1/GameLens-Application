@@ -648,6 +648,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             model_name=model_name,
             finetuned_models_dir=finetuned_dir,
             base_model_dir=app_config.event_detector_model_dir,
+            boss_model_path=app_config.boss_model_path,
         )
 
     def stop_tuning_from_ipc(self) -> None:
