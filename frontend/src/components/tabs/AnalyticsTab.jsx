@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Columns2, GitCompare } from 'lucide-react';
+import { ChevronDown, Columns2, GitCompare } from 'lucide-react';
 import GeneralMissionStats from '../analytics/GeneralMissionStats';
 import BossesAnalytics from '../analytics/BossesAnalytics';
 import ItemsPowerLab from '../analytics/ItemsPowerLab';
@@ -22,23 +22,30 @@ function renderActiveSubView(sub, data) {
 
 function VersionSelect({ id, label, value, versions, onChange, disabled }) {
   return (
-    <label className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+    <label className="inline-flex max-w-full shrink-0 flex-col items-start gap-1">
       <span className="shrink-0 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
         {label}
       </span>
-      <select
-        id={id}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-        className="min-w-0 flex-1 rounded-lg border border-slate-700/90 bg-slate-900/90 px-3 py-2 font-data text-xs text-slate-200 shadow-inner shadow-black/20 outline-none ring-cyan-500/0 transition focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {versions.map((v) => (
-          <option key={v} value={v}>
-            {v}
-          </option>
-        ))}
-      </select>
+      <div className="relative w-max max-w-full min-w-0 overflow-hidden rounded-lg border border-slate-800 bg-slate-900 transition focus-within:border-cyan-500/50 focus-within:ring-0 focus-within:outline-none">
+        <select
+          id={id}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          className="analytics-version-select font-data box-border h-8 min-w-[5ch] max-w-[16rem] w-auto cursor-pointer appearance-none rounded-lg border-0 bg-slate-900 py-0 pl-3 pr-8 text-center text-xs leading-8 text-slate-200 [field-sizing:content] [color-scheme:dark] outline-none ring-0 focus:bg-slate-900 focus:outline-none focus:ring-0 focus-visible:bg-slate-900 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {versions.map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
+          strokeWidth={2}
+          aria-hidden
+        />
+      </div>
     </label>
   );
 }
@@ -123,13 +130,13 @@ export default function AnalyticsTab({ data, onPatch }) {
         aria-label="Version comparison"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-2 text-slate-400">
+          <div className="flex shrink-0 items-center gap-2 text-slate-400">
             <GitCompare className="h-4 w-4 shrink-0 text-cyan-500/80" aria-hidden />
             <p className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-slate-300">
               Version comparison
             </p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
             <VersionSelect
               id="analytics-compare-version-a"
               label="Compare version A"
@@ -146,7 +153,7 @@ export default function AnalyticsTab({ data, onPatch }) {
               onChange={setVersionB}
               disabled={versions.length === 0}
             />
-            <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 transition hover:border-slate-600">
+            <div className="flex shrink-0 items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 transition hover:border-slate-600">
               <Columns2 className="h-4 w-4 text-slate-500" aria-hidden />
               <span
                 id="analytics-split-view-label"
@@ -225,11 +232,11 @@ export default function AnalyticsTab({ data, onPatch }) {
         {!splitView ? (
           renderActiveSubView(sub, data)
         ) : (
-          <div className="relative flex min-h-[min(640px,calc(100vh-13rem))] flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0">
+          <div className="relative flex min-h-0 flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0">
             <div
               ref={leftScrollRef}
               onScroll={handleLeftScroll}
-              className="min-h-[min(480px,55vh)] min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain lg:min-h-[min(640px,calc(100vh-14rem))] lg:max-h-[calc(100vh-14rem)] lg:w-1/2 lg:border-r lg:border-slate-800/80 lg:pr-4"
+              className="analytics-split-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto sm:min-h-[min(420px,50vh)] lg:max-h-[calc(100vh-11rem)] lg:min-h-0 lg:w-1/2 lg:border-r lg:border-slate-800/80 lg:pr-4"
             >
               <div className="mb-2 border-b border-slate-800/60 pb-2">
                 <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-500/90">
@@ -249,7 +256,7 @@ export default function AnalyticsTab({ data, onPatch }) {
             <div
               ref={rightScrollRef}
               onScroll={handleRightScroll}
-              className="min-h-[min(480px,55vh)] min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain lg:min-h-[min(640px,calc(100vh-14rem))] lg:max-h-[calc(100vh-14rem)] lg:w-1/2 lg:pl-4"
+              className="analytics-split-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto sm:min-h-[min(420px,50vh)] lg:max-h-[calc(100vh-11rem)] lg:min-h-0 lg:w-1/2 lg:pl-4"
             >
               <div className="mb-2 border-b border-slate-800/60 pb-2">
                 <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-indigo-300/90">
@@ -260,15 +267,13 @@ export default function AnalyticsTab({ data, onPatch }) {
             </div>
 
             <div
-              className="pointer-events-none absolute inset-y-4 left-1/2 z-20 hidden w-0 -translate-x-1/2 lg:block"
+              className="pointer-events-none absolute inset-y-0 left-1/2 z-20 hidden w-8 -translate-x-1/2 lg:flex lg:flex-col lg:items-center lg:justify-center"
               aria-hidden
             >
-              <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-slate-600/85 to-transparent" />
-              <div className="absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2">
-                <span className="inline-flex rounded-full border border-slate-600/90 bg-slate-900/95 px-2.5 py-1 font-display text-[9px] font-bold tracking-[0.25em] text-slate-300 shadow-lg shadow-black/40 ring-1 ring-slate-800/90">
-                  VS
-                </span>
-              </div>
+              <div className="absolute inset-y-6 left-1/2 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-slate-600/85 to-transparent" />
+              <span className="relative z-10 inline-flex shrink-0 rounded-full border border-slate-600/90 bg-slate-950 px-2.5 py-1 font-display text-[9px] font-bold tracking-[0.25em] text-slate-300 shadow-lg shadow-black/40 ring-1 ring-slate-800/90">
+                VS
+              </span>
             </div>
           </div>
         )}
