@@ -454,7 +454,7 @@ export default function RunSessionAnalytics({ data }) {
                   <div className="flex items-center gap-2 pb-4">
                     <Timer className="h-4 w-4 text-slate-400" aria-hidden />
                     <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                      Heartbeat feed
+                      Tactical Run Trace
                     </h3>
                   </div>
 
