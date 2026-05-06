@@ -20,33 +20,105 @@ function renderActiveSubView(sub, data) {
   return null;
 }
 
-function VersionSelect({ id, label, value, versions, onChange, disabled }) {
+function VersionDropdown({
+  id,
+  listboxId,
+  label,
+  value,
+  versions,
+  onChange,
+  disabled,
+  isOpen,
+  onOpenChange,
+}) {
+  const rootRef = useRef(null);
+
+  const close = useCallback(() => onOpenChange(false), [onOpenChange]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onDocDown = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) close();
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('mousedown', onDocDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen, close]);
+
+  const toggle = () => {
+    if (disabled) return;
+    onOpenChange(!isOpen);
+  };
+
+  const selectVersion = (v) => {
+    onChange(v);
+    close();
+  };
+
   return (
-    <label className="inline-flex max-w-full shrink-0 flex-col items-start gap-1">
-      <span className="shrink-0 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
+    <div ref={rootRef} className="relative inline-flex max-w-full shrink-0 flex-col items-start gap-1">
+      <span
+        id={`${id}-label`}
+        className="shrink-0 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500"
+      >
         {label}
       </span>
-      <div className="relative w-max max-w-full min-w-0 overflow-hidden rounded-lg border border-slate-800 bg-slate-900 transition focus-within:border-cyan-500/50 focus-within:ring-0 focus-within:outline-none">
-        <select
-          id={id}
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-          className="analytics-version-select font-data box-border h-8 min-w-[5ch] max-w-[16rem] w-auto cursor-pointer appearance-none rounded-lg border-0 bg-slate-900 py-0 pl-3 pr-8 text-center text-xs leading-8 text-slate-200 [field-sizing:content] [color-scheme:dark] outline-none ring-0 focus:bg-slate-900 focus:outline-none focus:ring-0 focus-visible:bg-slate-900 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {versions.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
+      <button
+        type="button"
+        id={id}
+        aria-labelledby={`${id}-label`}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={listboxId}
+        disabled={disabled}
+        onClick={toggle}
+        className={`font-data relative box-border flex h-8 min-w-[5ch] max-w-[16rem] w-max cursor-pointer items-center justify-center gap-1 rounded-lg border bg-slate-900 px-3 pr-8 text-xs leading-none text-slate-200 outline-none transition ring-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 ${
+          isOpen ? 'border-cyan-500/50' : 'border-slate-800'
+        }`}
+      >
+        <span className="min-w-0 truncate text-center">{value || '—'}</span>
         <ChevronDown
-          className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500"
+          className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           strokeWidth={2}
           aria-hidden
         />
-      </div>
-    </label>
+      </button>
+      {isOpen && versions.length > 0 ? (
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-labelledby={`${id}-label`}
+          className="absolute left-0 top-[calc(100%+4px)] z-[45] min-w-full max-w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-lg border border-slate-800 bg-slate-900/95 py-1 shadow-xl shadow-black/40 backdrop-blur-md"
+        >
+          {versions.map((v) => {
+            const selected = v === value;
+            return (
+              <li key={v} role="presentation">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  className={`font-data w-full px-3 py-2 text-left text-xs leading-snug outline-none ring-0 transition focus:outline-none ${
+                    selected
+                      ? 'bg-slate-800/55 text-cyan-100 hover:bg-cyan-500/20 hover:text-cyan-200 focus:bg-cyan-500/20 focus:text-cyan-200'
+                      : 'text-slate-200 hover:bg-cyan-500/20 hover:text-cyan-200 focus:bg-cyan-500/20 focus:text-cyan-200'
+                  }`}
+                  onClick={() => selectVersion(v)}
+                >
+                  {v}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
@@ -66,12 +138,29 @@ export default function AnalyticsTab({ data, onPatch }) {
   const [versionA, setVersionA] = useState(() => versions[0] ?? '');
   const [versionB, setVersionB] = useState(() => versions[1] ?? versions[0] ?? '');
   const [splitView, setSplitView] = useState(false);
+  const [isOpenA, setIsOpenA] = useState(false);
+  const [isOpenB, setIsOpenB] = useState(false);
+
+  const setDropdownAOpen = useCallback((next) => {
+    setIsOpenA(next);
+    if (next) setIsOpenB(false);
+  }, []);
+
+  const setDropdownBOpen = useCallback((next) => {
+    setIsOpenB(next);
+    if (next) setIsOpenA(false);
+  }, []);
 
   useEffect(() => {
     const a = versions[0] ?? '';
     const b = versions[1] ?? a;
     setVersionA((prev) => (versions.includes(prev) ? prev : a));
     setVersionB((prev) => (versions.includes(prev) ? prev : b));
+  }, [versions]);
+
+  useEffect(() => {
+    setIsOpenA(false);
+    setIsOpenB(false);
   }, [versions]);
 
   const dataA = useMemo(
@@ -126,7 +215,7 @@ export default function AnalyticsTab({ data, onPatch }) {
       </header>
 
       <div
-        className="sticky top-0 z-30 mb-6 border-b border-slate-800/80 bg-slate-950/92 px-1 py-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.45)] backdrop-blur-md md:px-2"
+        className="sticky top-0 z-30 mb-6 overflow-visible border-b border-slate-800/80 bg-slate-950/92 px-1 py-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.45)] backdrop-blur-md md:px-2"
         aria-label="Version comparison"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -137,21 +226,27 @@ export default function AnalyticsTab({ data, onPatch }) {
             </p>
           </div>
           <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-            <VersionSelect
+            <VersionDropdown
               id="analytics-compare-version-a"
+              listboxId="analytics-compare-version-a-listbox"
               label="Compare version A"
               value={versionA}
               versions={versions}
               onChange={setVersionA}
               disabled={versions.length === 0}
+              isOpen={isOpenA}
+              onOpenChange={setDropdownAOpen}
             />
-            <VersionSelect
+            <VersionDropdown
               id="analytics-compare-version-b"
+              listboxId="analytics-compare-version-b-listbox"
               label="Compare version B"
               value={versionB}
               versions={versions}
               onChange={setVersionB}
               disabled={versions.length === 0}
+              isOpen={isOpenB}
+              onOpenChange={setDropdownBOpen}
             />
             <div className="flex shrink-0 items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 transition hover:border-slate-600">
               <Columns2 className="h-4 w-4 text-slate-500" aria-hidden />

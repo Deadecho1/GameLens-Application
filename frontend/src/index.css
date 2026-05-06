@@ -199,13 +199,6 @@ body {
   background-color: rgb(34 211 238 / 0.5);
 }
 
-/* Analytics version <select>: strip default focus ring / Windows high-contrast bleed */
-.analytics-version-select:focus,
-.analytics-version-select:focus-visible,
-.analytics-version-select:active {
-  outline: none !important;
-  box-shadow: none !important;
-}
 
 .gl-app-scanlines {
   position: fixed;
