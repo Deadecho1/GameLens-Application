@@ -206,12 +206,9 @@ export default function RunSessionAnalytics({ data }) {
   const chartIsHero = !selectedRunId;
 
   const circuitBgStyle = {
-    backgroundColor: 'rgb(2 6 23 / 0.85)',
+    backgroundColor: '',
     backgroundImage: `
-      linear-gradient(to right, rgb(51 65 85 / 0.09) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(51 65 85 / 0.09) 1px, transparent 1px),
-      linear-gradient(to right, rgb(34 211 238 / 0.04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(34 211 238 / 0.04) 1px, transparent 1px)
+
     `,
     backgroundSize: '32px 32px, 32px 32px, 8px 8px, 8px 8px',
     backgroundPosition: '0 0, 0 0, -1px -1px, -1px -1px',
@@ -511,30 +508,25 @@ export default function RunSessionAnalytics({ data }) {
                                   ) : (
                                     <div className="flex flex-wrap gap-3">
                                       {loadoutIds.map((itemId) => {
+                                        const itemName = itemsCatalog.find(i => i.id === itemId)?.name || 'Unknown Item';
                                         const row = itemById(itemsCatalog, itemId);
                                         const nm = row?.name ?? null;
                                         const bonus = itemSynergySeconds(row);
                                         return (
                                           <div key={`${selectedRun.id}-enc-${idx}-syn-${itemId}`} className="group relative">
                                             <div
-                                              className="flex h-12 w-12 cursor-default items-center justify-center transition duration-200 group-hover:scale-110 group-hover:shadow-[0_0_14px_rgba(34,211,238,0.35)]"
+                                              className="flex h-20 w-20 cursor-default items-center justify-center transition duration-200 group-hover:scale-110 group-hover:shadow-[0_0_14px_rgba(34,211,238,0.35)]"
                                               title={nm ?? `Item ${itemId}`}
                                             >
-                                              <svg
-                                                width="48"
-                                                height="48"
-                                                className="overflow-visible"
-                                                viewBox="0 0 48 48"
-                                              >
-                                                <polygon
-                                                  points={hexPolygonPoints(24, 24, 11)}
-                                                  className="fill-slate-800/90 stroke-slate-600 transition group-hover:stroke-cyan-400 group-hover:fill-slate-800"
-                                                  strokeWidth="1.2"
-                                                />
-                                              </svg>
-                                              <span className="pointer-events-none absolute inset-0 flex items-center justify-center font-data text-[9px] font-bold tabular-nums text-cyan-200/90">
-                                                {itemId}
+                                        
+                                              <div className="relative flex items-center justify-center px-3 py-1 border border-cyan-500/30 bg-cyan-500/5 rounded-sm backdrop-blur-md shadow-[0_0_10px_rgba(34,211,238,0.1)] transition-all hover:border-cyan-400 hover:bg-cyan-500/10 group">
+                                              {/* Tactical corner accent */}
+                                              <div className="absolute -left-[1px] -top-[1px] h-1.5 w-1.5 border-l border-t border-cyan-400" />
+                                              
+                                              <span className="font-data text-[10px] font-bold uppercase tracking-widest tabular-nums text-cyan-200/90 group-hover:text-cyan-100">
+                                                {itemName}
                                               </span>
+                                            </div>
                                             </div>
                                             <span className="pointer-events-none absolute -right-1 -top-1 rounded border border-cyan-500/40 bg-slate-950 px-1 font-data text-[9px] font-bold text-cyan-300 opacity-0 shadow-sm transition group-hover:opacity-100">
                                               +{bonus}s
@@ -547,7 +539,7 @@ export default function RunSessionAnalytics({ data }) {
                                 </div>
 
                                 <div
-                                  className="relative overflow-hidden rounded-xl border border-red-500/35 bg-red-950/35 p-4"
+                                  className="relative overflow-hidden rounded-xl border bg-emerald-500/10 text-slate-200 p-4"
                                   style={{
                                     backgroundImage: `repeating-linear-gradient(
                                       -12deg,
@@ -579,7 +571,7 @@ export default function RunSessionAnalytics({ data }) {
                                     </p>
                                     <div className="mt-2 h-2 overflow-hidden rounded border border-slate-700 bg-slate-900/80">
                                       <div
-                                        className="h-full rounded bg-red-500/70 transition-[width] duration-500"
+                                        className="h-full rounded border-cyan-500/40 transition-[width] duration-500"
                                         style={{ width: `${barPct}%` }}
                                       />
                                     </div>
