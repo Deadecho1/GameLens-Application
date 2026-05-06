@@ -22,7 +22,19 @@ import {
 import { initialData } from '../../../dataStore.js';
 import { durationToSeconds, formatSecondsAsHMS } from '../../../utils/duration';
 
-const MotionG = motion.g;
+/** Flat-top hexagon corners for SVG polygon */
+function hexPolygonPoints(cx, cy, r) {
+  return Array.from({ length: 6 }, (_, i) => {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
+  }).join(' ');
+}
+
+/** Synergy bonus label from catalog popularity (dataStore) — scaled to seconds proxy. */
+function itemSynergySeconds(item) {
+  if (!item || typeof item.popularity !== 'number') return 1;
+  return Math.max(1, Math.round(item.popularity / 12));
+}
 
 /**
  * Converts run `duration` strings from dataStore (e.g. "00:28:00") to seconds for charts.
@@ -31,36 +43,48 @@ export function runDurationToSeconds(hms) {
   return durationToSeconds(hms);
 }
 
+function itemById(catalog, id) {
+  return catalog.find((i) => i.id === id) ?? null;
+}
+
 function itemNameById(catalog, id) {
-  return catalog.find((i) => i.id === id)?.name ?? null;
+  return itemById(catalog, id)?.name ?? null;
 }
 
 function bossNameById(catalog, id) {
   return catalog.find((b) => b.id === id)?.name ?? null;
 }
 
-/** Longer runs → stronger "success" tint (cyan/emerald); shorter → cooler slate. */
-function successFillForDuration(durationSec, minSec, maxSec, isSelected) {
+/** Cyan intensity vs slate by duration; selected uses brighter cyan only. */
+function shardFill(durationSec, minSec, maxSec, isSelected) {
   const spread = maxSec - minSec || 1;
   const t = Math.min(1, Math.max(0, (durationSec - minSec) / spread));
   if (isSelected) return '#22d3ee';
-  if (t >= 0.66) return '#34d399';
-  if (t >= 0.33) return '#5eead4';
-  return '#94a3b8';
+  if (t >= 0.66) return 'rgba(34,211,238,0.35)';
+  if (t >= 0.33) return 'rgba(34,211,238,0.2)';
+  return 'rgba(148,163,184,0.25)';
 }
 
-function successStrokeForDuration(durationSec, minSec, maxSec, isSelected) {
-  if (isSelected) return '#a5f3fc';
+function shardStroke(durationSec, minSec, maxSec, isSelected) {
+  if (isSelected) return '#67e8f9';
   const spread = maxSec - minSec || 1;
   const t = Math.min(1, Math.max(0, (durationSec - minSec) / spread));
-  if (t >= 0.66) return '#6ee7b7';
-  if (t >= 0.33) return '#99f6e4';
-  return '#64748b';
+  if (t >= 0.5) return 'rgba(34,211,238,0.55)';
+  return 'rgba(100,116,139,0.7)';
 }
 
+const glitchInjectVariants = {
+  initial: { opacity: 0.96, x: 0, skewX: 0 },
+  animate: {
+    opacity: [1, 0.94, 1, 1],
+    x: [0, -3, 2, 0],
+    skewX: ['0deg', '-0.6deg', '0.4deg', '0deg'],
+    transition: { duration: 0.24, times: [0, 0.15, 0.35, 1], ease: 'easeOut' },
+  },
+};
+
 /**
- * Run Session Analytics — runs from live `data` when present; otherwise `initialData.dashboard.runsHistory`.
- * Item and boss labels always resolve from `initialData.dashboard` (dataStore contract).
+ * Run Session Analytics — data from `dataStore.js` (`initialData` + live `data`).
  */
 export default function RunSessionAnalytics({ data }) {
   const runsHistory = useMemo(() => {
@@ -80,12 +104,17 @@ export default function RunSessionAnalytics({ data }) {
     return sum / runsHistory.length;
   }, [runsHistory]);
 
-  const scatterData = useMemo(() => {
-    if (!runsHistory.length) return [];
+  const scatterAxis = useMemo(() => {
+    if (!runsHistory.length) {
+      return { scatterData: [], n: 0, yMin: 0, yMax: 1, yPad: 0, xTicks: [] };
+    }
     const secs = runsHistory.map((r) => runDurationToSeconds(r.duration));
-    const minSec = Math.min(...secs);
-    const maxSec = Math.max(...secs);
-    return runsHistory.map((run, index) => {
+    const yMin = Math.min(...secs);
+    const yMax = Math.max(...secs);
+    const spread = yMax - yMin || 1;
+    const yPad = Math.max(30, spread * 0.06);
+    const n = runsHistory.length;
+    const scatterData = runsHistory.map((run, index) => {
       const durationSec = secs[index];
       return {
         order: index + 1,
@@ -94,14 +123,25 @@ export default function RunSessionAnalytics({ data }) {
         date: run.date,
         durationLabel: run.duration,
         run,
-        minSec,
-        maxSec,
+        minSec: yMin,
+        maxSec: yMax,
       };
     });
+    const xTicks = Array.from({ length: n }, (_, i) => i + 1);
+    return {
+      scatterData,
+      n,
+      yMin,
+      yMax,
+      yPad,
+      xTicks,
+    };
   }, [runsHistory]);
 
-  /** No default selection — pulse chart is the hero until the user picks a run. */
+  const { scatterData, n, yMin, yMax, yPad, xTicks } = scatterAxis;
+
   const [selectedRunId, setSelectedRunId] = useState(null);
+  const [hoveredRunId, setHoveredRunId] = useState(null);
 
   useEffect(() => {
     if (runsHistory.length === 0) setSelectedRunId(null);
@@ -127,52 +167,55 @@ export default function RunSessionAnalytics({ data }) {
       const { cx, cy, payload } = props;
       if (cx == null || cy == null || !payload) return null;
       const active = payload.runId === selectedRunId;
-      const r = active ? 9 : 6;
-      const fill = successFillForDuration(payload.durationSec, payload.minSec, payload.maxSec, active);
-      const stroke = successStrokeForDuration(payload.durationSec, payload.minSec, payload.maxSec, active);
+      const hover = payload.runId === hoveredRunId;
+      const hr = active ? 10 : hover ? 9 : 8;
+      const fill = shardFill(payload.durationSec, payload.minSec, payload.maxSec, active);
+      const stroke = shardStroke(payload.durationSec, payload.minSec, payload.maxSec, active);
+      const strokeW = active ? 2 : hover ? 1.5 : 1;
       const glow =
-        'drop-shadow(0 0 6px rgba(34,211,238,0.45)) drop-shadow(0 0 14px rgba(34,211,238,0.35))';
-      const order = payload.order ?? 1;
+        active || hover
+          ? 'drop-shadow(0 0 5px rgba(34,211,238,0.55))'
+          : 'none';
+      const pts = hexPolygonPoints(cx, cy, hr);
       const onActivate = (e) => {
         e.stopPropagation();
         if (payload.runId != null) setSelectedRunId(payload.runId);
       };
       return (
-        <MotionG
+        <g
           className="cursor-pointer"
           onClick={onActivate}
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{
-            delay: (order - 1) * 0.07,
-            type: 'spring',
-            stiffness: 380,
-            damping: 24,
-          }}
+          onMouseEnter={() => setHoveredRunId(payload.runId)}
+          onMouseLeave={() => setHoveredRunId((h) => (h === payload.runId ? null : h))}
         >
-          <circle cx={cx} cy={cy} r={r + 4} fill={`${fill}18`} stroke="none" style={{ filter: glow }} />
-          <circle
-            cx={cx}
-            cy={cy}
-            r={r}
+          <polygon
+            points={pts}
             fill={fill}
             stroke={stroke}
-            strokeWidth={active ? 2 : 1}
-            style={{
-              pointerEvents: 'auto',
-              filter: glow,
-            }}
-            className="transition-[r,fill] duration-150"
+            strokeWidth={strokeW}
+            style={{ filter: glow, transition: 'filter 0.15s ease, stroke-width 0.15s ease' }}
           />
-        </MotionG>
+        </g>
       );
     },
-    [selectedRunId]
+    [selectedRunId, hoveredRunId]
   );
 
   const avgLabel = formatSecondsAsHMS(Math.round(globalAverageDurationSeconds));
 
   const chartIsHero = !selectedRunId;
+
+  const circuitBgStyle = {
+    backgroundColor: 'rgb(2 6 23 / 0.85)',
+    backgroundImage: `
+      linear-gradient(to right, rgb(51 65 85 / 0.09) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(51 65 85 / 0.09) 1px, transparent 1px),
+      linear-gradient(to right, rgb(34 211 238 / 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(34 211 238 / 0.04) 1px, transparent 1px)
+    `,
+    backgroundSize: '32px 32px, 32px 32px, 8px 8px, 8px 8px',
+    backgroundPosition: '0 0, 0 0, -1px -1px, -1px -1px',
+  };
 
   return (
     <motion.div
@@ -180,9 +223,10 @@ export default function RunSessionAnalytics({ data }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.28 }}
-      className="mx-auto max-w-[1800px] px-4 py-8 md:py-10"
+      className="relative mx-auto max-w-[1800px] px-4 py-8 md:py-10"
+      style={circuitBgStyle}
     >
-      <header className="mb-6">
+      <header className="relative z-1 mb-6">
         <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-cyan-500/70">
           Session intel
         </p>
@@ -191,7 +235,7 @@ export default function RunSessionAnalytics({ data }) {
         </h2>
       </header>
 
-      <div className="flex min-h-[min(640px,72vh)] flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-950/45 lg:shadow-[inset_0_1px_0_rgba(34,211,238,0.06)]">
+      <div className="relative z-1 flex min-h-[min(640px,72vh)] flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-950/45 lg:shadow-[inset_0_1px_0_rgba(148,163,184,0.05)]">
         <aside className="flex w-full flex-col border-slate-800/80 lg:w-[min(100%,280px)] lg:shrink-0 lg:border-r lg:border-slate-800/90 lg:bg-slate-950/55">
           <div className="border-b border-slate-800/80 px-4 py-3">
             <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
@@ -215,7 +259,7 @@ export default function RunSessionAnalytics({ data }) {
                         onClick={() => handleListSelect(run.id)}
                         className={`flex w-full flex-col gap-1 rounded-lg border px-3 py-2.5 text-left transition ${
                           active
-                            ? 'border-cyan-500/45 bg-cyan-500/10 shadow-[0_0_16px_rgba(34,211,238,0.08)]'
+                            ? 'border-cyan-500/50 bg-cyan-500/5'
                             : 'border-slate-800 bg-slate-900/40 hover:border-slate-600 hover:bg-slate-900/65'
                         }`}
                       >
@@ -253,7 +297,7 @@ export default function RunSessionAnalytics({ data }) {
               <div className="flex flex-wrap items-center gap-2">
                 <Activity className="h-4 w-4 text-cyan-400/80" aria-hidden />
                 <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
-                  Pulse signal · duration vs run index
+                  Tactical radar · duration vs run index
                 </h3>
               </div>
               {selectedRunId ? (
@@ -271,42 +315,41 @@ export default function RunSessionAnalytics({ data }) {
                 No data to plot.
               </div>
             ) : (
-              <motion.div
-                key="scatter-mount"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.45, ease: 'easeOut' }}
-                className={`w-full min-w-0 rounded-xl border border-cyan-500/20 bg-slate-950/60 shadow-[0_0_32px_rgba(34,211,238,0.08),inset_0_1px_0_rgba(34,211,238,0.12)] ring-1 ring-cyan-500/10 ${
+              <div
+                className={`w-full min-w-0 rounded-xl border border-slate-800 bg-slate-950/70 ${
                   chartIsHero ? 'h-[min(48vh,480px)] md:h-[min(50vh,520px)]' : 'h-[min(220px,32vh)] md:h-[260px]'
                 }`}
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart margin={{ top: 12, right: 16, bottom: 12, left: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.55} />
+                  <ScatterChart margin={{ top: 16, right: 20, bottom: 20, left: 12 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
                     <XAxis
                       type="number"
                       dataKey="order"
-                      name="Run index"
+                      domain={n <= 1 ? [0.5, 1.5] : [0.5, n + 0.5]}
+                      ticks={xTicks}
                       tick={{ fill: '#94a3b8', fontSize: 11 }}
                       axisLine={{ stroke: '#475569' }}
                       tickLine={{ stroke: '#475569' }}
+                      allowDecimals={false}
+                      padding={{ left: 0, right: 0 }}
                       label={{
                         value: 'Run # (order)',
                         position: 'insideBottom',
-                        offset: -4,
+                        offset: -6,
                         fill: '#64748b',
                         fontSize: 10,
                       }}
-                      allowDecimals={false}
                     />
                     <YAxis
                       type="number"
                       dataKey="durationSec"
-                      name="Duration"
+                      domain={[yMin - yPad, yMax + yPad]}
                       tick={{ fill: '#94a3b8', fontSize: 11 }}
                       axisLine={{ stroke: '#475569' }}
                       tickLine={{ stroke: '#475569' }}
                       tickFormatter={(v) => `${Math.round(v / 60)}m`}
+                      allowDataOverflow={false}
                       label={{
                         value: 'Duration (seconds)',
                         angle: -90,
@@ -318,14 +361,15 @@ export default function RunSessionAnalytics({ data }) {
                     {globalAverageDurationSeconds > 0 ? (
                       <ReferenceLine
                         y={globalAverageDurationSeconds}
-                        stroke="#fbbf24"
-                        strokeDasharray="6 5"
-                        strokeOpacity={0.9}
+                        stroke="rgb(34, 211, 238)"
+                        strokeDasharray="5 4"
+                        strokeOpacity={0.45}
                         label={{
                           value: `Global avg · ${avgLabel}`,
                           position: 'insideTopRight',
-                          fill: '#fbbf24',
+                          fill: 'rgb(34, 211, 238)',
                           fontSize: 10,
+                          opacity: 0.85,
                           fontFamily: 'JetBrains Mono, monospace',
                         }}
                       />
@@ -333,7 +377,7 @@ export default function RunSessionAnalytics({ data }) {
                     <Tooltip
                       cursor={{ strokeDasharray: '3 3', stroke: '#64748b' }}
                       contentStyle={{
-                        background: 'rgba(15,23,42,0.95)',
+                        background: 'rgba(15,23,42,0.96)',
                         border: '1px solid #334155',
                         borderRadius: 8,
                         fontSize: 12,
@@ -360,7 +404,7 @@ export default function RunSessionAnalytics({ data }) {
                     />
                   </ScatterChart>
                 </ResponsiveContainer>
-              </motion.div>
+              </div>
             )}
           </motion.section>
 
@@ -380,18 +424,18 @@ export default function RunSessionAnalytics({ data }) {
                   className="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-slate-700/80 bg-slate-950/40 px-4 py-8"
                 >
                   <p className="font-data text-center text-sm text-slate-500">
-                    Select a run in the list or a pulse point on the chart to open the{' '}
-                    <span className="text-cyan-500/80">tactical timeline</span>.
+                    Select a run or a shard on the radar to inject{' '}
+                    <span className="text-cyan-500/80">telemetry</span>.
                   </p>
                 </motion.div>
               ) : (
                 <motion.div
                   key={selectedRun.id}
-                  initial={{ opacity: 0, x: 28 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 30 }}
-                  className="relative rounded-2xl border border-slate-800 bg-slate-950/50 p-5 ring-1 ring-cyan-500/10"
+                  variants={glitchInjectVariants}
+                  initial="initial"
+                  animate="animate"
+                  exit={{ opacity: 0 }}
+                  className="relative rounded-2xl border border-slate-800 bg-slate-950/50 p-5"
                 >
                   <div className="mb-6 border-b border-slate-800/90 pb-4">
                     <p className="font-display text-xs font-bold uppercase tracking-widest text-slate-300">
@@ -413,25 +457,35 @@ export default function RunSessionAnalytics({ data }) {
                   <div className="flex items-center gap-2 pb-4">
                     <Timer className="h-4 w-4 text-slate-400" aria-hidden />
                     <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                      Tactical timeline
+                      Heartbeat feed
                     </h3>
                   </div>
 
                   {(selectedRun.bossEncounters ?? []).length === 0 ? (
                     <p className="font-data text-sm text-slate-600">No boss encounters for this run.</p>
                   ) : (
-                    <div className="relative pl-6 md:pl-8">
-                      <div
-                        className="absolute bottom-4 left-[15px] top-4 w-px md:left-[19px]"
-                        style={{
-                          background:
-                            'linear-gradient(180deg, rgba(34,211,238,0.55) 0%, rgba(34,211,238,0.2) 50%, rgba(51,65,85,0.4) 100%)',
-                          boxShadow: '0 0 12px rgba(34,211,238,0.35)',
-                        }}
-                        aria-hidden
-                      />
+                    <div className="relative flex gap-4 md:gap-6">
+                      <div className="relative w-8 shrink-0 md:w-10" aria-hidden>
+                        <svg
+                          className="absolute inset-0 h-full w-full text-cyan-500/35"
+                          preserveAspectRatio="none"
+                          viewBox="0 0 16 200"
+                        >
+                          <motion.path
+                            d="M 8 0 L 8 28 L 3 34 L 13 40 L 8 52 L 8 76 L 2 82 L 14 88 L 8 100 L 8 124 L 4 130 L 12 136 L 8 148 L 8 172 L 5 178 L 11 184 L 8 200"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.2"
+                            vectorEffect="non-scaling-stroke"
+                            initial={{ pathLength: 1, opacity: 0.35 }}
+                            animate={{ opacity: [0.32, 0.5, 0.38, 0.32] }}
+                            transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                          />
+                        </svg>
+                        <div className="absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-slate-700/80" />
+                      </div>
 
-                      <ul className="relative space-y-10">
+                      <ul className="relative min-w-0 flex-1 space-y-10">
                         {(selectedRun.bossEncounters ?? []).map((enc, idx) => {
                           const loadoutIds = enc.loadout ?? [];
                           const bossLabel = bossNameById(bossesCatalog, enc.bossId);
@@ -440,84 +494,123 @@ export default function RunSessionAnalytics({ data }) {
 
                           return (
                             <li key={`${selectedRun.id}-enc-${idx}`} className="relative">
-                              <span
-                                className="absolute left-[-10px] top-2 z-10 h-2.5 w-2.5 rounded-full border-2 border-cyan-400/90 bg-slate-950 shadow-[0_0_10px_rgba(34,211,238,0.55)] md:left-[-6px]"
-                                aria-hidden
-                              />
-
                               <p className="font-display pb-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
                                 Encounter {idx + 1}
                               </p>
 
-                              <div className="space-y-6">
+                              <div className="space-y-4">
                                 <div>
                                   <div className="mb-2 flex items-center gap-2">
-                                    <Package className="h-3.5 w-3.5 text-violet-400" aria-hidden />
-                                    <span className="font-display text-[9px] font-bold uppercase tracking-wider text-violet-200/90">
-                                      Stage 2 · Loadout
+                                    <Package className="h-3.5 w-3.5 text-cyan-500/70" aria-hidden />
+                                    <span className="font-display text-[9px] font-bold uppercase tracking-wider text-cyan-200/80">
+                                      Stage 2 · Synergy nodes
                                     </span>
                                   </div>
                                   {loadoutIds.length === 0 ? (
                                     <p className="font-data text-xs text-slate-600">No loadout recorded.</p>
                                   ) : (
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex flex-wrap gap-3">
                                       {loadoutIds.map((itemId) => {
-                                        const nm = itemNameById(itemsCatalog, itemId);
+                                        const row = itemById(itemsCatalog, itemId);
+                                        const nm = row?.name ?? null;
+                                        const bonus = itemSynergySeconds(row);
                                         return (
-                                          <motion.div
-                                            key={`${selectedRun.id}-enc-${idx}-id-${itemId}`}
-                                            whileHover={{ scale: 1.04 }}
-                                            transition={{ type: 'spring', stiffness: 400, damping: 22 }}
-                                            className="cursor-default rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 shadow-[0_0_14px_rgba(139,92,246,0.25)] ring-1 ring-violet-500/15"
-                                          >
-                                            <span className="font-data text-xs text-slate-200">
-                                              <span className="tabular-nums text-cyan-300/90">{itemId}</span>
-                                              {nm ? (
-                                                <span className="text-slate-400"> · {nm}</span>
-                                              ) : null}
+                                          <div key={`${selectedRun.id}-enc-${idx}-syn-${itemId}`} className="group relative">
+                                            <div
+                                              className="flex h-12 w-12 cursor-default items-center justify-center transition duration-200 group-hover:scale-110 group-hover:shadow-[0_0_14px_rgba(34,211,238,0.35)]"
+                                              title={nm ?? `Item ${itemId}`}
+                                            >
+                                              <svg
+                                                width="48"
+                                                height="48"
+                                                className="overflow-visible"
+                                                viewBox="0 0 48 48"
+                                              >
+                                                <polygon
+                                                  points={hexPolygonPoints(24, 24, 11)}
+                                                  className="fill-slate-800/90 stroke-slate-600 transition group-hover:stroke-cyan-400 group-hover:fill-slate-800"
+                                                  strokeWidth="1.2"
+                                                />
+                                              </svg>
+                                              <span className="pointer-events-none absolute inset-0 flex items-center justify-center font-data text-[9px] font-bold tabular-nums text-cyan-200/90">
+                                                {itemId}
+                                              </span>
+                                            </div>
+                                            <span className="pointer-events-none absolute -right-1 -top-1 rounded border border-cyan-500/40 bg-slate-950 px-1 font-data text-[9px] font-bold text-cyan-300 opacity-0 shadow-sm transition group-hover:opacity-100">
+                                              +{bonus}s
                                             </span>
-                                          </motion.div>
+                                          </div>
                                         );
                                       })}
                                     </div>
                                   )}
                                 </div>
 
-                                <motion.div
-                                  whileHover={{ scale: 1.01 }}
-                                  transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-                                  className="rounded-xl border border-amber-500/30 bg-slate-900/50 p-4 shadow-[0_0_18px_rgba(251,191,36,0.12)] ring-1 ring-amber-500/10"
+                                <div
+                                  className="relative overflow-hidden rounded-xl border border-red-500/35 bg-red-950/35 p-4"
+                                  style={{
+                                    backgroundImage: `repeating-linear-gradient(
+                                      -12deg,
+                                      transparent,
+                                      transparent 3px,
+                                      rgba(239,68,68,0.04) 3px,
+                                      rgba(239,68,68,0.04) 4px
+                                    )`,
+                                  }}
                                 >
-                                  <div className="mb-3 flex items-center gap-2">
-                                    <Swords className="h-3.5 w-3.5 text-amber-400/90" aria-hidden />
-                                    <span className="font-display text-[9px] font-bold uppercase tracking-wider text-amber-100/90">
-                                      Stage 3 · Boss engagement
-                                    </span>
+                                  <div className="relative z-1">
+                                    <div className="mb-3 flex items-center gap-2">
+                                      <Swords className="h-3.5 w-3.5 text-red-400/90" aria-hidden />
+                                      <span className="font-display text-[9px] font-bold uppercase tracking-wider text-red-200/90">
+                                        Stage 3 · High-intensity zone
+                                      </span>
+                                    </div>
+                                    <p className="font-data text-sm text-slate-200">
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <Crosshair className="h-3.5 w-3.5 text-slate-500" aria-hidden />
+                                        {bossLabel ?? `Boss ${enc.bossId}`}
+                                      </span>
+                                      <span className="ml-2 font-mono text-xs text-slate-500">
+                                        bossId {enc.bossId}
+                                      </span>
+                                    </p>
+                                    <p className="font-data mt-2 text-[10px] uppercase tracking-wider text-slate-500">
+                                      Lifespan (survived)
+                                    </p>
+                                    <div className="mt-2 h-2 overflow-hidden rounded border border-slate-700 bg-slate-900/80">
+                                      <div
+                                        className="h-full rounded bg-red-500/70 transition-[width] duration-500"
+                                        style={{ width: `${barPct}%` }}
+                                      />
+                                    </div>
+                                    <p className="font-data mt-1.5 tabular-nums text-xs text-red-200/85">
+                                      {enc.lifespan ?? '—'}
+                                    </p>
+
+                                    <div className="mt-4 border-t border-red-500/20 pt-4">
+                                      <p className="font-display text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                        Gear trace (this fight)
+                                      </p>
+                                      {loadoutIds.length === 0 ? (
+                                        <p className="font-data mt-2 text-xs text-slate-500">No items tagged.</p>
+                                      ) : (
+                                        <ul className="mt-2 space-y-1.5">
+                                          {loadoutIds.map((itemId) => (
+                                            <li
+                                              key={`${selectedRun.id}-enc-${idx}-gear-${itemId}`}
+                                              className="font-data flex flex-wrap items-baseline gap-x-2 text-sm text-slate-300"
+                                            >
+                                              <span className="tabular-nums text-cyan-400/80">{itemId}</span>
+                                              <span className="text-slate-500">
+                                                {itemNameById(itemsCatalog, itemId) ?? '—'}
+                                              </span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                    </div>
                                   </div>
-                                  <p className="font-data text-sm text-slate-200">
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <Crosshair className="h-3.5 w-3.5 text-slate-500" aria-hidden />
-                                      {bossLabel ?? `Boss ${enc.bossId}`}
-                                    </span>
-                                    <span className="ml-2 font-mono text-xs text-slate-500">
-                                      bossId {enc.bossId}
-                                    </span>
-                                  </p>
-                                  <p className="font-data mt-2 text-[10px] uppercase tracking-wider text-slate-500">
-                                    Lifespan (survived)
-                                  </p>
-                                  <div className="mt-2 h-2.5 overflow-hidden rounded-full border border-slate-700 bg-slate-800/90 shadow-inner">
-                                    <motion.div
-                                      className="h-full rounded-full bg-linear-to-r from-amber-600/90 via-amber-400 to-amber-300 shadow-[0_0_10px_rgba(251,191,36,0.45)]"
-                                      initial={{ width: 0 }}
-                                      animate={{ width: `${barPct}%` }}
-                                      transition={{ duration: 0.55, ease: 'easeOut' }}
-                                    />
-                                  </div>
-                                  <p className="font-data mt-1.5 tabular-nums text-xs text-amber-200/90">
-                                    {enc.lifespan ?? '—'}
-                                  </p>
-                                </motion.div>
+                                </div>
                               </div>
                             </li>
                           );
