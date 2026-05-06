@@ -8,6 +8,7 @@ import AddItemModal from "./components/AddItemModal";
 import MissionSuccessOverlay from "./components/MissionSuccessOverlay";
 import WorkflowTab from "./components/tabs/WorkflowTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
+import RunSessionAnalytics from "./components/analytics/runSession/RunSessionAnalytics";
 import TuningTab from "./components/tabs/TuningTab";
 
 /**
@@ -312,6 +313,9 @@ function App() {
             )}
             {tab === "analytics" && (
               <AnalyticsTab key="analytics" data={data} onPatch={mergePatch} />
+            )}
+            {tab === "runSession" && (
+              <RunSessionAnalytics key="runSession" data={data} />
             )}
             {tab === "tuning" && (
               <TuningTab key="tuning" data={data} ipcRequest={ipcRequest} />
