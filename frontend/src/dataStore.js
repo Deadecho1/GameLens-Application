@@ -125,12 +125,13 @@ export const initialData = {
       },
     ],
     /**
-     * Analyzed sessions. bossEncounters: bossId, lifespan, optional loadout (1–3 item ids from dashboard.items).
-     * Used to derive most lethal equipment synergy (lowest mean lifespan per loadout signature).
+     * Analyzed sessions; `gameVersion` matches `setup.versions` for analytics comparison.
+     * bossEncounters: bossId, lifespan, optional loadout (1–3 item ids from dashboard.items).
      */
     runsHistory: [
       {
         id: 'RUN-001',
+        gameVersion: 'v1.0.1-stable',
         date: '2024-05-18',
         duration: '00:28:00',
         bossEncounters: [
@@ -140,12 +141,14 @@ export const initialData = {
       },
       {
         id: 'RUN-002',
+        gameVersion: 'v1.1.0-alpha',
         date: '2024-05-19',
         duration: '00:45:30',
         bossEncounters: [{ bossId: 1, lifespan: '05:55', loadout: [3, 11] }],
       },
       {
         id: 'RUN-003',
+        gameVersion: 'v1.0.1-stable',
         date: '2024-05-20',
         duration: '00:30:00',
         bossEncounters: [
@@ -155,12 +158,14 @@ export const initialData = {
       },
       {
         id: 'RUN-004',
+        gameVersion: 'v1.1.0-alpha',
         date: '2024-05-20',
         duration: '00:52:10',
         bossEncounters: [{ bossId: 2, lifespan: '02:40', loadout: [3, 8] }],
       },
       {
         id: 'RUN-005',
+        gameVersion: 'v1.0.1-stable',
         date: '2024-05-21',
         duration: '01:10:00',
         bossEncounters: [
@@ -170,6 +175,7 @@ export const initialData = {
       },
       {
         id: 'RUN-006',
+        gameVersion: 'v1.1.0-alpha',
         date: '2024-05-22',
         duration: '00:38:45',
         bossEncounters: [
