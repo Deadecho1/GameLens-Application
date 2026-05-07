@@ -20,6 +20,25 @@ function renderActiveSubView(sub, data) {
   return null;
 }
 
+function applyGameLibrarySlice(data, game, version) {
+  if (!data || typeof data !== 'object') return data;
+  const dashboard = data.dashboard ?? {};
+  const gameLibrary = dashboard.gameLibrary ?? {};
+  const gameNode = game ? gameLibrary[game] : null;
+  const versionNode = version ? gameNode?.[version] : null;
+  const fallbackVersionNode = !versionNode && version ? gameLibrary['Elden Ring']?.[version] : null;
+  const libraryNode = versionNode ?? fallbackVersionNode ?? null;
+  return {
+    ...data,
+    dashboard: {
+      ...dashboard,
+      items: libraryNode?.items ?? [],
+      bosses: libraryNode?.bosses ?? [],
+      generalStats: libraryNode?.generalStats ?? [],
+    },
+  };
+}
+
 function VersionDropdown({
   id,
   listboxId,
@@ -164,12 +183,22 @@ export default function AnalyticsTab({ data, onPatch }) {
   }, [versions]);
 
   const dataA = useMemo(
-    () => sliceAnalyticsDataByVersion(data, splitView ? versionA : null),
+    () => {
+      const source = splitView ? sliceAnalyticsDataByVersion(data, versionA) : data;
+      const activeGame = source?.setup?.selectedGame ?? initialData.setup.selectedGame;
+      const activeVersion = splitView ? versionA : source?.setup?.selectedVersion;
+      return applyGameLibrarySlice(source, activeGame, activeVersion);
+    },
     [data, splitView, versionA],
   );
 
   const dataB = useMemo(
-    () => sliceAnalyticsDataByVersion(data, splitView ? versionB : null),
+    () => {
+      const source = splitView ? sliceAnalyticsDataByVersion(data, versionB) : data;
+      const activeGame = source?.setup?.selectedGame ?? initialData.setup.selectedGame;
+      const activeVersion = splitView ? versionB : source?.setup?.selectedVersion;
+      return applyGameLibrarySlice(source, activeGame, activeVersion);
+    },
     [data, splitView, versionB],
   );
 
