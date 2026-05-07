@@ -6,6 +6,7 @@ import MainTabNav from "./components/MainTabNav";
 import ChangePickerModal from "./components/ChangePickerModal";
 import AddItemModal from "./components/AddItemModal";
 import MissionSuccessOverlay from "./components/MissionSuccessOverlay";
+import SettingsSidebar from "./components/SettingsSidebar";
 import WorkflowTab from "./components/tabs/WorkflowTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
 import RunSessionAnalytics from "./components/analytics/runSession/RunSessionAnalytics";
@@ -18,6 +19,7 @@ import TuningTab from "./components/tabs/TuningTab";
 function App() {
   const [data, setData] = useState(() => cloneInitialData());
   const [error, setError] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const pollRef = useRef(null);
   const prevStatusRef = useRef("idle");
 
@@ -271,7 +273,7 @@ function App() {
       <MissionSuccessOverlay active={data.ui.completionCelebrationActive} />
 
       <div className="relative z-10">
-        <Header data={data} />
+        <Header data={data} onOpenSettings={() => setSettingsOpen(true)} />
         <MainTabNav data={data} onPatch={mergePatch} />
 
         {error ? (
@@ -358,6 +360,12 @@ function App() {
           }
           onConfirm={confirmAddVersion}
           inputId="add-version"
+        />
+        <SettingsSidebar
+          data={data}
+          onPatch={mergePatch}
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
         />
       </div>
     </div>
