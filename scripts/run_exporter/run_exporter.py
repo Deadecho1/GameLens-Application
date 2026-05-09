@@ -243,7 +243,7 @@ class RunExporter:
             )
 
             if result.get("options"):
-                choices.append(result)
+                choices.append({**result, "picked_at_seconds": choice_event.time})
             else:
                 logger.debug("  choice %d: extraction returned no options, discarding", ci)
 

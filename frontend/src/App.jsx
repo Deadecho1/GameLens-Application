@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { cloneInitialData } from "./dataStore";
+import { getItems, getBosses, getRuns, getUserId } from "./api/client";
 import Header from "./components/Header";
 import MainTabNav from "./components/MainTabNav";
 import ChangePickerModal from "./components/ChangePickerModal";
@@ -81,6 +82,34 @@ function App() {
     }, 3200);
     return () => window.clearTimeout(t);
   }, [data.ui.completionCelebrationActive, ipcRequest]);
+
+  useEffect(() => {
+    if (data.ui.activeMainTab !== "analytics") return;
+    const gameName = data.setup.selectedGame;
+    const versionName = data.setup.selectedVersion;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const userId = getUserId();
+        const [items, bosses, runsHistory] = await Promise.all([
+          getItems(userId, gameName, versionName),
+          getBosses(userId, gameName, versionName),
+          getRuns(userId, gameName, versionName),
+        ]);
+        if (!cancelled) {
+          setData((prev) => ({
+            ...prev,
+            dashboard: { ...prev.dashboard, items, bosses, runsHistory },
+          }));
+        }
+      } catch (e) {
+        if (!cancelled) setError(String(e?.message || e));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [data.ui.activeMainTab, data.setup.selectedGame, data.setup.selectedVersion]);
 
   const mergePatch = useCallback(
     async (patch) => {
