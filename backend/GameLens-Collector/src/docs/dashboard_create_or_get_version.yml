@@ -1,0 +1,46 @@
+doc: "Create or get a game version under a game"
+tags:
+  - Dashboard
+parameters:
+  - name: game_id
+    in: path
+    type: integer
+    required: true
+    description: Parent game id
+    example: 12
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "1.0.0"
+      example:
+        name: "1.0.0"
+responses:
+  200:
+    description: Version found or created successfully
+    schema:
+      type: object
+      properties:
+        version_id:
+          type: integer
+          example: 34
+  400:
+    description: Missing required fields, invalid path param, or DB/runtime error
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Client Side Error"
+        message:
+          type: string
+          example: "game_id must be an integer"
+        type:
+          type: string
+          example: "MissingCollectorParam"

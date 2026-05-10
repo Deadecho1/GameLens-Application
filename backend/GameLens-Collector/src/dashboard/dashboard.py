@@ -30,7 +30,12 @@ Expected DB schema (to be implemented):
                    start_time, end_time, duration_seconds, player_died
 """
 
+from flasgger import swag_from
 from flask import Blueprint, jsonify, request
+from psycopg.types.json import Json
+
+from src.db import DatabaseConnection
+from src.errors import MissingCollectorParam
 
 Dashboard = Blueprint("dashboard", __name__)
 
@@ -43,7 +48,9 @@ def _user_id():
 # Write endpoints — pipeline → Collector
 # ---------------------------------------------------------------------------
 
+
 @Dashboard.route("/games", methods=["POST"])
+@swag_from("../docs/dashboard_create_or_get_game.yml")
 def create_or_get_game():
     """
     Create a game for the requesting user, or return the existing one.
@@ -51,15 +58,58 @@ def create_or_get_game():
     Body: { "name": str }
     Response: { "game_id": str }
     """
-    # TODO: implement
-    # body = request.get_json() or {}
-    # name = body.get("name")
-    # user_id = _user_id()
-    # INSERT INTO games (user_id, name) ... ON CONFLICT DO NOTHING RETURNING id
-    return jsonify({"error": "not implemented"}), 501
+    body = request.get_json() or {}
+    name = (body.get("name") or "").strip()
+    user_id_raw = (_user_id() or "").strip()
+
+    if not name:
+        raise MissingCollectorParam("name is required")
+    if not user_id_raw:
+        raise MissingCollectorParam("X-User-ID header is required")
+
+    try:
+        user_id = int(user_id_raw)
+    except ValueError:
+        raise MissingCollectorParam("X-User-ID header must be an integer")
+
+    try:
+        with DatabaseConnection.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM dashboard.games
+                    WHERE user_id = %s AND name = %s
+                    LIMIT 1;
+                    """,
+                    (user_id, name),
+                )
+                existing = cur.fetchone()
+
+                if existing:
+                    game_id = existing[0]
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO dashboard.games (user_id, name)
+                        VALUES (%s, %s)
+                        RETURNING id;
+                        """,
+                        (user_id, name),
+                    )
+                    game_id = cur.fetchone()[0]
+                    conn.commit()
+
+    except Exception as e:
+        return jsonify(
+            {"error": "Client Side Error", "message": str(e), "type": type(e).__name__}
+        ), 400
+
+    return jsonify({"game_id": game_id}), 200
 
 
 @Dashboard.route("/games/<game_id>/versions", methods=["POST"])
+@swag_from("../docs/dashboard_create_or_get_version.yml")
 def create_or_get_version(game_id):
     """
     Create a version under game_id, or return the existing one.
@@ -67,14 +117,55 @@ def create_or_get_version(game_id):
     Body: { "name": str }
     Response: { "version_id": str }
     """
-    # TODO: implement
-    # body = request.get_json() or {}
-    # name = body.get("name")
-    # INSERT INTO game_versions (game_id, name) ... ON CONFLICT DO NOTHING RETURNING id
-    return jsonify({"error": "not implemented"}), 501
+    body = request.get_json() or {}
+    name = (body.get("name") or "").strip()
+
+    if not name:
+        raise MissingCollectorParam("name is required")
+
+    try:
+        game_id_int = int((game_id or "").strip())
+    except ValueError:
+        raise MissingCollectorParam("game_id must be an integer")
+
+    try:
+        with DatabaseConnection.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM dashboard.game_versions
+                    WHERE game_id = %s AND name = %s
+                    LIMIT 1;
+                    """,
+                    (game_id_int, name),
+                )
+                existing = cur.fetchone()
+
+                if existing:
+                    version_id = existing[0]
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO dashboard.game_versions (game_id, name)
+                        VALUES (%s, %s)
+                        RETURNING id;
+                        """,
+                        (game_id_int, name),
+                    )
+                    version_id = cur.fetchone()[0]
+                    conn.commit()
+
+    except Exception as e:
+        return jsonify(
+            {"error": "Client Side Error", "message": str(e), "type": type(e).__name__}
+        ), 400
+
+    return jsonify({"version_id": version_id}), 200
 
 
 @Dashboard.route("/games/<game_id>/versions/<version_id>/runs/batch", methods=["POST"])
+@swag_from("../docs/dashboard_upload_runs_batch.yml")
 def upload_runs_batch(game_id, version_id):
     """
     Batch-insert runs for a game version. Atomic — all or nothing.
@@ -105,24 +196,195 @@ def upload_runs_batch(game_id, version_id):
 
     Response: { "inserted": int }
     """
-    # TODO: implement
-    # body = request.get_json() or {}
-    # runs = body.get("runs", [])
-    # Within a single transaction:
-    #   For each run:
-    #     INSERT INTO runs → run_id
-    #     For each item_pickup:
-    #       UPSERT items (game_id, name) → item_id
-    #       INSERT item_pickups
-    #     For each boss_encounter:
-    #       UPSERT bosses (game_id, name) → boss_id
-    #       INSERT boss_encounters
-    return jsonify({"error": "not implemented"}), 501
+    body = request.get_json() or {}
+    runs = body.get("runs")
+
+    if runs is None:
+        raise MissingCollectorParam("runs is required")
+    if not isinstance(runs, list):
+        raise MissingCollectorParam("runs must be an array")
+
+    try:
+        game_id_int = int((game_id or "").strip())
+        version_id_int = int((version_id or "").strip())
+    except ValueError:
+        raise MissingCollectorParam("game_id and version_id must be integers")
+
+    try:
+        with DatabaseConnection.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM dashboard.game_versions
+                    WHERE id = %s AND game_id = %s
+                    LIMIT 1;
+                    """,
+                    (version_id_int, game_id_int),
+                )
+                if not cur.fetchone():
+                    raise MissingCollectorParam(
+                        "version_id does not exist for the provided game_id"
+                    )
+
+                inserted = 0
+
+                for run in runs:
+                    if not isinstance(run, dict):
+                        raise MissingCollectorParam("each run must be an object")
+
+                    video_filename = run.get("video_filename")
+                    start_time = run.get("start_time")
+                    end_time = run.get("end_time")
+                    duration_seconds = run.get("duration_seconds")
+                    outcome = run.get("outcome")
+
+                    if not video_filename:
+                        raise MissingCollectorParam("video_filename is required")
+                    if start_time is None:
+                        raise MissingCollectorParam("start_time is required")
+                    if end_time is None:
+                        raise MissingCollectorParam("end_time is required")
+                    if duration_seconds is None:
+                        raise MissingCollectorParam("duration_seconds is required")
+                    if outcome not in ("death", "win"):
+                        raise MissingCollectorParam("outcome must be 'death' or 'win'")
+
+                    cur.execute(
+                        """
+                        INSERT INTO dashboard.runs (
+                            version_id,
+                            video_filename,
+                            start_time,
+                            end_time,
+                            duration_seconds,
+                            outcome
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        RETURNING id;
+                        """,
+                        (
+                            version_id_int,
+                            video_filename,
+                            start_time,
+                            end_time,
+                            duration_seconds,
+                            outcome,
+                        ),
+                    )
+                    run_id = cur.fetchone()[0]
+
+                    item_pickups = run.get("item_pickups", [])
+                    if not isinstance(item_pickups, list):
+                        raise MissingCollectorParam("item_pickups must be an array")
+
+                    for pickup in item_pickups:
+                        if not isinstance(pickup, dict):
+                            raise MissingCollectorParam(
+                                "each item_pickup must be an object"
+                            )
+
+                        item_name = (pickup.get("item_name") or "").strip()
+                        picked_at_seconds = pickup.get("picked_at_seconds")
+                        options = pickup.get("options", [])
+
+                        if not item_name:
+                            raise MissingCollectorParam("item_name is required")
+
+                        cur.execute(
+                            """
+                            INSERT INTO dashboard.items (game_id, name, first_seen_version_id)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (game_id, name)
+                            DO UPDATE SET name = EXCLUDED.name
+                            RETURNING id;
+                            """,
+                            (game_id_int, item_name, version_id_int),
+                        )
+                        item_id = cur.fetchone()[0]
+
+                        cur.execute(
+                            """
+                            INSERT INTO dashboard.item_pickups (
+                                run_id,
+                                item_id,
+                                picked_at_seconds,
+                                options
+                            )
+                            VALUES (%s, %s, %s, %s);
+                            """,
+                            (run_id, item_id, picked_at_seconds, Json(options)),
+                        )
+
+                    boss_encounters = run.get("boss_encounters", [])
+                    if not isinstance(boss_encounters, list):
+                        raise MissingCollectorParam("boss_encounters must be an array")
+
+                    for encounter in boss_encounters:
+                        if not isinstance(encounter, dict):
+                            raise MissingCollectorParam(
+                                "each boss_encounter must be an object"
+                            )
+
+                        boss_name = (encounter.get("boss_name") or "").strip()
+                        boss_start_time = encounter.get("start_time")
+                        boss_end_time = encounter.get("end_time")
+                        boss_duration_seconds = encounter.get("duration_seconds")
+                        player_died = encounter.get("player_died")
+
+                        if not boss_name:
+                            raise MissingCollectorParam("boss_name is required")
+
+                        cur.execute(
+                            """
+                            INSERT INTO dashboard.bosses (game_id, name, first_seen_version_id)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (game_id, name)
+                            DO UPDATE SET name = EXCLUDED.name
+                            RETURNING id;
+                            """,
+                            (game_id_int, boss_name, version_id_int),
+                        )
+                        boss_id = cur.fetchone()[0]
+
+                        cur.execute(
+                            """
+                            INSERT INTO dashboard.boss_encounters (
+                                run_id,
+                                boss_id,
+                                start_time,
+                                end_time,
+                                duration_seconds,
+                                player_died
+                            )
+                            VALUES (%s, %s, %s, %s, %s, %s);
+                            """,
+                            (
+                                run_id,
+                                boss_id,
+                                boss_start_time,
+                                boss_end_time,
+                                boss_duration_seconds,
+                                player_died,
+                            ),
+                        )
+
+                    inserted += 1
+
+                conn.commit()
+
+    except Exception as e:
+        return jsonify(
+            {"error": "Client Side Error", "message": str(e), "type": type(e).__name__}
+        ), 400
+
+    return jsonify({"inserted": inserted}), 200
 
 
 # ---------------------------------------------------------------------------
 # Read endpoints — frontend analytics tabs
 # ---------------------------------------------------------------------------
+
 
 @Dashboard.route("/dashboard/items", methods=["GET"])
 def get_items():

@@ -1,0 +1,134 @@
+doc: "Batch upload runs with item pickups and boss encounters"
+tags:
+  - Dashboard
+parameters:
+  - name: game_id
+    in: path
+    type: integer
+    required: true
+    description: Parent game id
+    example: 12
+  - name: version_id
+    in: path
+    type: integer
+    required: true
+    description: Parent game version id
+    example: 34
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - runs
+      properties:
+        runs:
+          type: array
+          items:
+            type: object
+            required:
+              - video_filename
+              - start_time
+              - end_time
+              - duration_seconds
+              - outcome
+            properties:
+              video_filename:
+                type: string
+                example: "run_001.mp4"
+              start_time:
+                type: number
+                format: float
+                example: 0.0
+              end_time:
+                type: number
+                format: float
+                example: 1234.5
+              duration_seconds:
+                type: number
+                format: float
+                example: 1234.5
+              outcome:
+                type: string
+                enum: [death, win]
+                example: "win"
+              item_pickups:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    item_name:
+                      type: string
+                      example: "Athena Boon"
+                    picked_at_seconds:
+                      type: number
+                      format: float
+                      example: 54.2
+                    options:
+                      type: array
+                      items:
+                        type: string
+                      example: ["Attack", "Special", "Dash"]
+              boss_encounters:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    boss_name:
+                      type: string
+                      example: "Megaera"
+                    start_time:
+                      type: number
+                      format: float
+                      example: 340.0
+                    end_time:
+                      type: number
+                      format: float
+                      example: 410.0
+                    duration_seconds:
+                      type: number
+                      format: float
+                      example: 70.0
+                    player_died:
+                      type: boolean
+                      example: false
+      example:
+        runs:
+          - video_filename: "run_001.mp4"
+            start_time: 0.0
+            end_time: 1240.0
+            duration_seconds: 1240.0
+            outcome: "win"
+            item_pickups:
+              - item_name: "Athena Boon"
+                picked_at_seconds: 54.2
+                options: ["Attack", "Special", "Dash"]
+            boss_encounters:
+              - boss_name: "Megaera"
+                start_time: 340.0
+                end_time: 410.0
+                duration_seconds: 70.0
+                player_died: false
+responses:
+  200:
+    description: Batch inserted successfully
+    schema:
+      type: object
+      properties:
+        inserted:
+          type: integer
+          example: 1
+  400:
+    description: Validation, foreign key, or runtime/DB error
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Client Side Error"
+        message:
+          type: string
+          example: "runs must be an array"
+        type:
+          type: string
+          example: "MissingCollectorParam"
