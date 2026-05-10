@@ -44,6 +44,25 @@ def _user_id():
     return request.headers.get("X-User-ID")
 
 
+def _format_mm_ss(seconds):
+    if seconds is None:
+        return None
+
+    total_seconds = max(int(round(float(seconds))), 0)
+    minutes, sec = divmod(total_seconds, 60)
+    return f"{minutes:02d}:{sec:02d}"
+
+
+def _format_hh_mm_ss(seconds):
+    if seconds is None:
+        return None
+
+    total_seconds = max(int(round(float(seconds))), 0)
+    hours, rem = divmod(total_seconds, 3600)
+    minutes, sec = divmod(rem, 60)
+    return f"{hours:02d}:{minutes:02d}:{sec:02d}"
+
+
 # ---------------------------------------------------------------------------
 # Write endpoints — pipeline → Collector
 # ---------------------------------------------------------------------------
@@ -430,6 +449,7 @@ def get_items():
 
 
 @Dashboard.route("/dashboard/bosses", methods=["GET"])
+@swag_from("../docs/dashboard_get_bosses.yml")
 def get_bosses():
     """
     Return all bosses for a game with aggregated encounter stats.
@@ -453,11 +473,113 @@ def get_bosses():
       }
     ]
     """
-    # TODO: implement
-    return jsonify([]), 501
+    game_name = (request.args.get("game_name") or "").strip()
+    version_name = (request.args.get("version_name") or "").strip() or None
+    user_id_raw = (_user_id() or request.args.get("user_id") or "").strip()
+
+    if not game_name:
+        raise MissingCollectorParam("game_name is required")
+    if not user_id_raw:
+        raise MissingCollectorParam(
+            "X-User-ID header or user_id query param is required"
+        )
+
+    try:
+        user_id = int(user_id_raw)
+    except ValueError:
+        raise MissingCollectorParam("user_id must be an integer")
+
+    try:
+        with DatabaseConnection.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM dashboard.games
+                    WHERE name = %s AND user_id = %s
+                    LIMIT 1;
+                    """,
+                    (game_name, user_id),
+                )
+                game = cur.fetchone()
+                if not game:
+                    return jsonify({"error": "Game not found"}), 404
+
+                game_id = game[0]
+
+                cur.execute(
+                    """
+                    SELECT
+                        b.id,
+                        b.name,
+                        AVG(be.duration_seconds) FILTER (
+                            WHERE (%s::text IS NULL OR gv.name = %s::text)
+                        ) AS avg_duration_seconds,
+                        COALESCE(
+                            BOOL_OR(COALESCE(be.player_died, TRUE) = FALSE) FILTER (
+                                WHERE (%s::text IS NULL OR gv.name = %s::text)
+                            ),
+                            FALSE
+                        ) AS any_defeated
+                    FROM dashboard.bosses b
+                    LEFT JOIN dashboard.boss_encounters be ON be.boss_id = b.id
+                    LEFT JOIN dashboard.runs r ON r.id = be.run_id
+                    LEFT JOIN dashboard.game_versions gv ON gv.id = r.version_id
+                    WHERE b.game_id = %s
+                    GROUP BY b.id, b.name
+                    ORDER BY b.name;
+                    """,
+                    (version_name, version_name, version_name, version_name, game_id),
+                )
+                boss_rows = cur.fetchall()
+
+                cur.execute(
+                    """
+                    SELECT b.id, be.duration_seconds
+                    FROM dashboard.bosses b
+                    LEFT JOIN dashboard.boss_encounters be ON be.boss_id = b.id
+                    WHERE b.game_id = %s
+                      AND be.duration_seconds IS NOT NULL
+                    ORDER BY b.id, be.id;
+                    """,
+                    (game_id,),
+                )
+                sample_rows = cur.fetchall()
+
+    except Exception as e:
+        return jsonify(
+            {"error": "Client Side Error", "message": str(e), "type": type(e).__name__}
+        ), 400
+
+    samples_by_boss = {}
+    for boss_id, duration in sample_rows:
+        samples_by_boss.setdefault(boss_id, []).append(_format_mm_ss(duration))
+
+    response = []
+    for boss_id, boss_name, avg_duration_seconds, any_defeated in boss_rows:
+        response.append(
+            {
+                "id": boss_id,
+                "name": boss_name,
+                "lifespan": _format_mm_ss(avg_duration_seconds),
+                "status": (
+                    "Defeated"
+                    if avg_duration_seconds is not None and any_defeated
+                    else "Alive"
+                    if avg_duration_seconds is not None
+                    else None
+                ),
+                "globalLifespanSamples": samples_by_boss.get(boss_id, []),
+                "gearSynergies": [],
+                "itemEffectiveness": [],
+            }
+        )
+
+    return jsonify(response), 200
 
 
 @Dashboard.route("/dashboard/runs", methods=["GET"])
+@swag_from("../docs/dashboard_get_runs.yml")
 def get_runs():
     """
     Return run history for a game/version.
@@ -480,11 +602,119 @@ def get_runs():
       }
     ]
     """
-    # TODO: implement
-    return jsonify([]), 501
+    game_name = (request.args.get("game_name") or "").strip()
+    version_name = (request.args.get("version_name") or "").strip() or None
+    user_id_raw = (_user_id() or request.args.get("user_id") or "").strip()
+
+    if not game_name:
+        raise MissingCollectorParam("game_name is required")
+    if not user_id_raw:
+        raise MissingCollectorParam(
+            "X-User-ID header or user_id query param is required"
+        )
+
+    try:
+        user_id = int(user_id_raw)
+    except ValueError:
+        raise MissingCollectorParam("user_id must be an integer")
+
+    try:
+        with DatabaseConnection.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM dashboard.games
+                    WHERE name = %s AND user_id = %s
+                    LIMIT 1;
+                    """,
+                    (game_name, user_id),
+                )
+                game = cur.fetchone()
+                if not game:
+                    return jsonify({"error": "Game not found"}), 404
+
+                game_id = game[0]
+
+                cur.execute(
+                    """
+                    SELECT
+                        r.id,
+                        r.recorded_at::date,
+                        r.duration_seconds,
+                        r.outcome
+                    FROM dashboard.runs r
+                    JOIN dashboard.game_versions gv ON gv.id = r.version_id
+                    WHERE gv.game_id = %s
+                      AND (%s::text IS NULL OR gv.name = %s::text)
+                    ORDER BY r.recorded_at DESC, r.id DESC;
+                    """,
+                    (game_id, version_name, version_name),
+                )
+                run_rows = cur.fetchall()
+
+                run_ids = [row[0] for row in run_rows]
+                encounters_by_run = {}
+
+                if run_ids:
+                    cur.execute(
+                        """
+                        SELECT
+                            be.run_id,
+                            be.boss_id,
+                            be.duration_seconds,
+                            COALESCE(
+                                ARRAY_AGG(DISTINCT ip.item_id) FILTER (
+                                    WHERE ip.item_id IS NOT NULL
+                                ),
+                                '{}'
+                            ) AS loadout
+                        FROM dashboard.boss_encounters be
+                        LEFT JOIN dashboard.item_pickups ip
+                          ON ip.run_id = be.run_id
+                         AND (
+                            be.start_time IS NULL
+                            OR ip.picked_at_seconds IS NULL
+                            OR ip.picked_at_seconds <= be.start_time
+                         )
+                        WHERE be.run_id = ANY(%s)
+                        GROUP BY be.id, be.run_id, be.boss_id, be.duration_seconds
+                        ORDER BY be.run_id, be.id;
+                        """,
+                        (run_ids,),
+                    )
+
+                    for run_id, boss_id, lifespan_seconds, loadout in cur.fetchall():
+                        encounters_by_run.setdefault(run_id, []).append(
+                            {
+                                "bossId": boss_id,
+                                "lifespan": _format_mm_ss(lifespan_seconds),
+                                "loadout": loadout or [],
+                            }
+                        )
+
+    except Exception as e:
+        return jsonify(
+            {"error": "Client Side Error", "message": str(e), "type": type(e).__name__}
+        ), 400
+
+    response = []
+    for run_id, run_date, duration_seconds, outcome in run_rows:
+        response.append(
+            {
+                "id": run_id,
+                "date": run_date.isoformat() if run_date else None,
+                "duration": _format_hh_mm_ss(duration_seconds),
+                "outcome": outcome,
+                "bossEncounters": encounters_by_run.get(run_id, []),
+            }
+        )
+
+    return jsonify(response), 200
 
 
 @Dashboard.route("/dashboard/stats", methods=["GET"])
+@swag_from("../docs/dashboard_get_stats.yml")
 def get_stats():
     """
     Return aggregated KPIs for the general analytics tab.
@@ -500,5 +730,108 @@ def get_stats():
       "mostPopularItem": str     -- item name with highest pick rate
     }
     """
-    # TODO: implement
-    return jsonify({}), 501
+    game_name = (request.args.get("game_name") or "").strip()
+    version_name = (request.args.get("version_name") or "").strip() or None
+    user_id_raw = (_user_id() or request.args.get("user_id") or "").strip()
+
+    if not game_name:
+        raise MissingCollectorParam("game_name is required")
+    if not user_id_raw:
+        raise MissingCollectorParam(
+            "X-User-ID header or user_id query param is required"
+        )
+
+    try:
+        user_id = int(user_id_raw)
+    except ValueError:
+        raise MissingCollectorParam("user_id must be an integer")
+
+    try:
+        with DatabaseConnection.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM dashboard.games
+                    WHERE name = %s AND user_id = %s
+                    LIMIT 1;
+                    """,
+                    (game_name, user_id),
+                )
+                game = cur.fetchone()
+                if not game:
+                    return jsonify({"error": "Game not found"}), 404
+
+                game_id = game[0]
+
+                cur.execute(
+                    """
+                    SELECT
+                        COUNT(*)::INT AS total_runs,
+                        AVG(r.duration_seconds) AS avg_duration_seconds,
+                        MAX(r.duration_seconds) AS longest_duration_seconds
+                    FROM dashboard.runs r
+                    JOIN dashboard.game_versions gv ON gv.id = r.version_id
+                    WHERE gv.game_id = %s
+                      AND (%s::text IS NULL OR gv.name = %s::text);
+                    """,
+                    (game_id, version_name, version_name),
+                )
+                total_runs, avg_duration_seconds, longest_duration_seconds = (
+                    cur.fetchone()
+                )
+
+                cur.execute(
+                    """
+                    SELECT
+                        COUNT(*) FILTER (WHERE be.player_died = FALSE)::FLOAT,
+                        COUNT(*)::FLOAT
+                    FROM dashboard.boss_encounters be
+                    JOIN dashboard.runs r ON r.id = be.run_id
+                    JOIN dashboard.game_versions gv ON gv.id = r.version_id
+                    WHERE gv.game_id = %s
+                      AND (%s::text IS NULL OR gv.name = %s::text);
+                    """,
+                    (game_id, version_name, version_name),
+                )
+                defeated_count, total_encounters = cur.fetchone()
+
+                cur.execute(
+                    """
+                    WITH filtered_runs AS (
+                        SELECT r.id
+                        FROM dashboard.runs r
+                        JOIN dashboard.game_versions gv ON gv.id = r.version_id
+                        WHERE gv.game_id = %s
+                          AND (%s::text IS NULL OR gv.name = %s::text)
+                    )
+                    SELECT i.name
+                    FROM dashboard.item_pickups ip
+                    JOIN dashboard.items i ON i.id = ip.item_id
+                    WHERE ip.run_id IN (SELECT id FROM filtered_runs)
+                    GROUP BY i.id, i.name
+                    ORDER BY COUNT(DISTINCT ip.run_id) DESC, i.name ASC
+                    LIMIT 1;
+                    """,
+                    (game_id, version_name, version_name),
+                )
+                item_row = cur.fetchone()
+
+    except Exception as e:
+        return jsonify(
+            {"error": "Client Side Error", "message": str(e), "type": type(e).__name__}
+        ), 400
+
+    boss_kill_percent = 0.0
+    if total_encounters and total_encounters > 0:
+        boss_kill_percent = round((defeated_count or 0.0) * 100.0 / total_encounters, 2)
+
+    return jsonify(
+        {
+            "totalRuns": total_runs or 0,
+            "avgDuration": _format_hh_mm_ss(avg_duration_seconds),
+            "longestRun": _format_hh_mm_ss(longest_duration_seconds),
+            "bossKillPercent": boss_kill_percent,
+            "mostPopularItem": item_row[0] if item_row else None,
+        }
+    ), 200

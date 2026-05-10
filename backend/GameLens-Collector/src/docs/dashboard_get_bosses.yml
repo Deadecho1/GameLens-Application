@@ -1,0 +1,102 @@
+doc: "Get boss analytics for a game and optional version"
+tags:
+  - Dashboard
+parameters:
+  - name: game_name
+    in: query
+    type: string
+    required: true
+    description: Game name scoped to the requesting user
+    example: "Hades"
+  - name: version_name
+    in: query
+    type: string
+    required: false
+    description: Optional version filter; omit for cross-version aggregation
+    example: "1.0.0"
+  - name: user_id
+    in: query
+    type: integer
+    required: false
+    description: User id if X-User-ID header is not provided
+    example: 1
+  - name: X-User-ID
+    in: header
+    type: integer
+    required: false
+    description: Preferred user id source
+    example: 1
+responses:
+  200:
+    description: Boss analytics list
+    schema:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: integer
+            example: 7
+          name:
+            type: string
+            example: "Megaera"
+          lifespan:
+            type: string
+            nullable: true
+            example: "01:10"
+          status:
+            type: string
+            nullable: true
+            enum: [Defeated, Alive]
+            example: "Defeated"
+          globalLifespanSamples:
+            type: array
+            items:
+              type: string
+            example: ["01:05", "01:12", "01:20"]
+          gearSynergies:
+            type: array
+            items:
+              type: object
+              properties:
+                itemIds:
+                  type: array
+                  items:
+                    type: integer
+                timeReductionPct:
+                  type: number
+                  format: float
+            example: []
+          itemEffectiveness:
+            type: array
+            items:
+              type: object
+              properties:
+                itemId:
+                  type: integer
+                timeReductionVsGlobalPct:
+                  type: number
+                  format: float
+            example: []
+  400:
+    description: Missing/invalid query params or DB/runtime error
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Client Side Error"
+        message:
+          type: string
+          example: "game_name is required"
+        type:
+          type: string
+          example: "MissingCollectorParam"
+  404:
+    description: Game not found for the provided user and game name
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Game not found"
