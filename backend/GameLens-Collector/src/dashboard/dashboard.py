@@ -406,6 +406,7 @@ def upload_runs_batch(game_id, version_id):
 
 
 @Dashboard.route("/dashboard/items", methods=["GET"])
+@swag_from("../docs/dashboard_get_items.yml")
 def get_items():
     """
     Return all items for a game, with stats aggregated from runs in the
@@ -429,23 +430,112 @@ def get_items():
       }
     ]
     """
-    # TODO: implement
-    # game_name = request.args.get("game_name")
-    # version_name = request.args.get("version_name")
-    # user_id = _user_id() or request.args.get("user_id")
-    #
-    # SELECT i.id, i.name,
-    #   COUNT(DISTINCT ip.run_id) * 100.0 / NULLIF(COUNT(DISTINCT r.id), 0) AS popularity,
-    #   AVG(ip.picked_at_seconds) / 60.0 AS avg_possession_minutes
-    # FROM items i
-    # JOIN games g ON g.id = i.game_id
-    # LEFT JOIN item_pickups ip ON ip.item_id = i.id
-    # LEFT JOIN runs r ON r.id = ip.run_id
-    # LEFT JOIN game_versions v ON v.id = r.version_id
-    # WHERE g.name = %(game_name)s AND g.user_id = %(user_id)s
-    #   AND (%(version_name)s IS NULL OR v.name = %(version_name)s)
-    # GROUP BY i.id, i.name
-    return jsonify([]), 501
+    game_name = (request.args.get("game_name") or "").strip()
+    version_name = (request.args.get("version_name") or "").strip() or None
+    user_id_raw = (_user_id() or request.args.get("user_id") or "").strip()
+
+    if not game_name:
+        raise MissingCollectorParam("game_name is required")
+    if not user_id_raw:
+        raise MissingCollectorParam(
+            "X-User-ID header or user_id query param is required"
+        )
+
+    try:
+        user_id = int(user_id_raw)
+    except ValueError:
+        raise MissingCollectorParam("user_id must be an integer")
+
+    try:
+        with DatabaseConnection.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM dashboard.games
+                    WHERE name = %s AND user_id = %s
+                    LIMIT 1;
+                    """,
+                    (game_name, user_id),
+                )
+                game = cur.fetchone()
+                if not game:
+                    return jsonify({"error": "Game not found"}), 404
+
+                game_id = game[0]
+
+                cur.execute(
+                    """
+                    WITH filtered_runs AS (
+                        SELECT r.id
+                        FROM dashboard.runs r
+                        JOIN dashboard.game_versions gv ON gv.id = r.version_id
+                        WHERE gv.game_id = %s
+                          AND (%s::text IS NULL OR gv.name = %s::text)
+                    ),
+                    run_count AS (
+                        SELECT COUNT(*)::FLOAT AS total_runs
+                        FROM filtered_runs
+                    )
+                    SELECT
+                        i.id,
+                        i.name,
+                        CASE
+                            WHEN rc.total_runs = 0 THEN NULL
+                            WHEN COUNT(DISTINCT fr.id) = 0 THEN NULL
+                            ELSE COUNT(DISTINCT fr.id) * 100.0 / rc.total_runs
+                        END AS popularity,
+                        AVG(ip.picked_at_seconds) FILTER (
+                            WHERE fr.id IS NOT NULL
+                        ) / 60.0 AS avg_possession_minutes
+                    FROM dashboard.items i
+                    CROSS JOIN run_count rc
+                    LEFT JOIN dashboard.item_pickups ip ON ip.item_id = i.id
+                    LEFT JOIN filtered_runs fr ON fr.id = ip.run_id
+                    WHERE i.game_id = %s
+                    GROUP BY i.id, i.name, rc.total_runs
+                    ORDER BY i.name;
+                    """,
+                    (game_id, version_name, version_name, game_id),
+                )
+                item_rows = cur.fetchall()
+
+    except Exception as e:
+        return jsonify(
+            {"error": "Client Side Error", "message": str(e), "type": type(e).__name__}
+        ), 400
+
+    response = []
+    for item_id, item_name, popularity, avg_possession_minutes in item_rows:
+        if popularity is None:
+            impact = None
+        elif popularity >= 66.0:
+            impact = "High"
+        elif popularity >= 33.0:
+            impact = "Medium"
+        else:
+            impact = "Low"
+
+        response.append(
+            {
+                "id": item_id,
+                "name": item_name,
+                "popularity": round(float(popularity), 2)
+                if popularity is not None
+                else None,
+                "impact": impact,
+                "category": None,
+                "logicTag": None,
+                "rarity": None,
+                "avgPossessionMinutes": (
+                    round(float(avg_possession_minutes), 2)
+                    if avg_possession_minutes is not None
+                    else None
+                ),
+            }
+        )
+
+    return jsonify(response), 200
 
 
 @Dashboard.route("/dashboard/bosses", methods=["GET"])
