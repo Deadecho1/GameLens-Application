@@ -74,6 +74,28 @@ class PipelineRunner(QObject):
                 )
             )
 
+        if not config.only_events and config.game_name and config.version_name:
+            self._queue.append(
+                (
+                    "Uploading to Collector...",
+                    [
+                        sys.executable,
+                        "-m",
+                        "scripts.run_uploader.cli",
+                        "--run-json-dir",
+                        str(config.run_json_dir),
+                        "--game-name",
+                        config.game_name,
+                        "--version-name",
+                        config.version_name,
+                        "--user-id",
+                        config.user_id,
+                        "--collector-url",
+                        config.collector_url,
+                    ],
+                )
+            )
+
         if not self._queue:
             self.pipeline_finished.emit(False, "Nothing to run.")
             return

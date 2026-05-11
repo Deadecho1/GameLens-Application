@@ -552,6 +552,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._processing_state["selectedOption"] = option
 
     def run_pipeline_from_ipc(self) -> None:
+        game = self._current_game()
         version = self._current_version()
         if version is None:
             raise ValueError("Select a game version before running the pipeline")
@@ -591,6 +592,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             candidate = _cfg.models_dir / "finetuned" / selected_model
             if candidate.exists():
                 model_dir = candidate
+        from app_core.config import AppConfig as _AC
+        _cfg = _AC.load()
         config = PipelineConfig(
             video_dir=video_dir,
             event_json_dir=version.event_json_dir,
@@ -598,6 +601,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             only_events=selected_option == "only event",
             only_export=selected_option == "only export",
             verbose=selected_option == "verbose",
+            game_name=game.name if game else "",
+            version_name=version.name,
+            collector_url=_cfg.collector_base_url,
             model_dir=model_dir,
         )
         self._processing_state["status"] = "running"
