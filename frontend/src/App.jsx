@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { cloneInitialData } from "./dataStore";
-import { getItems, getBosses, getRuns, getUserId } from "./api/client";
+import { IS_MOCK, getItems, getBosses, getRuns } from "./api/client";
 import Header from "./components/Header";
 import MainTabNav from "./components/MainTabNav";
 import ChangePickerModal from "./components/ChangePickerModal";
@@ -91,12 +91,20 @@ function App() {
 
     (async () => {
       try {
-        const userId = getUserId();
-        const [items, bosses, runsHistory] = await Promise.all([
-          getItems(userId, gameName, versionName),
-          getBosses(userId, gameName, versionName),
-          getRuns(userId, gameName, versionName),
-        ]);
+        let items, bosses, runsHistory;
+        if (IS_MOCK) {
+          [items, bosses, runsHistory] = await Promise.all([
+            getItems(null, gameName, versionName),
+            getBosses(null, gameName, versionName),
+            getRuns(null, gameName, versionName),
+          ]);
+        } else {
+          [items, bosses, runsHistory] = await Promise.all([
+            ipcRequest("dashboard:items", { game_name: gameName, version_name: versionName }),
+            ipcRequest("dashboard:bosses", { game_name: gameName, version_name: versionName }),
+            ipcRequest("dashboard:runs", { game_name: gameName, version_name: versionName }),
+          ]);
+        }
         if (!cancelled) {
           setData((prev) => ({
             ...prev,
@@ -109,7 +117,7 @@ function App() {
     })();
 
     return () => { cancelled = true; };
-  }, [data.ui.activeMainTab, data.setup.selectedGame, data.setup.selectedVersion]);
+  }, [data.ui.activeMainTab, data.setup.selectedGame, data.setup.selectedVersion, ipcRequest]);
 
   const mergePatch = useCallback(
     async (patch) => {
@@ -282,6 +290,24 @@ function App() {
     }
   }, [data.setup.selectedGame, data.ui.newVersionNameDraft, ipcRequest]);
 
+  const handleLogin = useCallback(async (email) => {
+    try {
+      const state = await ipcRequest("auth:login", { email });
+      setData(state);
+    } catch (e) {
+      setError(String(e?.message || e));
+    }
+  }, [ipcRequest]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      const state = await ipcRequest("auth:logout");
+      setData(state);
+    } catch (e) {
+      setError(String(e?.message || e));
+    }
+  }, [ipcRequest]);
+
   const tab = data.ui.activeMainTab;
 
   return (
@@ -299,7 +325,7 @@ function App() {
       <MissionSuccessOverlay active={data.ui.completionCelebrationActive} />
 
       <div className="relative z-10">
-        <Header data={data} />
+        <Header data={data} onLogin={handleLogin} onLogout={handleLogout} />
         <MainTabNav data={data} onPatch={mergePatch} />
 
         {error ? (

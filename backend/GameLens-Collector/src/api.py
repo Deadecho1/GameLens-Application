@@ -4,6 +4,7 @@ from flask import Flask, jsonify
 
 # Don't remove "useless" import, decorator registration is at runtime.
 import src.ingestion.capture  # noqa: F401
+from src.auth.auth import Auth
 from src.boss.boss import Boss
 from src.choice.choice import Choice
 from src.dashboard.dashboard import Dashboard
@@ -30,6 +31,7 @@ with app.app_context():
     init_db()
     print("initialized db.", flush=True)
 swagger = Swagger(app)
+app.register_blueprint(Auth, url_prefix="/api/v1")
 app.register_blueprint(Boss, url_prefix="/api/v1")
 app.register_blueprint(Dashboard, url_prefix="/api/v1")
 app.register_blueprint(Collector, url_prefix="/api/v1")

@@ -77,7 +77,7 @@ class PipelineRunner(QObject):
         if not config.only_events and config.game_name and config.version_name:
             self._queue.append(
                 (
-                    "Uploading to Collector...",
+                    "Saving to local database...",
                     [
                         sys.executable,
                         "-m",
@@ -88,10 +88,8 @@ class PipelineRunner(QObject):
                         config.game_name,
                         "--version-name",
                         config.version_name,
-                        "--user-id",
-                        config.user_id,
-                        "--collector-url",
-                        config.collector_url,
+                        "--backend",
+                        "local",
                     ],
                 )
             )

@@ -37,6 +37,9 @@ from .config import (
 from .models import PipelineConfig
 from .pipeline_runner import PipelineRunner
 from .process_clips_dialog import ProcessClipsDialog
+from .storage.base import StorageBackend
+from .storage.local import LocalSQLiteBackend
+from .sync_worker import SyncWorker
 from .tuning_config import TUNING_MODEL_CONFIG_BY_ID
 from .tuning_runner import TuningRunner
 from .protocols import AnalyticsReader, GameRepo
@@ -83,6 +86,15 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "logs": ["[INFO] System ready..."],
         }
         self._pipeline_runner = PipelineRunner()
+        self._auth_state: dict = {
+            "loggedIn": False,
+            "email": None,
+            "userId": None,
+            "syncStatus": "idle",
+            "syncMessage": "",
+        }
+        self._active_backend: StorageBackend = LocalSQLiteBackend()
+        self._sync_worker: SyncWorker | None = None
         self._tuning_state: dict = {
             "status": "idle",
             "logs": [],
@@ -683,6 +695,77 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
                     break
         return models
 
+    # ---- Auth IPC public API ----
+
+    def login_from_ipc(self, email: str) -> dict:
+        import requests
+        from app_core.config import AppConfig
+        cfg = AppConfig.load()
+        resp = requests.post(
+            f"{cfg.collector_base_url}/api/v1/auth/login",
+            json={"email": email},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        user_id = int(data["user_id"])
+
+        from .storage.remote import RemoteCollectorBackend
+        self._active_backend = RemoteCollectorBackend(cfg.collector_base_url, user_id)
+        self._auth_state = {
+            "loggedIn": True,
+            "email": email,
+            "userId": user_id,
+            "syncStatus": "syncing",
+            "syncMessage": "Starting sync...",
+        }
+
+        self._sync_worker = SyncWorker(self._active_backend)
+        self._sync_worker.sync_progress.connect(self._on_sync_progress)
+        self._sync_worker.sync_finished.connect(self._on_sync_finished)
+        self._sync_worker.start()
+        return dict(self._auth_state)
+
+    def logout_from_ipc(self) -> None:
+        if self._sync_worker and self._sync_worker.isRunning():
+            self._sync_worker.quit()
+            self._sync_worker.wait(2000)
+        self._active_backend = LocalSQLiteBackend()
+        self._auth_state = {
+            "loggedIn": False,
+            "email": None,
+            "userId": None,
+            "syncStatus": "idle",
+            "syncMessage": "",
+        }
+
+    @Slot(str)
+    def _on_sync_progress(self, message: str) -> None:
+        self._auth_state["syncMessage"] = message
+
+    @Slot(bool, str)
+    def _on_sync_finished(self, success: bool, message: str) -> None:
+        self._auth_state["syncStatus"] = "done" if success else "error"
+        self._auth_state["syncMessage"] = message
+
+    # ---- Dashboard IPC public API ----
+
+    def get_dashboard_items_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
+        user_id = self._auth_state.get("userId") or 0
+        return self._active_backend.get_items(user_id, game_name, version_name or None)
+
+    def get_dashboard_bosses_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
+        user_id = self._auth_state.get("userId") or 0
+        return self._active_backend.get_bosses(user_id, game_name, version_name or None)
+
+    def get_dashboard_runs_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
+        user_id = self._auth_state.get("userId") or 0
+        return self._active_backend.get_runs(user_id, game_name, version_name or None)
+
+    def get_dashboard_stats_from_ipc(self, game_name: str, version_name: str | None) -> dict:
+        user_id = self._auth_state.get("userId") or 0
+        return self._active_backend.get_stats(user_id, game_name, version_name or None)
+
     def get_frontend_state_from_ipc(self) -> dict:
         current_game = self._current_game()
         current_version = self._current_version()
@@ -705,6 +788,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "processing": dict(self._processing_state),
             "tuning": dict(self._tuning_state),
             "dashboard": dashboard,
+            "auth": dict(self._auth_state),
         }
 
     def _apply_responsive_fonts(self) -> None:

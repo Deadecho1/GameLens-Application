@@ -179,6 +179,14 @@ export const initialData = {
       },
     ],
   },
+
+  auth: {
+    loggedIn: false,
+    email: null,
+    userId: null,
+    syncStatus: 'idle',
+    syncMessage: '',
+  },
 };
 
 export function cloneInitialData() {

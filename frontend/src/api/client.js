@@ -11,7 +11,7 @@
 
 import mockData from './mockData.json';
 
-const IS_MOCK = import.meta.env.VITE_GAMELENS_MOCK === 'true';
+export const IS_MOCK = import.meta.env.VITE_GAMELENS_MOCK === 'true';
 const BASE_URL = (import.meta.env.VITE_COLLECTOR_URL ?? 'http://localhost:8000').replace(/\/$/, '');
 const DEFAULT_USER_ID = import.meta.env.VITE_GAMELENS_USER_ID ?? '1';
 
