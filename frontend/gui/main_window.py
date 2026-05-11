@@ -381,6 +381,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._processing_state["status"] = "completed" if success else "stopped"
         if success:
             self._refresh_dashboard()
+            if self._auth_state.get("loggedIn"):
+                self._start_sync()
 
     def _populate_runs(self, runs: list[RunSummary]) -> None:
         self.runs_table.clearContents()
@@ -720,10 +722,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "syncMessage": "Starting sync...",
         }
 
-        self._sync_worker = SyncWorker(self._active_backend)
-        self._sync_worker.sync_progress.connect(self._on_sync_progress)
-        self._sync_worker.sync_finished.connect(self._on_sync_finished)
-        self._sync_worker.start()
+        self._start_sync()
         return dict(self._auth_state)
 
     def logout_from_ipc(self) -> None:
@@ -738,6 +737,19 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "syncStatus": "idle",
             "syncMessage": "",
         }
+
+    def _start_sync(self) -> None:
+        if self._sync_worker and self._sync_worker.isRunning():
+            return  # already syncing
+        from .storage.remote import RemoteCollectorBackend
+        if not isinstance(self._active_backend, RemoteCollectorBackend):
+            return
+        self._auth_state["syncStatus"] = "syncing"
+        self._auth_state["syncMessage"] = "Starting sync..."
+        self._sync_worker = SyncWorker(self._active_backend)
+        self._sync_worker.sync_progress.connect(self._on_sync_progress)
+        self._sync_worker.sync_finished.connect(self._on_sync_finished)
+        self._sync_worker.start()
 
     @Slot(str)
     def _on_sync_progress(self, message: str) -> None:

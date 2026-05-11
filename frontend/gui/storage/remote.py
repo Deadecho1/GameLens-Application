@@ -17,6 +17,8 @@ class RemoteCollectorBackend(StorageBackend):
 
     def _get(self, path: str, params: dict) -> object:
         resp = self._session.get(f"{self.base_url}{path}", params=params, timeout=self._timeout)
+        if resp.status_code == 404:
+            return None  # caller checks and returns empty
         resp.raise_for_status()
         return resp.json()
 
@@ -29,25 +31,28 @@ class RemoteCollectorBackend(StorageBackend):
         params = {"game_name": game_name, "user_id": str(user_id)}
         if version_name:
             params["version_name"] = version_name
-        return self._get("/api/v1/dashboard/items", params)
+        return self._get("/api/v1/dashboard/items", params) or []
 
     def get_bosses(self, user_id: int, game_name: str, version_name: str | None) -> list[dict]:
         params = {"game_name": game_name, "user_id": str(user_id)}
         if version_name:
             params["version_name"] = version_name
-        return self._get("/api/v1/dashboard/bosses", params)
+        return self._get("/api/v1/dashboard/bosses", params) or []
 
     def get_runs(self, user_id: int, game_name: str, version_name: str | None) -> list[dict]:
         params = {"game_name": game_name, "user_id": str(user_id)}
         if version_name:
             params["version_name"] = version_name
-        return self._get("/api/v1/dashboard/runs", params)
+        return self._get("/api/v1/dashboard/runs", params) or []
 
     def get_stats(self, user_id: int, game_name: str, version_name: str | None) -> dict:
         params = {"game_name": game_name, "user_id": str(user_id)}
         if version_name:
             params["version_name"] = version_name
-        return self._get("/api/v1/dashboard/stats", params)
+        return self._get("/api/v1/dashboard/stats", params) or {
+            "totalRuns": 0, "avgDuration": None, "longestRun": None,
+            "bossKillPercent": 0.0, "mostPopularItem": None,
+        }
 
     # ------------------------------------------------------------------
     # Write helpers used by SyncWorker
