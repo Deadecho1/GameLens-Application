@@ -11,14 +11,15 @@ CREATE SCHEMA IF NOT EXISTS dashboard;
 -- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS dashboard.users (
-    id INTEGER PRIMARY KEY,
-    email TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id BIGSERIAL PRIMARY KEY,
+    email TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT users_email_uk UNIQUE (email)
 );
 
 CREATE TABLE IF NOT EXISTS dashboard.games (
     id BIGSERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
+    user_id BIGINT NOT NULL,
     name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT games_user_fk
@@ -45,18 +46,18 @@ CREATE TABLE IF NOT EXISTS dashboard.game_versions (
 CREATE TABLE IF NOT EXISTS dashboard.runs (
     id BIGSERIAL PRIMARY KEY,
     version_id BIGINT NOT NULL,
-    video_filename TEXT,
-    start_time DOUBLE PRECISION,
-    end_time DOUBLE PRECISION,
-    duration_seconds DOUBLE PRECISION,
-    outcome TEXT,
+    video_filename TEXT NOT NULL,
+    start_time DOUBLE PRECISION NOT NULL,
+    end_time DOUBLE PRECISION NOT NULL,
+    duration_seconds DOUBLE PRECISION NOT NULL,
+    outcome TEXT NOT NULL,
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT runs_version_fk
         FOREIGN KEY (version_id)
         REFERENCES dashboard.game_versions(id)
         ON DELETE CASCADE,
     CONSTRAINT runs_outcome_chk
-        CHECK (outcome IS NULL OR outcome IN ('death', 'win'))
+        CHECK (outcome IN ('death', 'win'))
 );
 
 -- ---------------------------------------------------------------------------
@@ -136,5 +137,25 @@ CREATE TABLE IF NOT EXISTS dashboard.boss_encounters (
         REFERENCES dashboard.bosses(id)
         ON DELETE CASCADE
 );
+
+-- ---------------------------------------------------------------------------
+-- Performance indexes
+-- ---------------------------------------------------------------------------
+
+-- Runs: version filter + date ordering is the most common read pattern
+CREATE INDEX IF NOT EXISTS idx_runs_version_recorded
+    ON dashboard.runs (version_id, recorded_at DESC);
+
+-- Item pickups: joined by run_id + item_id in every analytics read
+CREATE INDEX IF NOT EXISTS idx_item_pickups_run_item
+    ON dashboard.item_pickups (run_id, item_id);
+
+-- Boss encounters: joined by run_id + boss_id in every analytics read
+CREATE INDEX IF NOT EXISTS idx_boss_encounters_run_boss
+    ON dashboard.boss_encounters (run_id, boss_id);
+
+-- Games lookup by user — used on every read endpoint
+CREATE INDEX IF NOT EXISTS idx_games_user_id
+    ON dashboard.games (user_id);
 
 COMMIT;

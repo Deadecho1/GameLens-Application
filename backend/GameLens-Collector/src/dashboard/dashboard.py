@@ -117,7 +117,7 @@ def create_or_get_game():
                         (user_id, name),
                     )
                     game_id = cur.fetchone()[0]
-                    conn.commit()
+                conn.commit()
 
     except Exception as e:
         return jsonify(
@@ -173,7 +173,7 @@ def create_or_get_version(game_id):
                         (game_id_int, name),
                     )
                     version_id = cur.fetchone()[0]
-                    conn.commit()
+                conn.commit()
 
     except Exception as e:
         return jsonify(
@@ -310,6 +310,8 @@ def upload_runs_batch(game_id, version_id):
                         if not item_name:
                             raise MissingCollectorParam("item_name is required")
 
+                        # DO UPDATE is a no-op on name (keeps existing value) — used
+                        # solely so RETURNING id fires on both insert and conflict paths.
                         cur.execute(
                             """
                             INSERT INTO dashboard.items (game_id, name, first_seen_version_id)
@@ -354,6 +356,8 @@ def upload_runs_batch(game_id, version_id):
                         if not boss_name:
                             raise MissingCollectorParam("boss_name is required")
 
+                        # DO UPDATE is a no-op on name (keeps existing value) — used
+                        # solely so RETURNING id fires on both insert and conflict paths.
                         cur.execute(
                             """
                             INSERT INTO dashboard.bosses (game_id, name, first_seen_version_id)
@@ -605,6 +609,8 @@ def get_bosses():
                         AVG(be.duration_seconds) FILTER (
                             WHERE (%s::text IS NULL OR gv.name = %s::text)
                         ) AS avg_duration_seconds,
+                        -- NULL player_died is treated as "player died" (TRUE).
+                        -- A boss is "Defeated" only if there is an explicit player_died=FALSE encounter.
                         COALESCE(
                             BOOL_OR(COALESCE(be.player_died, TRUE) = FALSE) FILTER (
                                 WHERE (%s::text IS NULL OR gv.name = %s::text)
@@ -628,11 +634,14 @@ def get_bosses():
                     SELECT b.id, be.duration_seconds
                     FROM dashboard.bosses b
                     LEFT JOIN dashboard.boss_encounters be ON be.boss_id = b.id
+                    LEFT JOIN dashboard.runs r ON r.id = be.run_id
+                    LEFT JOIN dashboard.game_versions gv ON gv.id = r.version_id
                     WHERE b.game_id = %s
                       AND be.duration_seconds IS NOT NULL
+                      AND (%s::text IS NULL OR gv.name = %s::text)
                     ORDER BY b.id, be.id;
                     """,
-                    (game_id,),
+                    (game_id, version_name, version_name),
                 )
                 sample_rows = cur.fetchall()
 
@@ -762,9 +771,9 @@ def get_runs():
                         FROM dashboard.boss_encounters be
                         LEFT JOIN dashboard.item_pickups ip
                           ON ip.run_id = be.run_id
+                         AND ip.picked_at_seconds IS NOT NULL
                          AND (
                             be.start_time IS NULL
-                            OR ip.picked_at_seconds IS NULL
                             OR ip.picked_at_seconds <= be.start_time
                          )
                         WHERE be.run_id = ANY(%s)
