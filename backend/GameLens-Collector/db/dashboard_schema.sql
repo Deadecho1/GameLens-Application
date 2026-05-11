@@ -19,13 +19,11 @@ CREATE TABLE IF NOT EXISTS dashboard.users (
 
 CREATE TABLE IF NOT EXISTS dashboard.games (
     id BIGSERIAL PRIMARY KEY,
+    -- No FK to dashboard.users yet — auth is not implemented.
+    -- Restore FK when real user registration is wired up.
     user_id BIGINT NOT NULL,
     name TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT games_user_fk
-        FOREIGN KEY (user_id)
-        REFERENCES dashboard.users(id)
-        ON DELETE CASCADE,
     CONSTRAINT games_user_name_uk
         UNIQUE (user_id, name)
 );

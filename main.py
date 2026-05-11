@@ -105,7 +105,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--user-id",
-        default="dev-user",
+        default="1",
         help="User ID sent in X-User-ID header (default: dev-user)",
     )
     parser.add_argument(
