@@ -7,8 +7,10 @@ import MainTabNav from "./components/MainTabNav";
 import ChangePickerModal from "./components/ChangePickerModal";
 import AddItemModal from "./components/AddItemModal";
 import MissionSuccessOverlay from "./components/MissionSuccessOverlay";
+import SettingsSidebar from "./components/SettingsSidebar";
 import WorkflowTab from "./components/tabs/WorkflowTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
+import RunSessionAnalytics from "./components/analytics/runSession/RunSessionAnalytics";
 import TuningTab from "./components/tabs/TuningTab";
 
 /**
@@ -18,6 +20,7 @@ import TuningTab from "./components/tabs/TuningTab";
 function App() {
   const [data, setData] = useState(() => cloneInitialData());
   const [error, setError] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const pollRef = useRef(null);
   const prevStatusRef = useRef("idle");
 
@@ -325,7 +328,7 @@ function App() {
       <MissionSuccessOverlay active={data.ui.completionCelebrationActive} />
 
       <div className="relative z-10">
-        <Header data={data} onLogin={handleLogin} onLogout={handleLogout} />
+        <Header data={data} onLogin={handleLogin} onLogout={handleLogout} onOpenSettings={() => setSettingsOpen(true)} />
         <MainTabNav data={data} onPatch={mergePatch} />
 
         {error ? (
@@ -368,6 +371,9 @@ function App() {
             {tab === "analytics" && (
               <AnalyticsTab key="analytics" data={data} onPatch={mergePatch} />
             )}
+            {tab === "runSession" && (
+              <RunSessionAnalytics key="runSession" data={data} />
+            )}
             {tab === "tuning" && (
               <TuningTab key="tuning" data={data} ipcRequest={ipcRequest} />
             )}
@@ -409,6 +415,12 @@ function App() {
           }
           onConfirm={confirmAddVersion}
           inputId="add-version"
+        />
+        <SettingsSidebar
+          data={data}
+          onPatch={mergePatch}
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
         />
       </div>
     </div>

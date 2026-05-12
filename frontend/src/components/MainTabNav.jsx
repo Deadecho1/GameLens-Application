@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
+import { Activity } from 'lucide-react';
 
 const TABS = [
   { id: 'workflow', label: 'MISSION START' },
   { id: 'analytics', label: 'ANALYTICS' },
+  { id: 'runSession', label: 'RUN ANALYTICS', icon: Activity },
   { id: 'tuning', label: 'GAME TUNING' },
 ];
 
@@ -20,6 +22,7 @@ export default function MainTabNav({ data, onPatch }) {
       <div className="mx-auto flex max-w-[1800px] flex-wrap gap-2 md:gap-3">
         {TABS.map((tab) => {
           const isActive = active === tab.id;
+          const TabIcon = tab.icon;
           return (
             <button
               key={tab.id}
@@ -32,7 +35,10 @@ export default function MainTabNav({ data, onPatch }) {
                   : 'border-slate-800/90 bg-slate-900/35 text-slate-500 hover:border-slate-700 hover:bg-slate-900/55 hover:text-slate-300'
               }`}
               onClick={() => {
-                if (tab.id === 'workflow' && active === 'analytics') {
+                if (
+                  tab.id === 'workflow' &&
+                  (active === 'analytics' || active === 'runSession')
+                ) {
                   onPatch({
                     ui: {
                       ...data.ui,
@@ -54,7 +60,12 @@ export default function MainTabNav({ data, onPatch }) {
                   transition={{ type: 'spring', stiffness: 380, damping: 32 }}
                 />
               )}
-              <span className="relative z-[1]">{tab.label}</span>
+              <span className="relative z-[1] flex items-center justify-center gap-2">
+                {TabIcon ? (
+                  <TabIcon className="h-4 w-4 shrink-0 opacity-90" aria-hidden strokeWidth={1.75} />
+                ) : null}
+                {tab.label}
+              </span>
             </button>
           );
         })}

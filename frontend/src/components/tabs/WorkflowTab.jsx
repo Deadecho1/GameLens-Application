@@ -273,27 +273,8 @@ export default function WorkflowTab({
                   if (e.key === "Enter" || e.key === " ")
                     inputRef.current?.click();
                 }}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  if (!e.currentTarget.contains(e.relatedTarget))
-                    setDragOver(false);
-                }}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragOver(false);
-                  ingestFiles(e.dataTransfer.files);
-                }}
-                onClick={() => inputRef.current?.click()}
-                className={`relative cursor-pointer rounded-2xl border-2 border-dashed px-6 py-12 text-center transition md:py-14 ${
-                  dragOver
-                    ? "border-cyan-400 bg-cyan-500/10"
-                    : "border-blue-500/35 bg-slate-950/40 gl-upload-pulse hover:border-cyan-400/45"
-                }`}
+                
+  
               >
                 <input
                   ref={inputRef}
@@ -306,13 +287,8 @@ export default function WorkflowTab({
                     e.target.value = "";
                   }}
                 />
-                <UploadCloud
-                  className="mx-auto h-10 w-10 text-cyan-400/90"
-                  strokeWidth={1.15}
-                />
-                <p className="font-display mt-4 text-sm font-bold uppercase tracking-wider text-slate-200">
-                  Drop video clip
-                </p>
+               
+               
                 {/*  Writes to processing.videoFiles*/}
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -322,7 +298,7 @@ export default function WorkflowTab({
                   onClick={onChooseFolder}
                 >
                   <FolderOpen className="h-4 w-4" />
-                  Pipeline path
+                  upload file
                 </button>
                 <code className="font-data max-w-full flex-1 truncate rounded-lg border border-slate-800 bg-black/50 px-3 py-2 text-[11px] text-cyan-600/80">
                   {processing.pipelinePath}
