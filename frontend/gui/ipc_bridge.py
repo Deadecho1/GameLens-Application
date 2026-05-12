@@ -129,4 +129,74 @@ class IpcBridge(QObject):
             self._window.clear_processing_logs_from_ipc()
             return self._window.get_frontend_state_from_ipc()
 
+        if method == "processing:set_model":
+            self._window.set_model_from_ipc(str(params["model"]))
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "tuning:start":
+            raw_videos = params.get("videos")
+            if not isinstance(raw_videos, list):
+                raise ValueError("videos must be an array")
+            raw_model_ids = params.get("enabledModelIds")
+            if not isinstance(raw_model_ids, list):
+                raise ValueError("enabledModelIds must be an array")
+            model_name = str(params.get("modelName") or "").strip()
+            if not model_name:
+                raise ValueError("modelName is required")
+            self._window.start_tuning_from_ipc(raw_videos, raw_model_ids, model_name)
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "tuning:stop":
+            self._window.stop_tuning_from_ipc()
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "tuning:clear_logs":
+            self._window.clear_tuning_logs_from_ipc()
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "auth:login":
+            email = str(params.get("email") or "").strip()
+            if not email:
+                raise ValueError("email is required")
+            auth = self._window.login_from_ipc(email)
+            state = self._window.get_frontend_state_from_ipc()
+            state["auth"] = auth
+            return state
+
+        if method == "auth:logout":
+            self._window.logout_from_ipc()
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "auth:state":
+            state = self._window.get_frontend_state_from_ipc()
+            return state["auth"]
+
+        if method == "dashboard:items":
+            game_name = str(params.get("game_name") or "").strip()
+            version_name = str(params.get("version_name") or "").strip() or None
+            if not game_name:
+                raise ValueError("game_name is required")
+            return self._window.get_dashboard_items_from_ipc(game_name, version_name)
+
+        if method == "dashboard:bosses":
+            game_name = str(params.get("game_name") or "").strip()
+            version_name = str(params.get("version_name") or "").strip() or None
+            if not game_name:
+                raise ValueError("game_name is required")
+            return self._window.get_dashboard_bosses_from_ipc(game_name, version_name)
+
+        if method == "dashboard:runs":
+            game_name = str(params.get("game_name") or "").strip()
+            version_name = str(params.get("version_name") or "").strip() or None
+            if not game_name:
+                raise ValueError("game_name is required")
+            return self._window.get_dashboard_runs_from_ipc(game_name, version_name)
+
+        if method == "dashboard:stats":
+            game_name = str(params.get("game_name") or "").strip()
+            version_name = str(params.get("version_name") or "").strip() or None
+            if not game_name:
+                raise ValueError("game_name is required")
+            return self._window.get_dashboard_stats_from_ipc(game_name, version_name)
+
         raise ValueError(f"Unknown IPC method: {method}")

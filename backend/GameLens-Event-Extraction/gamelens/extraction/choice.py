@@ -2,13 +2,14 @@ import base64
 import gc
 import json
 import os
+import re
 
-# Assuming this exists in your project
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from openai import OpenAI
 from pydantic import BaseModel
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+GOOGLE_AI_STUDIO_API_KEY = os.environ.get("GOOGLE_AI_STUDIO_API_KEY")
+
 DEFAULT_PROMPT_CHOICE = """
         You are analyzing a roguelike game screenshot.
         Extract the item/upgrade titles shown on a choice or reward screen and identify the currently selected (hovered) one.
@@ -36,11 +37,20 @@ DEFAULT_PROMPT_CHOICE = """
 
         If no card shows any hover indicator after careful inspection, return an empty string for selected_choice.
         If the screen is not a choice or reward screen, return an empty list and empty string.
+
+        Respond with a JSON object in exactly this format:
+        {
+          "choices": ["title1", "title2", "title3"],
+          "reasoning": "describe each card and its indicators here",
+          "selected_choice": "title1"
+        }
         """
 
-# Initialize the router and OpenAI client
 router = APIRouter(prefix="/api/v1/choice", tags=["choice"])
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else OpenAI()
+client = OpenAI(
+    api_key=GOOGLE_AI_STUDIO_API_KEY,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+)
 
 
 class ExtractionResponse(BaseModel):
@@ -53,13 +63,12 @@ class ExtractionResponse(BaseModel):
 async def extract_choices(
     file: UploadFile = File(...),
     prompt: str = DEFAULT_PROMPT_CHOICE,
-    model: str = "gpt-5.4",
+    model: str = "models/gemma-4-26b-a4b-it",
 ):
     """
     Analyzes a roguelike game screenshot to extract choice titles
     and identify the currently selected one.
     """
-    # Validate the uploaded file is an image
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Uploaded file must be an image.")
 
@@ -73,42 +82,15 @@ async def extract_choices(
     b64_encoded = base64.b64encode(image_bytes).decode("ascii")
     data_url = f"data:{file.content_type};base64,{b64_encoded}"
 
-    schema = {
-        "name": "choice_extraction",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "choices": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "Choice titles, in on-screen order, or empty if not a choice screen.",
-                },
-                "reasoning": {
-                    "type": "string",
-                    "description": "Describe each card's background shade and any hover indicators (corner triangles, side arrows, cursor), then state which card is the visual outlier.",
-                },
-                "selected_choice": {
-                    "type": "string",
-                    "description": "The currently selected choice title, or empty string if none.",
-                },
-            },
-            "required": ["choices", "reasoning", "selected_choice"],
-            "additionalProperties": False,
-        },
-    }
-
     try:
         resp = client.chat.completions.create(
             model=model,
             temperature=0,
-            reasoning_effort="none",
-            prompt_cache_key="gamelens-choice-extraction",
-            prompt_cache_retention="24h",
-            response_format={"type": "json_schema", "json_schema": schema},
+            response_format={"type": "json_object"},
             messages=[
                 {
                     "role": "system",
-                    "content": (prompt),
+                    "content": prompt,
                 },
                 {
                     "role": "user",
@@ -117,22 +99,25 @@ async def extract_choices(
                             "type": "text",
                             "text": "Return all choice titles and the selected choice.",
                         },
-                        {"type": "image_url", "image_url": {"url": data_url, "detail": "original"}},
+                        {"type": "image_url", "image_url": {"url": data_url}},
                     ],
                 },
             ],
         )
 
         content = resp.choices[0].message.content
-        result = json.loads(content) if isinstance(content, str) else content
+        if isinstance(content, str):
+            # Gemma 4 prefixes responses with <thought>...</thought> — strip before parsing
+            content = re.sub(r"^<thought>.*?</thought>", "", content, flags=re.DOTALL).strip()
+            result = json.loads(content)
+        else:
+            result = content
         return result
 
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to process image with OpenAI: {str(e)}"
+            status_code=500, detail=f"Failed to process image with Gemma: {str(e)}"
         )
     finally:
-        # Explicitly free large objects — base64 image data and OpenAI response
-        # can be several MB each; with many sequential requests this accumulates fast
         del image_bytes, b64_encoded, data_url
         gc.collect()

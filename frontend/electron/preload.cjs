@@ -7,4 +7,7 @@ contextBridge.exposeInMainWorld('gamelens', {
   chooseFolder() {
     return ipcRenderer.invoke('gamelens:choose-folder');
   },
+  chooseFile(opts = {}) {
+    return ipcRenderer.invoke('gamelens:choose-file', opts);
+  },
 });

@@ -1,59 +1,84 @@
 # GameLens
 
-GameLens is a gameplay analysis system that processes video captures to detect in-game events, classify game-state transitions, and export structured run/session data.
+GameLens is a gameplay analysis system that processes video captures to detect in-game events, classify game-state transitions, and export structured run/session data. Results are stored locally (SQLite) and optionally synced to a remote Collector when signed in.
 
-**Services**
-- `GameLens-Collector` (`backend/GameLens-Collector`) — Flask + Socket.IO ingestion API. Stores data in PostgreSQL. Port `8000`.
-- `GameLens-Event-Extraction` (`backend/GameLens-Event-Extraction`) — FastAPI service for event/choice classification using vision models + OpenAI. Port `7761`.
-- `PostgreSQL` — Database used by both backend services.
-- `pgAdmin` — Optional DB admin UI. Port `5050`.
-- `GUI` (`gui/`) — PySide6 desktop client that connects to the backend.
+---
+
+## Architecture
+
+```
+Videos → Event Detection → Choice Extraction → Run JSON files
+                                                      ↓
+                                              Local SQLite DB
+                                                      ↓ (on login)
+                                              Remote Collector (PostgreSQL)
+                                                      ↓
+                                          Electron + React analytics UI
+```
+
+**Components:**
+
+| Component | Location | Description |
+|-----------|----------|-------------|
+| Electron + React UI | `frontend/src/` | Main user interface |
+| Qt IPC backend | `frontend/gui/` | PySide6 headless backend; bridges Electron ↔ pipeline |
+| GameLens-Collector | `backend/GameLens-Collector/` | Flask + Socket.IO ingestion API, port `8000` |
+| GameLens-Event-Extraction | `backend/GameLens-Event-Extraction/` | FastAPI ML classification service, port `7761` |
+| PostgreSQL | Docker | Remote database (Collector) |
+| Local SQLite | `data/gamelens_local.db` | Per-machine local storage, no login required |
 
 ---
 
 ## Prerequisites
 
 - **Python 3.11–3.12** (root project and GUI)
+- **Node.js 18+** and **npm**
 - **[uv](https://github.com/astral-sh/uv)** — Python package manager
-- **Docker + Docker Compose** — for running backend services
-- **CUDA-capable GPU** (optional but strongly recommended for event detection inference)
+- **Docker + Docker Compose** — for remote backend services (optional for local-only use)
+- **CUDA-capable GPU** — optional, strongly recommended for event detection
 
 ---
 
-## 1. Install Python Dependencies
-
-From the repo root:
+## 1. Install Dependencies
 
 ```bash
+# Python
 uv sync
+
+# Node (first time only)
+cd frontend && npm install && cd ..
 ```
 
 ---
 
 ## 2. Download Model Weights
 
-Model weights are not included in the repository. Download them from Google Drive and place them as follows:
+Weights are not in the repo. Download from Google Drive and place as shown:
 
 **Google Drive:** https://drive.google.com/drive/folders/1P8V-G7gfTAqPlpaS92RGeDA0vaGRivSH?usp=sharing
 
-Download the event detector weights and place them at `models/event_detector/`:
-
 ```
 models/
-└── event_detector/
-    ├── config.json
-    ├── model.safetensors
-    ├── tokenizer.json
-    └── ... (other tokenizer/preprocessor files)
+├── event_detector/
+│   ├── config.json
+│   ├── model.safetensors
+│   ├── tokenizer.json
+│   └── ...
+└── boss/
+    └── model.pt
 ```
 
 ---
 
-## 3. Configure Environment Files
+## 3. Configure Environment
+
+### Root `.env`
+
+```env
+OPENAI_API_KEY=your_openai_api_key
+```
 
 ### `backend/GameLens-Collector/.env`
-
-Copy the example and fill in your values:
 
 ```bash
 cp backend/GameLens-Collector/.env.example backend/GameLens-Collector/.env
@@ -64,13 +89,12 @@ POSTGRES_USER=your_username
 POSTGRES_PASSWORD=your_password
 POSTGRES_DB=your_database_name
 
-# Docker: use @db:5432 | Local: use @localhost:5432
+# Docker: @db:5432 | Local dev: @localhost:5432
 PGSQL_CONN=postgresql://your_username:your_password@db:5432/your_database_name
 
-# URL of the Event Extraction service (use container name when running via Docker)
 CLASSIFIER_SERVICE_HOST_URL=http://event_classifier:7761
 
-# Optional — pgAdmin credentials
+# Optional
 PGADMIN_MAIL=admin@gamelens.com
 PGADMIN_PASS=admin123
 ```
@@ -82,83 +106,81 @@ cp backend/GameLens-Event-Extraction/.env.example backend/GameLens-Event-Extract
 ```
 
 ```env
-# Docker: use @db:5432 | Local: use @localhost:5432
 PGSQL_CONN=postgresql://your_username:your_password@db:5432/your_database_name
-
-OPENAI_API_KEY=your_openai_api_key
-```
-
-### Root `.env`
-
-Create a `.env` in the repo root for the GUI and CLI pipeline:
-
-```env
 OPENAI_API_KEY=your_openai_api_key
 ```
 
 ---
 
-## 4. Create the Docker Network
-
-Both backend services share an external Docker network. Create it once before the first run:
+## 4. Launch the App
 
 ```bash
-docker network create db_network
+cd frontend && npm run electron:dev
 ```
+
+**This is all you need for local-only use.** Docker is not required to process videos or view analytics. Data is saved to `data/gamelens_local.db`.
+
+### Mock mode (frontend dev, no Qt backend)
+
+```bash
+cd frontend && npm run electron:dev:mock
+```
+
+Returns pre-shaped fixture data. No Qt process needed.
 
 ---
 
-## 5. Start Backend Services
+## 5. Backend Services (for remote sync)
 
-From the repo root:
+Start Docker services:
 
 ```bash
+docker network create db_network   # once
 docker compose up -d --build
 ```
 
-This starts: `postgres_db`, `pgadmin`, `collector` (port 8000), and `event_classifier` (port 7761).
-
-Wait for all containers to be healthy, then run the DB migration:
+Apply DB schemas (once, or after wiping the volume):
 
 ```bash
-docker exec -i postgres_db psql -U your_username -d your_database_name < backend/GameLens-Collector/db/GameLens-Schema-Updated.sql
+docker exec -i postgres_db psql -U your_username -d your_database_name \
+  < backend/GameLens-Collector/db/GameLens-Schema-Updated.sql
+
+docker exec -i postgres_db psql -U your_username -d your_database_name \
+  < backend/GameLens-Collector/db/dashboard_schema.sql
+
+docker exec -i postgres_db psql -U your_username -d your_database_name \
+  < backend/GameLens-Collector/db/migrations/001_add_runs_dedup.sql
 ```
 
-> The migration only needs to be run once (or after wiping the DB volume).
-
-Verify services are up:
+Verify:
 
 ```bash
 docker compose ps
-curl http://localhost:8000      # Collector
-curl http://localhost:7761      # Event Extraction
+curl http://localhost:8000   # Collector
+curl http://localhost:7761   # Event Extraction
 ```
 
 ---
 
-## 6. Launch the GUI
+## 6. Sign In and Sync
 
-```bash
-cd frontend
-npm install        # first time only
-npm run electron:dev
-```
+Click **Sign in** in the app header. Enter any email — an account is created automatically. After login:
 
-The GUI connects to:
-- Collector API at `http://localhost:8000`
-- Event Extraction service at `http://localhost:7761` (configurable via `GAMELENS_CLASSIFIER_URL` in `.env`)
+- Analytics reads from the remote Collector
+- All locally saved runs sync to the remote DB in the background
+- Data becomes accessible from any machine signed in with the same email
 
----
+Sign out to return to local-only mode.
+
+> Password auth is not yet implemented. Any email string is accepted.
 
 ---
 
 ## CLI Pipeline
 
-The CLI pipeline processes videos in three sequential stages. The backend must be running (`docker compose up -d --build`) before Stage 2 and Stage 3.
+Runs the three processing stages manually. Stage 1 only needs Python. Stages 2–3 need the backend services running.
 
 ### Stage 1 — Event Detection
-
-Processes video files and outputs per-video JSON files describing detected run boundaries, choice events, and drop events.
 
 ```bash
 uv run python -m scripts.event_detector.cli \
@@ -168,8 +190,6 @@ uv run python -m scripts.event_detector.cli \
 
 ### Stage 2 — Run Exporter
 
-Reads the event JSONs from Stage 1, extracts choice selections via the Event Extraction service (OpenAI vision), and writes one JSON file per run.
-
 ```bash
 uv run python -m scripts.run_exporter.cli \
   --json-dir /path/to/event-jsons \
@@ -177,43 +197,38 @@ uv run python -m scripts.run_exporter.cli \
   --output-dir /path/to/run-jsons
 ```
 
-Stage 2 output is safe to keep and reuse — re-running it is expensive (one OpenAI call per choice event).
+Stage 2 output is safe to reuse — re-running is expensive (one OpenAI call per choice event).
 
-### Stage 3 — Boss Processor
-
-Enriches the run JSONs from Stage 2 with boss fight data. Requires a YOLO boss classifier model and the Event Extraction service.
+### Stage 3 — Save to Local DB
 
 ```bash
-uv run python -m scripts.boss_processor.cli \
+uv run python -m scripts.run_uploader.cli \
   --run-json-dir /path/to/run-jsons \
-  --video-dir /path/to/videos \
-  --boss-model models/boss/model.pt
+  --game-name "MyGame" \
+  --version-name "v1.0" \
+  --backend local
 ```
 
-Each run JSON gains a `boss_fights` key:
+To upload directly to the remote Collector instead:
 
-```json
-"boss_fights": [
-  {
-    "boss_names": ["Stone Golem", "Stone Golem"],
-    "boss_class": "boss",
-    "start_time": 238.75,
-    "end_time": 261.25,
-    "duration_seconds": 22.5,
-    "player_died": false
-  }
-]
+```bash
+uv run python -m scripts.run_uploader.cli \
+  --run-json-dir /path/to/run-jsons \
+  --game-name "MyGame" \
+  --version-name "v1.0" \
+  --backend remote \
+  --user-id 1 \
+  --collector-url http://localhost:8000
 ```
 
-- `boss_names` — all boss names visible on screen (there can be multiple simultaneous bosses).
-- `player_died` — `true` if the run ended at or near the boss fight's end time.
-- Boss model weights go in `models/boss/` (download separately, same Google Drive as event detector weights).
+The GUI runs all three stages automatically when you click **Run** in the Processing tab.
 
 ---
 
 ## Notes
 
-- Videos must be `.mp4` format.
-- All videos should be placed in the folder configured in the GUI.
-- The event detector uses X-CLIP and runs on GPU if CUDA is available, otherwise falls back to CPU (significantly slower).
-- Choice extraction uses the OpenAI vision API — an `OPENAI_API_KEY` is required.
+- Videos must be `.mp4`
+- Event detector uses X-CLIP; runs on GPU if CUDA is available, otherwise CPU (slow)
+- Choice extraction requires `OPENAI_API_KEY`
+- Local SQLite is at `data/gamelens_local.db` — safe to delete to reset local data
+- Fine-tuned models go in `models/finetuned/<name>_<modelId>/`

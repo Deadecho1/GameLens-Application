@@ -1,27 +1,67 @@
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, protocol } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
+const { Readable } = require("stream");
 const WebSocket = require("ws");
 
+// Register custom scheme before app is ready — required by Electron
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "gamelens-local",
+    privileges: { secure: true, supportFetchAPI: true, stream: true },
+  },
+]);
+
 let qtProcess = null;
+
+function resolveUv() {
+  // Prefer uv on PATH; fall back to common install locations
+  const { execSync } = require("child_process");
+  try {
+    return execSync("which uv", { encoding: "utf8" }).trim();
+  } catch {
+    for (const p of [
+      "/home/" + (process.env.USER || "") + "/.local/bin/uv",
+      "/usr/local/bin/uv",
+      "/usr/bin/uv",
+    ]) {
+      if (fs.existsSync(p)) return p;
+    }
+    return "uv"; // last resort — let spawn fail with a clear error
+  }
+}
 
 function spawnQtBackend() {
   const appRoot = path.join(__dirname, "..", "..");
   const frontendRoot = path.join(__dirname, "..");
-  qtProcess = spawn(
-    "/home/deadecho/.local/bin/uv",
-    ["run", "python", "-m", "gui.main", "--headless"],
-    {
-      cwd: frontendRoot,
-      env: { ...process.env, PYTHONPATH: appRoot },
-      stdio: ["ignore", "pipe", "pipe"],
-      detached: false,
-    }
-  );
-  qtProcess.stdout.on("data", (d) => process.stdout.write("[qt] " + d));
-  qtProcess.stderr.on("data", (d) => process.stderr.write("[qt] " + d));
-  qtProcess.on("error", (e) => console.error("[qt spawn error]", e.message));
+  const uvBin = resolveUv();
+
+  function trySpawn(pythonCmd) {
+    const proc = spawn(
+      uvBin,
+      ["run", pythonCmd, "-m", "gui.main", "--headless"],
+      {
+        cwd: frontendRoot,
+        env: { ...process.env, PYTHONPATH: appRoot },
+        stdio: ["ignore", "pipe", "pipe"],
+        detached: false,
+      }
+    );
+    proc.stdout.on("data", (d) => process.stdout.write("[qt] " + d));
+    proc.stderr.on("data", (d) => process.stderr.write("[qt] " + d));
+    proc.on("error", (e) => console.error("[qt spawn error]", e.message));
+    proc.on("close", (code) => {
+      if (code === null) return; // killed intentionally
+      if (pythonCmd === "python" && code !== 0) {
+        console.warn("[qt] python failed, retrying with python3");
+        qtProcess = trySpawn("python3");
+      }
+    });
+    return proc;
+  }
+
+  qtProcess = trySpawn("python");
 }
 
 app.on("will-quit", () => {
@@ -107,6 +147,50 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Serve local video files via gamelens-local:// protocol with Range support for seeking
+  protocol.handle("gamelens-local", (request) => {
+    const url = new URL(request.url);
+    const pathname = decodeURIComponent(url.pathname);
+    const filePath =
+      process.platform === "win32" && /^\/[A-Za-z]:/.test(pathname)
+        ? pathname.slice(1)
+        : pathname;
+
+    if (!fs.existsSync(filePath)) {
+      return new Response("Not found", { status: 404 });
+    }
+
+    const fileSize = fs.statSync(filePath).size;
+    const rangeHeader = request.headers.get("Range");
+
+    if (rangeHeader) {
+      const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+      if (match) {
+        const start = parseInt(match[1], 10);
+        const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
+        return new Response(Readable.toWeb(fs.createReadStream(filePath, { start, end })), {
+          status: 206,
+          headers: {
+            "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+            "Accept-Ranges": "bytes",
+            "Content-Length": String(chunkSize),
+            "Content-Type": "video/mp4",
+          },
+        });
+      }
+    }
+
+    return new Response(Readable.toWeb(fs.createReadStream(filePath)), {
+      status: 200,
+      headers: {
+        "Content-Length": String(fileSize),
+        "Content-Type": "video/mp4",
+        "Accept-Ranges": "bytes",
+      },
+    });
+  });
+
   spawnQtBackend();
   connectQtIpc();
   createWindow();
@@ -119,6 +203,15 @@ ipcMain.handle("gamelens:ipc", (_evt, method, params) =>
 ipcMain.handle("gamelens:choose-folder", async () => {
   const res = await dialog.showOpenDialog({
     properties: ["openDirectory"],
+  });
+  if (res.canceled || !res.filePaths.length) return null;
+  return res.filePaths[0];
+});
+
+ipcMain.handle("gamelens:choose-file", async (_evt, opts = {}) => {
+  const res = await dialog.showOpenDialog({
+    properties: ["openFile"],
+    filters: opts.filters || [{ name: "Video", extensions: ["mp4"] }],
   });
   if (res.canceled || !res.filePaths.length) return null;
   return res.filePaths[0];

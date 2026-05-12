@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.run_uploader.uploader import RunUploader
+
 
 def validate_input_dir(path: Path, name: str) -> None:
     if not path.exists():
@@ -96,11 +98,37 @@ def main() -> None:
         action="store_true",
         help="Print detailed logs",
     )
+    parser.add_argument(
+        "--upload",
+        action="store_true",
+        help="Upload completed runs to the Collector service after pipeline finishes",
+    )
+    parser.add_argument(
+        "--user-id",
+        default="1",
+        help="User ID sent in X-User-ID header (default: dev-user)",
+    )
+    parser.add_argument(
+        "--game-name",
+        help="Game name used when uploading runs (required with --upload)",
+    )
+    parser.add_argument(
+        "--version-name",
+        help="Game version name used when uploading runs (required with --upload)",
+    )
+    parser.add_argument(
+        "--collector-url",
+        default="http://localhost:8000",
+        help="Base URL of the GameLens Collector service (default: http://localhost:8000)",
+    )
 
     args = parser.parse_args()
 
     if args.only_events and args.only_export:
         raise ValueError("Choose only one of --only-events or --only-export")
+
+    if args.upload and not (args.game_name and args.version_name):
+        raise ValueError("--upload requires --game-name and --version-name")
 
     video_dir = Path(args.video_dir).resolve()
     event_json_dir = Path(args.event_json_dir).resolve()
@@ -126,6 +154,19 @@ def main() -> None:
             video_dir=video_dir,
             run_json_dir=run_json_dir,
             verbose=args.verbose,
+        )
+        print()
+
+    if args.upload:
+        print("=== Stage 3: Upload to Collector ===")
+        uploader = RunUploader(
+            collector_url=args.collector_url,
+            user_id=args.user_id,
+        )
+        uploader.upload_from_dir(
+            run_json_dir=run_json_dir,
+            game_name=args.game_name,
+            version_name=args.version_name,
         )
         print()
 

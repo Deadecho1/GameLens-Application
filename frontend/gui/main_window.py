@@ -37,6 +37,11 @@ from .config import (
 from .models import PipelineConfig
 from .pipeline_runner import PipelineRunner
 from .process_clips_dialog import ProcessClipsDialog
+from .storage.base import StorageBackend
+from .storage.local import LocalSQLiteBackend
+from .sync_worker import SyncWorker
+from .tuning_config import TUNING_MODEL_CONFIG_BY_ID
+from .tuning_runner import TuningRunner
 from .protocols import AnalyticsReader, GameRepo
 from .repository import GameRepository
 from .run_details_dialog import RunDetailsDialog
@@ -77,14 +82,30 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "videoFilePaths": [],
             "selectedOption": "verbose",
             "status": "idle",
+            "selectedModel": "base",
             "logs": ["[INFO] System ready..."],
         }
         self._pipeline_runner = PipelineRunner()
+        self._auth_state: dict = {
+            "loggedIn": False,
+            "email": None,
+            "userId": None,
+            "syncStatus": "idle",
+            "syncMessage": "",
+        }
+        self._active_backend: StorageBackend = LocalSQLiteBackend()
+        self._sync_worker: SyncWorker | None = None
+        self._tuning_state: dict = {
+            "status": "idle",
+            "logs": [],
+        }
+        self._tuning_runner = TuningRunner()
 
         self._setup_font_timer()
         self._build_ui()
         self._connect_signals()
         self._connect_pipeline_signals()
+        self._connect_tuning_signals()
         self._load_games()
         self._apply_responsive_fonts()
 
@@ -189,6 +210,11 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._pipeline_runner.log_message.connect(self._on_pipeline_log)
         self._pipeline_runner.stage_changed.connect(self._on_pipeline_stage_changed)
         self._pipeline_runner.pipeline_finished.connect(self._on_pipeline_finished)
+
+    def _connect_tuning_signals(self) -> None:
+        self._tuning_runner.log_message.connect(self._on_tuning_log)
+        self._tuning_runner.tuning_finished.connect(self._on_tuning_finished)
+        self._tuning_runner.busy_changed.connect(self._on_tuning_busy_changed)
 
     def _load_games(self) -> None:
         current_game = self.game_combo.currentText().strip()
@@ -355,6 +381,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._processing_state["status"] = "completed" if success else "stopped"
         if success:
             self._refresh_dashboard()
+            if self._auth_state.get("loggedIn"):
+                self._start_sync()
 
     def _populate_runs(self, runs: list[RunSummary]) -> None:
         self.runs_table.clearContents()
@@ -538,6 +566,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._processing_state["selectedOption"] = option
 
     def run_pipeline_from_ipc(self) -> None:
+        game = self._current_game()
         version = self._current_version()
         if version is None:
             raise ValueError("Select a game version before running the pipeline")
@@ -569,6 +598,16 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
                 )
 
         selected_option = self._processing_state.get("selectedOption")
+        selected_model = self._processing_state.get("selectedModel", "base")
+        model_dir = None
+        if selected_model != "base":
+            from app_core.config import AppConfig as _AC
+            _cfg = _AC.load()
+            candidate = _cfg.models_dir / "finetuned" / selected_model
+            if candidate.exists():
+                model_dir = candidate
+        from app_core.config import AppConfig as _AC
+        _cfg = _AC.load()
         config = PipelineConfig(
             video_dir=video_dir,
             event_json_dir=version.event_json_dir,
@@ -576,6 +615,10 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             only_events=selected_option == "only event",
             only_export=selected_option == "only export",
             verbose=selected_option == "verbose",
+            game_name=game.name if game else "",
+            version_name=version.name,
+            collector_url=_cfg.collector_base_url,
+            model_dir=model_dir,
         )
         self._processing_state["status"] = "running"
         self._processing_state["logs"].append("[RUN] Started from Electron")
@@ -591,23 +634,173 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
     def clear_processing_logs_from_ipc(self) -> None:
         self._processing_state["logs"] = []
 
+    def set_model_from_ipc(self, model: str) -> None:
+        self._processing_state["selectedModel"] = model
+
+    # ---- Tuning signal handlers ----
+    @Slot(str)
+    def _on_tuning_log(self, text: str) -> None:
+        for line in text.splitlines():
+            if line.strip():
+                self._tuning_state["logs"].append(line)
+
+    @Slot(bool)
+    def _on_tuning_busy_changed(self, busy: bool) -> None:
+        if not busy and self._tuning_state["status"] == "running":
+            pass  # status set by _on_tuning_finished
+
+    @Slot(bool, str)
+    def _on_tuning_finished(self, success: bool, message: str) -> None:
+        self._tuning_state["logs"].append(message)
+        self._tuning_state["status"] = "completed" if success else "stopped"
+
+    # ---- Tuning IPC public API ----
+    def start_tuning_from_ipc(self, videos: list, enabled_model_ids: list, model_name: str) -> None:
+        from app_core.config import AppConfig
+        app_config = AppConfig.load()
+        finetuned_dir = app_config.models_dir / "finetuned"
+        finetuned_dir.mkdir(parents=True, exist_ok=True)
+        self._tuning_state["status"] = "running"
+        self._tuning_state["logs"] = []
+        self._tuning_runner.start_tuning(
+            videos=videos,
+            enabled_model_ids=enabled_model_ids,
+            model_name=model_name,
+            finetuned_models_dir=finetuned_dir,
+            base_model_dir=app_config.event_detector_model_dir,
+            boss_model_path=app_config.boss_model_path,
+        )
+
+    def stop_tuning_from_ipc(self) -> None:
+        self._tuning_runner.stop_tuning()
+
+    def clear_tuning_logs_from_ipc(self) -> None:
+        self._tuning_state["logs"] = []
+
+    def get_finetuned_models_from_ipc(self) -> list[dict]:
+        from app_core.config import AppConfig
+        app_config = AppConfig.load()
+        finetuned_dir = app_config.models_dir / "finetuned"
+        if not finetuned_dir.exists():
+            return []
+        models = []
+        for d in sorted(finetuned_dir.iterdir()):
+            if not d.is_dir():
+                continue
+            name = d.name
+            # name format: {modelName}_{modelId}
+            for model_id in TUNING_MODEL_CONFIG_BY_ID:
+                suffix = f"_{model_id}"
+                if name.endswith(suffix):
+                    model_name = name[: -len(suffix)]
+                    models.append({"name": model_name, "modelId": model_id, "dirName": name})
+                    break
+        return models
+
+    # ---- Auth IPC public API ----
+
+    def login_from_ipc(self, email: str) -> dict:
+        import requests
+        from app_core.config import AppConfig
+        cfg = AppConfig.load()
+        resp = requests.post(
+            f"{cfg.collector_base_url}/api/v1/auth/login",
+            json={"email": email},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        user_id = int(data["user_id"])
+
+        from .storage.remote import RemoteCollectorBackend
+        self._active_backend = RemoteCollectorBackend(cfg.collector_base_url, user_id)
+        self._auth_state = {
+            "loggedIn": True,
+            "email": email,
+            "userId": user_id,
+            "syncStatus": "syncing",
+            "syncMessage": "Starting sync...",
+        }
+
+        self._start_sync()
+        return dict(self._auth_state)
+
+    def logout_from_ipc(self) -> None:
+        if self._sync_worker and self._sync_worker.isRunning():
+            self._sync_worker.quit()
+            self._sync_worker.wait(2000)
+        self._active_backend = LocalSQLiteBackend()
+        self._auth_state = {
+            "loggedIn": False,
+            "email": None,
+            "userId": None,
+            "syncStatus": "idle",
+            "syncMessage": "",
+        }
+
+    def _start_sync(self) -> None:
+        if self._sync_worker and self._sync_worker.isRunning():
+            return  # already syncing
+        from .storage.remote import RemoteCollectorBackend
+        if not isinstance(self._active_backend, RemoteCollectorBackend):
+            return
+        self._auth_state["syncStatus"] = "syncing"
+        self._auth_state["syncMessage"] = "Starting sync..."
+        self._sync_worker = SyncWorker(self._active_backend)
+        self._sync_worker.sync_progress.connect(self._on_sync_progress)
+        self._sync_worker.sync_finished.connect(self._on_sync_finished)
+        self._sync_worker.start()
+
+    @Slot(str)
+    def _on_sync_progress(self, message: str) -> None:
+        self._auth_state["syncMessage"] = message
+
+    @Slot(bool, str)
+    def _on_sync_finished(self, success: bool, message: str) -> None:
+        self._auth_state["syncStatus"] = "done" if success else "error"
+        self._auth_state["syncMessage"] = message
+
+    # ---- Dashboard IPC public API ----
+
+    def get_dashboard_items_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
+        user_id = self._auth_state.get("userId") or 0
+        return self._active_backend.get_items(user_id, game_name, version_name or None)
+
+    def get_dashboard_bosses_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
+        user_id = self._auth_state.get("userId") or 0
+        return self._active_backend.get_bosses(user_id, game_name, version_name or None)
+
+    def get_dashboard_runs_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
+        user_id = self._auth_state.get("userId") or 0
+        return self._active_backend.get_runs(user_id, game_name, version_name or None)
+
+    def get_dashboard_stats_from_ipc(self, game_name: str, version_name: str | None) -> dict:
+        user_id = self._auth_state.get("userId") or 0
+        return self._active_backend.get_stats(user_id, game_name, version_name or None)
+
     def get_frontend_state_from_ipc(self) -> dict:
         current_game = self._current_game()
         current_version = self._current_version()
         dashboard = self._build_dashboard_payload(current_version)
+
+        finetuned_models = self.get_finetuned_models_from_ipc()
 
         setup = {
             "games": [g.name for g in self._games],
             "versions": [v.name for v in self._versions],
             "selectedGame": current_game.name if current_game else "",
             "selectedVersion": current_version.name if current_version else "",
+            "fineTunedModels": finetuned_models,
+            "selectedModel": self._processing_state.get("selectedModel", "base"),
         }
 
         return {
             "ui": dict(self._ipc_ui_state),
             "setup": setup,
             "processing": dict(self._processing_state),
+            "tuning": dict(self._tuning_state),
             "dashboard": dashboard,
+            "auth": dict(self._auth_state),
         }
 
     def _apply_responsive_fonts(self) -> None:

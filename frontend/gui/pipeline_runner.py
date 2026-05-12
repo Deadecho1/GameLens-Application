@@ -74,6 +74,26 @@ class PipelineRunner(QObject):
                 )
             )
 
+        if not config.only_events and config.game_name and config.version_name:
+            self._queue.append(
+                (
+                    "Saving to local database...",
+                    [
+                        sys.executable,
+                        "-m",
+                        "scripts.run_uploader.cli",
+                        "--run-json-dir",
+                        str(config.run_json_dir),
+                        "--game-name",
+                        config.game_name,
+                        "--version-name",
+                        config.version_name,
+                        "--backend",
+                        "local",
+                    ],
+                )
+            )
+
         if not self._queue:
             self.pipeline_finished.emit(False, "Nothing to run.")
             return
@@ -135,6 +155,8 @@ class PipelineRunner(QObject):
             env.insert("PYTHONPATH", project_root + os.pathsep + existing)
         else:
             env.insert("PYTHONPATH", project_root)
+        if self._config and self._config.model_dir is not None:
+            env.insert("GAMELENS_EVENT_DETECTOR_MODEL_DIR", str(self._config.model_dir))
         return env
 
     @Slot()

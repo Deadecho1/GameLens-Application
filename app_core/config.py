@@ -25,6 +25,9 @@ class AppConfig:
     classifier_base_url: str
     classifier_timeout_seconds: float
 
+    # Collector service
+    collector_base_url: str
+
     # Boss detector
     boss_model_path: Path
 
@@ -62,6 +65,7 @@ class AppConfig:
             classifier_timeout_seconds=float(
                 os.environ.get("GAMELENS_CLASSIFIER_TIMEOUT", "10.0")
             ),
+            collector_base_url=os.environ.get("GAMELENS_COLLECTOR_URL", "http://localhost:8000"),
             boss_model_path=Path(
                 os.environ.get(
                     "GAMELENS_BOSS_MODEL_PATH",

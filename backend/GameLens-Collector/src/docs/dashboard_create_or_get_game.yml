@@ -1,0 +1,46 @@
+doc: "Create or get a game for the authenticated user"
+tags:
+  - Dashboard
+parameters:
+  - name: X-User-ID
+    in: header
+    type: integer
+    required: true
+    description: User id of the authenticated requester
+    example: 1
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "Hades"
+      example:
+        name: "Hades"
+responses:
+  200:
+    description: Game found or created successfully
+    schema:
+      type: object
+      properties:
+        game_id:
+          type: integer
+          example: 12
+  400:
+    description: Missing required fields or DB/runtime error
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Client Side Error"
+        message:
+          type: string
+          example: "X-User-ID header is required"
+        type:
+          type: string
+          example: "MissingCollectorParam"

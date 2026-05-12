@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { cloneInitialData } from "./dataStore";
+import { IS_MOCK, getItems, getBosses, getRuns } from "./api/client";
 import Header from "./components/Header";
 import MainTabNav from "./components/MainTabNav";
 import ChangePickerModal from "./components/ChangePickerModal";
 import AddItemModal from "./components/AddItemModal";
 import MissionSuccessOverlay from "./components/MissionSuccessOverlay";
+import SettingsSidebar from "./components/SettingsSidebar";
 import WorkflowTab from "./components/tabs/WorkflowTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
+import RunSessionAnalytics from "./components/analytics/runSession/RunSessionAnalytics";
+import TuningTab from "./components/tabs/TuningTab";
 
 /**
  * GameLens frontend orchestrator.
@@ -16,6 +20,7 @@ import AnalyticsTab from "./components/tabs/AnalyticsTab";
 function App() {
   const [data, setData] = useState(() => cloneInitialData());
   const [error, setError] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const pollRef = useRef(null);
   const prevStatusRef = useRef("idle");
 
@@ -81,6 +86,42 @@ function App() {
     return () => window.clearTimeout(t);
   }, [data.ui.completionCelebrationActive, ipcRequest]);
 
+  useEffect(() => {
+    if (data.ui.activeMainTab !== "analytics") return;
+    const gameName = data.setup.selectedGame;
+    const versionName = data.setup.selectedVersion;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        let items, bosses, runsHistory;
+        if (IS_MOCK) {
+          [items, bosses, runsHistory] = await Promise.all([
+            getItems(null, gameName, versionName),
+            getBosses(null, gameName, versionName),
+            getRuns(null, gameName, versionName),
+          ]);
+        } else {
+          [items, bosses, runsHistory] = await Promise.all([
+            ipcRequest("dashboard:items", { game_name: gameName, version_name: versionName }),
+            ipcRequest("dashboard:bosses", { game_name: gameName, version_name: versionName }),
+            ipcRequest("dashboard:runs", { game_name: gameName, version_name: versionName }),
+          ]);
+        }
+        if (!cancelled) {
+          setData((prev) => ({
+            ...prev,
+            dashboard: { ...prev.dashboard, items, bosses, runsHistory },
+          }));
+        }
+      } catch (e) {
+        if (!cancelled) setError(String(e?.message || e));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [data.ui.activeMainTab, data.setup.selectedGame, data.setup.selectedVersion, ipcRequest]);
+
   const mergePatch = useCallback(
     async (patch) => {
       try {
@@ -101,6 +142,12 @@ function App() {
         if (patch.processing?.selectedOption) {
           latestState = await ipcRequest("processing:set_option", {
             option: patch.processing.selectedOption,
+          });
+        }
+
+        if (patch.processing?.selectedModel !== undefined) {
+          latestState = await ipcRequest("processing:set_model", {
+            model: patch.processing.selectedModel,
           });
         }
 
@@ -246,6 +293,24 @@ function App() {
     }
   }, [data.setup.selectedGame, data.ui.newVersionNameDraft, ipcRequest]);
 
+  const handleLogin = useCallback(async (email) => {
+    try {
+      const state = await ipcRequest("auth:login", { email });
+      setData(state);
+    } catch (e) {
+      setError(String(e?.message || e));
+    }
+  }, [ipcRequest]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      const state = await ipcRequest("auth:logout");
+      setData(state);
+    } catch (e) {
+      setError(String(e?.message || e));
+    }
+  }, [ipcRequest]);
+
   const tab = data.ui.activeMainTab;
 
   return (
@@ -263,7 +328,7 @@ function App() {
       <MissionSuccessOverlay active={data.ui.completionCelebrationActive} />
 
       <div className="relative z-10">
-        <Header data={data} />
+        <Header data={data} onLogin={handleLogin} onLogout={handleLogout} onOpenSettings={() => setSettingsOpen(true)} />
         <MainTabNav data={data} onPatch={mergePatch} />
 
         {error ? (
@@ -306,6 +371,12 @@ function App() {
             {tab === "analytics" && (
               <AnalyticsTab key="analytics" data={data} onPatch={mergePatch} />
             )}
+            {tab === "runSession" && (
+              <RunSessionAnalytics key="runSession" data={data} />
+            )}
+            {tab === "tuning" && (
+              <TuningTab key="tuning" data={data} ipcRequest={ipcRequest} />
+            )}
           </AnimatePresence>
         </div>
 
@@ -344,6 +415,12 @@ function App() {
           }
           onConfirm={confirmAddVersion}
           inputId="add-version"
+        />
+        <SettingsSidebar
+          data={data}
+          onPatch={mergePatch}
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
         />
       </div>
     </div>
