@@ -21,6 +21,7 @@ import TuningTab from "./components/tabs/TuningTab";
 function App() {
   const [data, setData] = useState(() => cloneInitialData());
   const [error, setError] = useState("");
+  const [modalError, setModalError] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const pollRef = useRef(null);
   const prevStatusRef = useRef("idle");
@@ -116,7 +117,7 @@ function App() {
           }));
         }
       } catch (e) {
-        if (!cancelled) setError(String(e?.message || e));
+        if (!cancelled) setModalError(String(e?.message || e));
       }
     })();
 
@@ -205,7 +206,7 @@ function App() {
             : {}),
         }));
       } catch (e) {
-        setError(String(e?.message || e));
+        setModalError(String(e?.message || e));
       }
     },
     [ipcRequest],
@@ -220,7 +221,7 @@ function App() {
       });
       setData(state);
     } catch (e) {
-      setError(String(e?.message || e));
+      setModalError(String(e?.message || e));
     }
   }, [ipcRequest]);
 
@@ -229,7 +230,7 @@ function App() {
       const state = await ipcRequest("processing:run");
       setData(state);
     } catch (e) {
-      setError(String(e?.message || e));
+      setModalError(String(e?.message || e));
     }
   }, [ipcRequest]);
 
@@ -238,7 +239,7 @@ function App() {
       const state = await ipcRequest("processing:stop");
       setData(state);
     } catch (e) {
-      setError(String(e?.message || e));
+      setModalError(String(e?.message || e));
     }
   }, [ipcRequest]);
 
@@ -247,7 +248,7 @@ function App() {
       const state = await ipcRequest("processing:clear_logs");
       setData(state);
     } catch (e) {
-      setError(String(e?.message || e));
+      setModalError(String(e?.message || e));
     }
   }, [ipcRequest]);
 
@@ -265,7 +266,7 @@ function App() {
         newGameNameDraft: "",
       });
     } catch (e) {
-      setError(String(e?.message || e));
+      setModalError(String(e?.message || e));
     }
   }, [data.ui.newGameNameDraft, ipcRequest]);
 
@@ -290,7 +291,7 @@ function App() {
         newVersionNameDraft: "",
       });
     } catch (e) {
-      setError(String(e?.message || e));
+      setModalError(String(e?.message || e));
     }
   }, [data.setup.selectedGame, data.ui.newVersionNameDraft, ipcRequest]);
 
@@ -299,7 +300,7 @@ function App() {
       const state = await ipcRequest("auth:login", { email });
       setData(state);
     } catch (e) {
-      setError(String(e?.message || e));
+      setModalError(String(e?.message || e));
     }
   }, [ipcRequest]);
 
@@ -308,7 +309,7 @@ function App() {
       const state = await ipcRequest("auth:logout");
       setData(state);
     } catch (e) {
-      setError(String(e?.message || e));
+      setModalError(String(e?.message || e));
     }
   }, [ipcRequest]);
 
@@ -420,7 +421,7 @@ function App() {
         />
 
         <AnimatePresence>
-          {error && (
+          {modalError && (
             <>
               <motion.div
                 key="err-backdrop"
@@ -428,7 +429,7 @@ function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[80] bg-slate-950/70 backdrop-blur-sm"
-                onClick={() => setError("")}
+                onClick={() => setModalError("")}
               />
               <motion.div
                 key="err-modal"
@@ -448,12 +449,12 @@ function App() {
                         Error
                       </p>
                       <p className="font-data text-sm text-slate-200 break-words">
-                        {error}
+                        {modalError}
                       </p>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setError("")}
+                      onClick={() => setModalError("")}
                       className="shrink-0 rounded p-1 text-slate-400 hover:text-slate-200 transition-colors"
                       aria-label="Dismiss"
                     >

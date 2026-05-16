@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Eye, EyeOff, KeyRound, Settings, UserRound, X } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, KeyRound, Settings, UserRound, X } from 'lucide-react';
 
 function SecureField({
   id,
@@ -256,7 +256,7 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
                 </section>
               </div>
 
-              <div className="border-t border-slate-800 px-5 py-4">
+              <div className="border-t border-slate-800 px-5 py-4 space-y-2">
                 <button
                   type="button"
                   onClick={() => setKeyModalOpen(true)}
@@ -265,6 +265,17 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
                   <KeyRound className="h-4 w-4" aria-hidden />
                   OpenAI API Configuration
                 </button>
+                {user.openAiKey ? (
+                  <div className="flex items-center gap-1.5 justify-center font-data text-[11px] text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    API key set
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 justify-center font-data text-[11px] text-slate-500">
+                    <KeyRound className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    No key configured
+                  </div>
+                )}
               </div>
             </motion.aside>
           </>
