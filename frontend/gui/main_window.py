@@ -718,6 +718,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         user_id = int(data["user_id"])
 
         from .storage.remote import RemoteCollectorBackend
+        from app_core.local_storage import LOCAL_USER_ID, open_local_db
         self._active_backend = RemoteCollectorBackend(cfg.collector_base_url, user_id)
         self._auth_state = {
             "loggedIn": True,
@@ -726,6 +727,20 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "syncStatus": "syncing",
             "syncMessage": "Starting sync...",
         }
+
+        # Re-attribute any offline (user_id=0) runs to the now-logged-in user
+        # so pipeline runs recorded while offline remain visible after login.
+        if user_id != LOCAL_USER_ID:
+            try:
+                conn = open_local_db()
+                conn.execute(
+                    "UPDATE dash_games SET user_id = ? WHERE user_id = ?",
+                    (user_id, LOCAL_USER_ID),
+                )
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass
 
         self._start_sync()
         return dict(self._auth_state)
