@@ -76,7 +76,6 @@ class LocalChoiceExtractor:
         try:
             resp = self._client.chat.completions.create(
                 model=used_model,
-                temperature=0,
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": used_prompt},
