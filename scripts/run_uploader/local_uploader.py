@@ -98,8 +98,9 @@ class LocalRunUploader:
             "boss_encounters": boss_encounters,
         }
 
-    def _insert_run(self, conn, game_id: int, version_id: int, payload: dict) -> None:
-        conn.execute(
+    def _insert_run(self, conn, game_id: int, version_id: int, payload: dict) -> bool:
+        """Insert run and its pickups/encounters. Returns True if newly inserted, False if already existed."""
+        cur = conn.execute(
             """
             INSERT OR IGNORE INTO dash_runs
                 (version_id, video_filename, start_time, end_time, duration_seconds, outcome)
@@ -114,13 +115,10 @@ class LocalRunUploader:
                 payload["outcome"],
             ),
         )
-        row = conn.execute(
-            "SELECT id FROM dash_runs WHERE version_id = ? AND video_filename = ?",
-            (version_id, payload["video_filename"]),
-        ).fetchone()
-        if row is None:
-            return
-        run_id = row[0]
+        if cur.rowcount == 0:
+            return False  # already existed — skip pickups/encounters to avoid duplicates
+
+        run_id = cur.lastrowid
 
         for pickup in payload.get("item_pickups", []):
             item_name = (pickup.get("item_name") or "").strip()
@@ -151,6 +149,7 @@ class LocalRunUploader:
                 (run_id, boss_id, encounter.get("start_time"), encounter.get("end_time"),
                  encounter.get("duration_seconds"), player_died),
             )
+        return True
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -172,16 +171,28 @@ class LocalRunUploader:
             game_id = self._ensure_game(conn, game_name)
             version_id = self._ensure_version(conn, game_id, version_name)
 
-            saved = 0
+            saved = skipped = 0
+            to_delete: list[Path] = []
             for path in run_files:
                 try:
                     run_data = json.loads(path.read_text(encoding="utf-8"))
-                    self._insert_run(conn, game_id, version_id, self._run_json_to_payload(run_data, path.name))
-                    saved += 1
+                    inserted = self._insert_run(conn, game_id, version_id, self._run_json_to_payload(run_data, path.name))
+                    if inserted:
+                        saved += 1
+                    else:
+                        skipped += 1
+                    to_delete.append(path)
                 except Exception as e:
                     logger.error("  skipping %s: %s", path.name, e)
 
             conn.commit()
-            logger.info("Local save complete: %d run(s) saved.", saved)
+
+            for path in to_delete:
+                try:
+                    path.unlink()
+                except Exception as e:
+                    logger.warning("  could not delete %s: %s", path.name, e)
+
+            logger.info("Local save complete: %d new, %d already existed. JSONs cleaned up.", saved, skipped)
         finally:
             conn.close()
