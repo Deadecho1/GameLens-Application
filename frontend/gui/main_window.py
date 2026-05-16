@@ -80,7 +80,6 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "pipelinePath": "",
             "videoFiles": [],
             "videoFilePaths": [],
-            "selectedOption": "verbose",
             "status": "idle",
             "selectedModel": "base",
             "logs": ["[INFO] System ready..."],
@@ -495,6 +494,11 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
     def patch_ui_from_ipc(self, ui_patch: dict) -> None:
         self._ipc_ui_state = {**self._ipc_ui_state, **ui_patch}
 
+    def save_settings_from_ipc(self, openai_key: str) -> None:
+        setup = self._ipc_ui_state.get("setup", {})
+        user = {**setup.get("user", {}), "openAiKey": openai_key}
+        self._ipc_ui_state = {**self._ipc_ui_state, "setup": {**setup, "user": user}}
+
     def select_game_from_ipc(self, game_name: str) -> None:
         index = self.game_combo.findText(game_name)
         if index >= 0:
@@ -562,9 +566,6 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             raise ValueError(f"Invalid folder: {pipeline_path}")
         self._processing_state["pipelinePath"] = str(path)
 
-    def set_processing_option_from_ipc(self, option: str) -> None:
-        self._processing_state["selectedOption"] = option
-
     def run_pipeline_from_ipc(self) -> None:
         game = self._current_game()
         version = self._current_version()
@@ -597,7 +598,15 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
                     "or choose a single pipeline path folder."
                 )
 
-        selected_option = self._processing_state.get("selectedOption")
+        openai_key = (
+            self._ipc_ui_state.get("setup", {})
+            .get("user", {})
+            .get("openAiKey", "")
+            or ""
+        ).strip()
+        if not openai_key:
+            raise ValueError("OpenAI API key is not set. Add it in Settings before running the pipeline.")
+
         selected_model = self._processing_state.get("selectedModel", "base")
         model_dir = None
         if selected_model != "base":
@@ -612,9 +621,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             video_dir=video_dir,
             event_json_dir=version.event_json_dir,
             run_json_dir=version.run_json_dir,
-            only_events=selected_option == "only event",
-            only_export=selected_option == "only export",
-            verbose=selected_option == "verbose",
+            openai_api_key=openai_key,
             game_name=game.name if game else "",
             version_name=version.name,
             collector_url=_cfg.collector_base_url,
@@ -622,10 +629,6 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         )
         self._processing_state["status"] = "running"
         self._processing_state["logs"].append("[RUN] Started from Electron")
-        if config.only_events:
-            self._processing_state["logs"].append(
-                "[INFO] Running event detection only. Analytics will not update until run export is executed."
-            )
         self._pipeline_runner.start_pipeline(config)
 
     def stop_pipeline_from_ipc(self) -> None:

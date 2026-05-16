@@ -178,6 +178,12 @@ function App() {
           });
         }
 
+        if (patch.setup?.user?.openAiKey !== undefined) {
+          latestState = await ipcRequest("setup:save_settings", {
+            openAiKey: patch.setup.user.openAiKey,
+          });
+        }
+
         if (patch.ui) {
           latestState = await ipcRequest("ui:patch", patch.ui);
         }

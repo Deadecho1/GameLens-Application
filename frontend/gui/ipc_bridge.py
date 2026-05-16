@@ -125,6 +125,10 @@ class IpcBridge(QObject):
             self._window.clear_processing_logs_from_ipc()
             return self._window.get_frontend_state_from_ipc()
 
+        if method == "setup:save_settings":
+            self._window.save_settings_from_ipc(str(params.get("openAiKey") or ""))
+            return self._window.get_frontend_state_from_ipc()
+
         if method == "processing:set_option":
             self._window.set_processing_option_from_ipc(str(params["option"]))
             return self._window.get_frontend_state_from_ipc()
