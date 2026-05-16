@@ -160,6 +160,17 @@ curl http://localhost:8000   # Collector
 curl http://localhost:7761   # Event Extraction
 ```
 
+### Load demo data (optional)
+
+Seeds Postgres with Holocure V0.1 and V0.2 fabricated runs for testing analytics and split view:
+
+```bash
+docker exec -i postgres_db psql -U your_username -d your_database_name \
+  < backend/GameLens-Collector/db/seed_holocure_demo.sql
+```
+
+The local SQLite at `data/gamelens_local.db` already contains the same data (committed). Sign in with email `test@example.com` to load it in the UI.
+
 ---
 
 ## 6. Sign In and Sync
