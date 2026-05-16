@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, X } from "lucide-react";
 import { cloneInitialData } from "./dataStore";
 import { IS_MOCK, getItems, getBosses, getRuns } from "./api/client";
 import Header from "./components/Header";
@@ -136,12 +137,6 @@ function App() {
         if (patch.setup?.selectedVersion) {
           latestState = await ipcRequest("setup:select_version", {
             version: patch.setup.selectedVersion,
-          });
-        }
-
-        if (patch.processing?.selectedOption) {
-          latestState = await ipcRequest("processing:set_option", {
-            option: patch.processing.selectedOption,
           });
         }
 
@@ -331,11 +326,6 @@ function App() {
         <Header data={data} onLogin={handleLogin} onLogout={handleLogout} onOpenSettings={() => setSettingsOpen(true)} />
         <MainTabNav data={data} onPatch={mergePatch} />
 
-        {error ? (
-          <div className="mx-auto mt-3 max-w-[1800px] rounded-lg border border-red-500/40 bg-red-950/40 px-4 py-2 font-data text-xs text-red-200">
-            IPC error: {error}
-          </div>
-        ) : null}
 
         <div className="relative min-h-[calc(100vh-8rem)]">
           <AnimatePresence mode="wait">
@@ -422,6 +412,53 @@ function App() {
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
         />
+
+        <AnimatePresence>
+          {error && (
+            <>
+              <motion.div
+                key="err-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[80] bg-slate-950/70 backdrop-blur-sm"
+                onClick={() => setError("")}
+              />
+              <motion.div
+                key="err-modal"
+                role="alertdialog"
+                aria-modal="true"
+                initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.94, y: 8 }}
+                transition={{ type: "spring", damping: 24, stiffness: 320 }}
+                className="fixed inset-0 z-[81] flex items-center justify-center p-4 pointer-events-none"
+              >
+                <div className="pointer-events-auto w-full max-w-md rounded-xl border border-red-500/30 bg-slate-900 shadow-2xl">
+                  <div className="flex items-start gap-3 p-5">
+                    <AlertTriangle className="mt-0.5 shrink-0 text-red-400" size={20} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display text-sm font-semibold uppercase tracking-widest text-red-300 mb-1">
+                        Error
+                      </p>
+                      <p className="font-data text-sm text-slate-200 break-words">
+                        {error}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setError("")}
+                      className="shrink-0 rounded p-1 text-slate-400 hover:text-slate-200 transition-colors"
+                      aria-label="Dismiss"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

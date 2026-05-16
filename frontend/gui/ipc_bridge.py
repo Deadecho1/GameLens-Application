@@ -113,10 +113,6 @@ class IpcBridge(QObject):
             )
             return self._window.get_frontend_state_from_ipc()
 
-        if method == "processing:set_option":
-            self._window.set_processing_option_from_ipc(str(params["option"]))
-            return self._window.get_frontend_state_from_ipc()
-
         if method == "processing:run":
             self._window.run_pipeline_from_ipc()
             return self._window.get_frontend_state_from_ipc()
@@ -127,6 +123,10 @@ class IpcBridge(QObject):
 
         if method == "processing:clear_logs":
             self._window.clear_processing_logs_from_ipc()
+            return self._window.get_frontend_state_from_ipc()
+
+        if method == "processing:set_option":
+            self._window.set_processing_option_from_ipc(str(params["option"]))
             return self._window.get_frontend_state_from_ipc()
 
         if method == "processing:set_model":
