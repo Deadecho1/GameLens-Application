@@ -749,6 +749,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         if self._sync_worker and self._sync_worker.isRunning():
             self._sync_worker.quit()
             self._sync_worker.wait(2000)
+
+        prev_user_id = self._auth_state.get("userId")
         self._active_backend = LocalSQLiteBackend()
         self._auth_state = {
             "loggedIn": False,
@@ -757,6 +759,20 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "syncStatus": "idle",
             "syncMessage": "",
         }
+
+        # Return local game records to user_id=0 so offline mode can see them.
+        if prev_user_id and prev_user_id != 0:
+            try:
+                from app_core.local_storage import LOCAL_USER_ID, open_local_db
+                conn = open_local_db()
+                conn.execute(
+                    "UPDATE dash_games SET user_id = ? WHERE user_id = ?",
+                    (LOCAL_USER_ID, prev_user_id),
+                )
+                conn.commit()
+                conn.close()
+            except Exception:
+                pass
 
     def _start_sync(self) -> None:
         if self._sync_worker and self._sync_worker.isRunning():
