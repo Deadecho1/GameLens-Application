@@ -2,13 +2,12 @@ import base64
 import gc
 import json
 import os
-import re
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from openai import OpenAI
 from pydantic import BaseModel
 
-GOOGLE_AI_STUDIO_API_KEY = os.environ.get("GOOGLE_AI_STUDIO_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 DEFAULT_PROMPT_BOSS = """
 You are analyzing a roguelike game screenshot during a boss fight.
@@ -34,10 +33,7 @@ Respond with a JSON object in exactly this format:
 """
 
 router = APIRouter(prefix="/api/v1/boss", tags=["boss"])
-client = OpenAI(
-    api_key=GOOGLE_AI_STUDIO_API_KEY,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 class BossNameResponse(BaseModel):
@@ -49,7 +45,7 @@ class BossNameResponse(BaseModel):
 async def extract_boss_name(
     file: UploadFile = File(...),
     prompt: str = DEFAULT_PROMPT_BOSS,
-    model: str = "models/gemma-4-26b-a4b-it",
+    model: str = "gpt-5.5",
 ):
     """
     Analyzes a roguelike game screenshot to extract the names of all bosses being fought.
@@ -89,16 +85,12 @@ async def extract_boss_name(
         )
 
         content = resp.choices[0].message.content
-        if isinstance(content, str):
-            content = re.sub(r"^<thought>.*?</thought>", "", content, flags=re.DOTALL).strip()
-            result = json.loads(content)
-        else:
-            result = content
+        result = json.loads(content) if isinstance(content, str) else content
         return result
 
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to process image with Gemma: {str(e)}"
+            status_code=500, detail=f"Failed to process image with OpenAI: {str(e)}"
         )
     finally:
         del image_bytes, b64_encoded, data_url

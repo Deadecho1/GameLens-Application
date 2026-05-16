@@ -2,13 +2,12 @@ import base64
 import gc
 import json
 import os
-import re
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from openai import OpenAI
 from pydantic import BaseModel
 
-GOOGLE_AI_STUDIO_API_KEY = os.environ.get("GOOGLE_AI_STUDIO_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 DEFAULT_PROMPT_CHOICE = """
         You are analyzing a roguelike game screenshot.
@@ -47,10 +46,7 @@ DEFAULT_PROMPT_CHOICE = """
         """
 
 router = APIRouter(prefix="/api/v1/choice", tags=["choice"])
-client = OpenAI(
-    api_key=GOOGLE_AI_STUDIO_API_KEY,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 class ExtractionResponse(BaseModel):
@@ -63,7 +59,7 @@ class ExtractionResponse(BaseModel):
 async def extract_choices(
     file: UploadFile = File(...),
     prompt: str = DEFAULT_PROMPT_CHOICE,
-    model: str = "models/gemma-4-26b-a4b-it",
+    model: str = "gpt-5.5",
 ):
     """
     Analyzes a roguelike game screenshot to extract choice titles
@@ -106,17 +102,12 @@ async def extract_choices(
         )
 
         content = resp.choices[0].message.content
-        if isinstance(content, str):
-            # Gemma 4 prefixes responses with <thought>...</thought> — strip before parsing
-            content = re.sub(r"^<thought>.*?</thought>", "", content, flags=re.DOTALL).strip()
-            result = json.loads(content)
-        else:
-            result = content
+        result = json.loads(content) if isinstance(content, str) else content
         return result
 
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to process image with Gemma: {str(e)}"
+            status_code=500, detail=f"Failed to process image with OpenAI: {str(e)}"
         )
     finally:
         del image_bytes, b64_encoded, data_url
