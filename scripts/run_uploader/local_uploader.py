@@ -12,8 +12,9 @@ logger = get_logger(__name__)
 class LocalRunUploader:
     """Writes processed run JSONs directly to the local SQLite database."""
 
-    def __init__(self, db_path: Path | None = None) -> None:
+    def __init__(self, db_path: Path | None = None, user_id: int = LOCAL_USER_ID) -> None:
         self._db_path = db_path
+        self._user_id = user_id
 
     # ------------------------------------------------------------------
     # Entity helpers (create-or-get, idempotent)
@@ -22,11 +23,11 @@ class LocalRunUploader:
     def _ensure_game(self, conn, name: str) -> int:
         conn.execute(
             "INSERT OR IGNORE INTO dash_games (user_id, name) VALUES (?, ?)",
-            (LOCAL_USER_ID, name),
+            (self._user_id, name),
         )
         row = conn.execute(
             "SELECT id FROM dash_games WHERE user_id = ? AND name = ?",
-            (LOCAL_USER_ID, name),
+            (self._user_id, name),
         ).fetchone()
         return row[0]
 

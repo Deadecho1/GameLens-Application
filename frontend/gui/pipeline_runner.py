@@ -38,43 +38,41 @@ class PipelineRunner(QObject):
         self._stopping = False
         self._queue = []
 
-        if not config.only_export:
-            self._queue.append(
-                (
-                    "Detecting Events...",
-                    [
-                        sys.executable,
-                        "-m",
-                        "scripts.event_detector.cli",
-                        "--input-dir",
-                        str(config.video_dir),
-                        "--output-dir",
-                        str(config.event_json_dir),
-                    ]
-                    + (["--verbose"] if config.verbose else []),
-                )
+        self._queue.append(
+            (
+                "Detecting Events...",
+                [
+                    sys.executable,
+                    "-m",
+                    "scripts.event_detector.cli",
+                    "--input-dir",
+                    str(config.video_dir),
+                    "--output-dir",
+                    str(config.event_json_dir),
+                    "--verbose",
+                ],
             )
+        )
 
-        if not config.only_events:
-            self._queue.append(
-                (
-                    "Processing Events...",
-                    [
-                        sys.executable,
-                        "-m",
-                        "scripts.run_exporter.cli",
-                        "--json-dir",
-                        str(config.event_json_dir),
-                        "--video-dir",
-                        str(config.video_dir),
-                        "--output-dir",
-                        str(config.run_json_dir),
-                    ]
-                    + (["--verbose"] if config.verbose else []),
-                )
+        self._queue.append(
+            (
+                "Processing Events...",
+                [
+                    sys.executable,
+                    "-m",
+                    "scripts.run_exporter.cli",
+                    "--json-dir",
+                    str(config.event_json_dir),
+                    "--video-dir",
+                    str(config.video_dir),
+                    "--output-dir",
+                    str(config.run_json_dir),
+                    "--verbose",
+                ],
             )
+        )
 
-        if not config.only_events and config.game_name and config.version_name:
+        if config.game_name and config.version_name:
             self._queue.append(
                 (
                     "Saving to local database...",
@@ -90,13 +88,11 @@ class PipelineRunner(QObject):
                         config.version_name,
                         "--backend",
                         "local",
+                        "--user-id",
+                        config.user_id,
                     ],
                 )
             )
-
-        if not self._queue:
-            self.pipeline_finished.emit(False, "Nothing to run.")
-            return
 
         self.busy_changed.emit(True)
         self.log_message.emit("Starting...\n")
@@ -157,6 +153,8 @@ class PipelineRunner(QObject):
             env.insert("PYTHONPATH", project_root)
         if self._config and self._config.model_dir is not None:
             env.insert("GAMELENS_EVENT_DETECTOR_MODEL_DIR", str(self._config.model_dir))
+        if self._config and self._config.openai_api_key:
+            env.insert("OPENAI_API_KEY", self._config.openai_api_key)
         return env
 
     @Slot()

@@ -29,7 +29,8 @@ def main() -> None:
 
     if args.backend == "local":
         db_path = Path(args.db_path) if args.db_path else None
-        LocalRunUploader(db_path=db_path).upload_from_dir(
+        user_id = int(args.user_id) if args.user_id else 0
+        LocalRunUploader(db_path=db_path, user_id=user_id).upload_from_dir(
             run_json_dir=run_json_dir,
             game_name=args.game_name,
             version_name=args.version_name,

@@ -617,6 +617,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
                 model_dir = candidate
         from app_core.config import AppConfig as _AC
         _cfg = _AC.load()
+        current_user_id = str(self._auth_state.get("userId") or 0)
         config = PipelineConfig(
             video_dir=video_dir,
             event_json_dir=version.event_json_dir,
@@ -624,6 +625,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             openai_api_key=openai_key,
             game_name=game.name if game else "",
             version_name=version.name,
+            user_id=current_user_id,
             collector_url=_cfg.collector_base_url,
             model_dir=model_dir,
         )
