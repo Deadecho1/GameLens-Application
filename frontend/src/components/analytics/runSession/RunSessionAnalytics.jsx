@@ -95,8 +95,8 @@ export default function RunSessionAnalytics({ data }) {
     return runs;
   }, [data]);
 
-  const itemsCatalog = initialData.dashboard.items ?? [];
-  const bossesCatalog = initialData.dashboard.bosses ?? [];
+  const itemsCatalog = data?.dashboard?.items?.length ? data.dashboard.items : (initialData.dashboard.items ?? []);
+  const bossesCatalog = data?.dashboard?.bosses?.length ? data.dashboard.bosses : (initialData.dashboard.bosses ?? []);
 
   const globalAverageDurationSeconds = useMemo(() => {
     if (!runsHistory.length) return 0;

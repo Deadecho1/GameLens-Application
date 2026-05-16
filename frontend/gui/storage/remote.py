@@ -58,6 +58,15 @@ class RemoteCollectorBackend(StorageBackend):
     # Write helpers used by SyncWorker
     # ------------------------------------------------------------------
 
+    def list_games(self, user_id: int) -> list[dict]:
+        return self._get("/api/v1/games", {"user_id": str(user_id)}) or []
+
+    def list_versions(self, game_id: int) -> list[dict]:
+        return self._get(f"/api/v1/games/{game_id}/versions", {}) or []
+
+    def export_runs(self, game_id: int, version_id: int) -> list[dict]:
+        return self._get(f"/api/v1/games/{game_id}/versions/{version_id}/runs/export", {}) or []
+
     def ensure_game(self, name: str) -> int:
         return self._post("/api/v1/games", {"name": name})["game_id"]
 

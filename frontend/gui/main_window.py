@@ -759,6 +759,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
     def _on_sync_finished(self, success: bool, message: str) -> None:
         self._auth_state["syncStatus"] = "done" if success else "error"
         self._auth_state["syncMessage"] = message
+        if success:
+            self._active_backend = LocalSQLiteBackend()
 
     # ---- Dashboard IPC public API ----
 
@@ -772,7 +774,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
     def get_dashboard_runs_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
         user_id = self._auth_state.get("userId") or 0
-        return self._active_backend.get_runs(user_id, game_name, version_name or None)
+        return self._active_backend.get_runs(user_id, game_name, None)
 
     def get_dashboard_stats_from_ipc(self, game_name: str, version_name: str | None) -> dict:
         user_id = self._auth_state.get("userId") or 0
@@ -781,7 +783,14 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
     def get_frontend_state_from_ipc(self) -> dict:
         current_game = self._current_game()
         current_version = self._current_version()
-        dashboard = self._build_dashboard_payload(current_version)
+        game_name = current_game.name if current_game else ""
+        version_name = current_version.name if current_version else None
+        user_id = self._auth_state.get("userId") or 0
+        dashboard = {
+            "items": self._active_backend.get_items(user_id, game_name, version_name),
+            "bosses": self._active_backend.get_bosses(user_id, game_name, version_name),
+            "runsHistory": self._active_backend.get_runs(user_id, game_name, None),
+        }
 
         finetuned_models = self.get_finetuned_models_from_ipc()
 

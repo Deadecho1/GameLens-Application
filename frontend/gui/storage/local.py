@@ -180,18 +180,16 @@ class LocalSQLiteBackend(StorageBackend):
             if game_id is None:
                 return []
 
-            vf = "AND gv.name = ?" if version_name else ""
-            vp = (version_name,) if version_name else ()
-
             run_rows = conn.execute(
-                f"""
-                SELECT r.id, substr(r.recorded_at, 1, 10), r.duration_seconds, r.outcome
+                """
+                SELECT r.id, substr(r.recorded_at, 1, 10), r.duration_seconds, r.outcome,
+                       gv.name AS game_version
                 FROM dash_runs r
                 JOIN dash_game_versions gv ON gv.id = r.version_id
-                WHERE gv.game_id = ? {vf}
+                WHERE gv.game_id = ?
                 ORDER BY r.recorded_at DESC, r.id DESC
                 """,
-                (game_id,) + vp,
+                (game_id,),
             ).fetchall()
 
             if not run_rows:
@@ -234,9 +232,10 @@ class LocalSQLiteBackend(StorageBackend):
                     "date": run_date,
                     "duration": _fmt_hh_mm_ss(duration_sec),
                     "outcome": outcome,
+                    "gameVersion": game_version,
                     "bossEncounters": encounters_by_run.get(run_id, []),
                 }
-                for run_id, run_date, duration_sec, outcome in run_rows
+                for run_id, run_date, duration_sec, outcome, game_version in run_rows
             ]
         finally:
             conn.close()

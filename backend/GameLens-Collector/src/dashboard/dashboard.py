@@ -64,6 +64,143 @@ def _format_hh_mm_ss(seconds):
 
 
 # ---------------------------------------------------------------------------
+# Sync download endpoints — local client pulls remote data
+# ---------------------------------------------------------------------------
+
+
+@Dashboard.route("/games", methods=["GET"])
+def list_games():
+    """List all games for the requesting user. Response: [{"id", "name"}]"""
+    user_id_raw = (_user_id() or request.args.get("user_id") or "").strip()
+    if not user_id_raw:
+        raise MissingCollectorParam("X-User-ID header or user_id query param is required")
+    try:
+        user_id = int(user_id_raw)
+    except ValueError:
+        raise MissingCollectorParam("user_id must be an integer")
+
+    with DatabaseConnection.get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, name FROM dashboard.games WHERE user_id = %s ORDER BY name",
+                (user_id,),
+            )
+            rows = cur.fetchall()
+    return jsonify([{"id": r[0], "name": r[1]} for r in rows]), 200
+
+
+@Dashboard.route("/games/<game_id>/versions", methods=["GET"])
+def list_versions(game_id):
+    """List all versions for a game. Response: [{"id", "name"}]"""
+    try:
+        game_id_int = int(game_id)
+    except ValueError:
+        raise MissingCollectorParam("game_id must be an integer")
+
+    with DatabaseConnection.get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, name FROM dashboard.game_versions WHERE game_id = %s ORDER BY name",
+                (game_id_int,),
+            )
+            rows = cur.fetchall()
+    return jsonify([{"id": r[0], "name": r[1]} for r in rows]), 200
+
+
+@Dashboard.route("/games/<game_id>/versions/<version_id>/runs/export", methods=["GET"])
+def export_runs(game_id, version_id):
+    """
+    Export all runs for a version with full pickup and encounter data.
+    Used by the local client to pull remote data into local SQLite.
+    Response: [{ video_filename, start_time, end_time, duration_seconds, outcome,
+                 recorded_at, item_pickups: [{item_name, picked_at_seconds, options}],
+                 boss_encounters: [{boss_name, start_time, end_time, duration_seconds, player_died}] }]
+    """
+    try:
+        game_id_int = int(game_id)
+        version_id_int = int(version_id)
+    except ValueError:
+        raise MissingCollectorParam("game_id and version_id must be integers")
+
+    with DatabaseConnection.get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT r.id, r.video_filename, r.start_time, r.end_time,
+                       r.duration_seconds, r.outcome, r.recorded_at
+                FROM dashboard.runs r
+                WHERE r.version_id = %s
+                ORDER BY r.recorded_at, r.id
+                """,
+                (version_id_int,),
+            )
+            run_rows = cur.fetchall()
+
+            if not run_rows:
+                return jsonify([]), 200
+
+            run_ids = [r[0] for r in run_rows]
+
+            cur.execute(
+                """
+                SELECT ip.run_id, i.name, ip.picked_at_seconds, ip.options
+                FROM dashboard.item_pickups ip
+                JOIN dashboard.items i ON i.id = ip.item_id
+                WHERE ip.run_id = ANY(%s)
+                ORDER BY ip.run_id, ip.id
+                """,
+                (run_ids,),
+            )
+            pickup_rows = cur.fetchall()
+
+            cur.execute(
+                """
+                SELECT be.run_id, b.name, be.start_time, be.end_time,
+                       be.duration_seconds, be.player_died
+                FROM dashboard.boss_encounters be
+                JOIN dashboard.bosses b ON b.id = be.boss_id
+                WHERE be.run_id = ANY(%s)
+                ORDER BY be.run_id, be.id
+                """,
+                (run_ids,),
+            )
+            encounter_rows = cur.fetchall()
+
+    pickups_by_run: dict = {}
+    for run_id, item_name, picked_at, options in pickup_rows:
+        pickups_by_run.setdefault(run_id, []).append({
+            "item_name": item_name,
+            "picked_at_seconds": picked_at,
+            "options": options if isinstance(options, list) else (options or []),
+        })
+
+    encounters_by_run: dict = {}
+    for run_id, boss_name, bs, be, bd, pd in encounter_rows:
+        encounters_by_run.setdefault(run_id, []).append({
+            "boss_name": boss_name,
+            "start_time": bs,
+            "end_time": be,
+            "duration_seconds": bd,
+            "player_died": bool(pd) if pd is not None else False,
+        })
+
+    result = []
+    for run_id, video_filename, start_t, end_t, dur, outcome, recorded_at in run_rows:
+        result.append({
+            "video_filename": video_filename,
+            "start_time": start_t,
+            "end_time": end_t,
+            "duration_seconds": dur,
+            "outcome": outcome,
+            "recorded_at": recorded_at.isoformat() if hasattr(recorded_at, "isoformat") else str(recorded_at),
+            "item_pickups": pickups_by_run.get(run_id, []),
+            "boss_encounters": encounters_by_run.get(run_id, []),
+        })
+
+    return jsonify(result), 200
+
+
+# ---------------------------------------------------------------------------
 # Write endpoints — pipeline → Collector
 # ---------------------------------------------------------------------------
 
@@ -741,14 +878,14 @@ def get_runs():
                         r.id,
                         r.recorded_at::date,
                         r.duration_seconds,
-                        r.outcome
+                        r.outcome,
+                        gv.name AS game_version
                     FROM dashboard.runs r
                     JOIN dashboard.game_versions gv ON gv.id = r.version_id
                     WHERE gv.game_id = %s
-                      AND (%s::text IS NULL OR gv.name = %s::text)
                     ORDER BY r.recorded_at DESC, r.id DESC;
                     """,
-                    (game_id, version_name, version_name),
+                    (game_id,),
                 )
                 run_rows = cur.fetchall()
 
@@ -798,13 +935,14 @@ def get_runs():
         ), 400
 
     response = []
-    for run_id, run_date, duration_seconds, outcome in run_rows:
+    for run_id, run_date, duration_seconds, outcome, game_version in run_rows:
         response.append(
             {
                 "id": run_id,
                 "date": run_date.isoformat() if run_date else None,
                 "duration": _format_hh_mm_ss(duration_seconds),
                 "outcome": outcome,
+                "gameVersion": game_version,
                 "bossEncounters": encounters_by_run.get(run_id, []),
             }
         )
