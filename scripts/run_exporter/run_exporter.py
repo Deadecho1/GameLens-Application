@@ -114,7 +114,6 @@ def _maybe_show_frame(image_bytes: bytes, label: str) -> None:
 
 
 class RunExporter:
-
     def __init__(
         self,
         json_reader: EventJsonReader,
@@ -126,8 +125,8 @@ class RunExporter:
         self.choice_service = choice_service
         # Phase 1 — scan backward from the detected frame to find the selection moment
         # (the last frame where the choice screen is still visible).
-        self.CHOICE_SCAN_STRIDE = 10          # frames between scan steps
-        self.CHOICE_MAX_SCAN_LOOKBACK = 300   # max frames to scan back (~5s at 60fps)
+        self.CHOICE_SCAN_STRIDE = 10  # frames between scan steps
+        self.CHOICE_MAX_SCAN_LOOKBACK = 300  # max frames to scan back (~5s at 60fps)
         # Phase 2 — once the boundary frame is found, sample this many frames
         # backward from it for the final multi-frame extraction call.
         self.CHOICE_EXTRACTION_OFFSETS = [5]
@@ -158,7 +157,11 @@ class RunExporter:
         )
         logger.debug(
             "[%s] run %d: start=%.2fs end=%.2fs, %d choice event(s)",
-            video_name, run.run_index, start_time, end_time, len(run.choice_events),
+            video_name,
+            run.run_index,
+            start_time,
+            end_time,
+            len(run.choice_events),
         )
 
         for ci, choice_event in enumerate(run.choice_events):
@@ -181,7 +184,9 @@ class RunExporter:
                     f"SCAN {video_name}",
                     f"run={run.run_index} choice={ci} offset={offset} frame={fi}",
                 )
-                fb = self.frame_provider.get_frame_bytes(video_name=video_name, frame_index=fi)
+                fb = self.frame_provider.get_frame_bytes(
+                    video_name=video_name, frame_index=fi
+                )
                 scan_result = self.choice_service.extract_choice([fb])
                 del fb
                 gc.collect()
@@ -193,14 +198,17 @@ class RunExporter:
                     boundary_frame = fi
                     logger.debug(
                         "  choice %d: boundary found at frame %d (offset %d from detected)",
-                        ci, fi, offset,
+                        ci,
+                        fi,
+                        offset,
                     )
                     break
 
             if boundary_frame is None:
                 logger.debug(
                     "  choice %d: no choice screen found in %d-frame scan, discarding",
-                    ci, self.CHOICE_MAX_SCAN_LOOKBACK,
+                    ci,
+                    self.CHOICE_MAX_SCAN_LOOKBACK,
                 )
                 self.frame_provider.release_video(video_name)
                 gc.collect()
@@ -215,12 +223,16 @@ class RunExporter:
                 fi = boundary_frame - off
                 if fi >= 0:
                     extraction_frames.append(
-                        self.frame_provider.get_frame_bytes(video_name=video_name, frame_index=fi)
+                        self.frame_provider.get_frame_bytes(
+                            video_name=video_name, frame_index=fi
+                        )
                     )
                     extraction_indices.append(fi)
 
             logger.debug(
-                "  choice %d: extracting from frames %s", ci, extraction_indices,
+                "  choice %d: extracting from frames %s",
+                ci,
+                extraction_indices,
             )
             _debug_write(
                 f"EXTRACT {video_name}",
@@ -239,19 +251,25 @@ class RunExporter:
             )
             logger.debug(
                 "    -> options=%s selected=%r",
-                result.get("options"), result.get("selected_option"),
+                result.get("options"),
+                result.get("selected_option"),
             )
 
             if result.get("options"):
                 choices.append({**result, "picked_at_seconds": choice_event.time})
             else:
-                logger.debug("  choice %d: extraction returned no options, discarding", ci)
+                logger.debug(
+                    "  choice %d: extraction returned no options, discarding", ci
+                )
 
             # Release VideoReader after each choice so decord's C++ heap pages
             # are returned to the OS before the next choice begins.
             self.frame_provider.release_video(video_name)
             gc.collect()
-            _debug_write(f"RELEASED_AFTER_CHOICE {video_name}", f"run={run.run_index} choice={ci}")
+            _debug_write(
+                f"RELEASED_AFTER_CHOICE {video_name}",
+                f"run={run.run_index} choice={ci}",
+            )
 
         return {
             "start_time": start_time,
@@ -269,13 +287,19 @@ class RunExporter:
         json_path: Path,
         output_dir: Path,
         verbose: bool = False,
-    ) -> None:
+    ) -> int:
         video_events: VideoEventsJson = self.json_reader.read_video_events(json_path)
-        logger.info("Processing %s: %d run(s)", video_events.video_name, len(video_events.runs))
+        logger.info(
+            "Processing %s: %d run(s)", video_events.video_name, len(video_events.runs)
+        )
+
+        saved_runs = 0
 
         try:
             for run in video_events.runs:
-                logger.info("  [run %d/%d] exporting...", run.run_index, len(video_events.runs))
+                logger.info(
+                    "  [run %d/%d] exporting...", run.run_index, len(video_events.runs)
+                )
                 exported = self._export_single_run(
                     video_name=video_events.video_name,
                     run=run,
@@ -290,7 +314,13 @@ class RunExporter:
                 with open(out_path, "w", encoding="utf-8") as f:
                     json.dump(exported, f, indent=2, ensure_ascii=False)
 
-                logger.info("  [run %d] saved %d choice(s) -> %s", run.run_index, len(exported["choices"]), out_path.name)
+                logger.info(
+                    "  [run %d] saved %d choice(s) -> %s",
+                    run.run_index,
+                    len(exported["choices"]),
+                    out_path.name,
+                )
+                saved_runs += 1
 
                 # Release VideoReader after each run so decord's internal decode
                 # buffers are freed before the next run's frame seeks begin.
@@ -303,6 +333,8 @@ class RunExporter:
         finally:
             # Ensure release even if a run raised an exception.
             self.frame_provider.release_video(video_events.video_name)
+
+        return saved_runs
 
     def process_folder(
         self,
@@ -321,13 +353,16 @@ class RunExporter:
 
         ok = 0
         failed = 0
+        saved_runs_total = 0
 
         for idx, json_path in enumerate(json_files, start=1):
             logger.info("[%d/%d] Processing: %s", idx, len(json_files), json_path.name)
-            _debug_write(f"VIDEO_START {json_path.stem}", f"idx={idx}/{len(json_files)}")
+            _debug_write(
+                f"VIDEO_START {json_path.stem}", f"idx={idx}/{len(json_files)}"
+            )
 
             try:
-                self.process_video_json(
+                saved_runs_total += self.process_video_json(
                     json_path=json_path,
                     output_dir=output_dir,
                     verbose=verbose,
@@ -342,4 +377,20 @@ class RunExporter:
                 self.choice_service.choice_extractor.reset_session()
                 gc.collect()
 
-        logger.info("Done. Successful: %d  Failed: %d", ok, failed)
+        logger.info(
+            "Done. Successful: %d  Failed: %d  Run JSON files written: %d",
+            ok,
+            failed,
+            saved_runs_total,
+        )
+
+        if ok == 0:
+            raise RuntimeError(
+                "Run exporter could not process any event JSON files successfully."
+            )
+
+        if saved_runs_total == 0:
+            raise RuntimeError(
+                "Run exporter finished but produced no run JSON files. "
+                "Check matching video files and event detection output."
+            )

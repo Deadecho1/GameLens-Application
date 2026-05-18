@@ -115,6 +115,7 @@ export default function WorkflowTab({
   const configureReady =
     Boolean(setup.selectedGame?.trim()) &&
     Boolean(setup.selectedVersion?.trim());
+  const selectedTraceOption = processing.selectedOption || "verbose";
 
   return (
     <motion.div
@@ -273,8 +274,6 @@ export default function WorkflowTab({
                   if (e.key === "Enter" || e.key === " ")
                     inputRef.current?.click();
                 }}
-                
-  
               >
                 <input
                   ref={inputRef}
@@ -287,8 +286,7 @@ export default function WorkflowTab({
                     e.target.value = "";
                   }}
                 />
-               
-               
+
                 {/*  Writes to processing.videoFiles*/}
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -337,7 +335,7 @@ export default function WorkflowTab({
                       type="radio"
                       name="workflow-proc-opt"
                       className="accent-cyan-500"
-                      checked={processing.selectedOption === opt.value}
+                      checked={selectedTraceOption === opt.value}
                       onChange={() =>
                         onPatch({
                           processing: { selectedOption: opt.value },
@@ -518,8 +516,8 @@ function ModelCard({ fineTunedModels, selectedModel, onSelect }) {
     selectedModel === "base"
       ? "Base Model"
       : fineTunedModels.find((m) => m.dirName === selectedModel)
-          ? `${fineTunedModels.find((m) => m.dirName === selectedModel).name}`
-          : selectedModel;
+        ? `${fineTunedModels.find((m) => m.dirName === selectedModel).name}`
+        : selectedModel;
 
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/40 p-6 shadow-[inset_0_1px_0_rgba(34,211,238,0.06)] backdrop-blur-md transition hover:border-cyan-500/25">

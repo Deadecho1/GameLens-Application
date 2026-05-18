@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import date
 from pathlib import Path
 
@@ -37,14 +38,14 @@ from .config import (
 from .models import PipelineConfig
 from .pipeline_runner import PipelineRunner
 from .process_clips_dialog import ProcessClipsDialog
+from .protocols import AnalyticsReader, GameRepo
+from .repository import GameRepository
+from .run_details_dialog import RunDetailsDialog
 from .storage.base import StorageBackend
 from .storage.local import LocalSQLiteBackend
 from .sync_worker import SyncWorker
 from .tuning_config import TUNING_MODEL_CONFIG_BY_ID
 from .tuning_runner import TuningRunner
-from .protocols import AnalyticsReader, GameRepo
-from .repository import GameRepository
-from .run_details_dialog import RunDetailsDialog
 from .widgets import ResponsiveFontMixin, populate_combo_restoring_selection
 
 
@@ -81,6 +82,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "videoFiles": [],
             "videoFilePaths": [],
             "status": "idle",
+            "selectedOption": "verbose",
             "selectedModel": "base",
             "logs": ["[INFO] System ready..."],
         }
@@ -566,6 +568,16 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             raise ValueError(f"Invalid folder: {pipeline_path}")
         self._processing_state["pipelinePath"] = str(path)
 
+    def _resolve_openai_api_key(self) -> str:
+        ui_key = (
+            self._ipc_ui_state.get("setup", {}).get("user", {}).get("openAiKey", "")
+            or ""
+        ).strip()
+        if ui_key:
+            return ui_key
+
+        return (os.getenv("OPENAI_API_KEY") or "").strip()
+
     def run_pipeline_from_ipc(self) -> None:
         game = self._current_game()
         version = self._current_version()
@@ -598,30 +610,38 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
                     "or choose a single pipeline path folder."
                 )
 
-        openai_key = (
-            self._ipc_ui_state.get("setup", {})
-            .get("user", {})
-            .get("openAiKey", "")
-            or ""
-        ).strip()
+        openai_key = self._resolve_openai_api_key()
         if not openai_key:
-            raise ValueError("OpenAI API key is not set. Add it in Settings before running the pipeline.")
+            raise ValueError(
+                "OpenAI API key is not set. Add it in Settings or set OPENAI_API_KEY before running the pipeline."
+            )
 
         selected_model = self._processing_state.get("selectedModel", "base")
         model_dir = None
         if selected_model != "base":
             from app_core.config import AppConfig as _AC
+
             _cfg = _AC.load()
             candidate = _cfg.models_dir / "finetuned" / selected_model
             if candidate.exists():
                 model_dir = candidate
         from app_core.config import AppConfig as _AC
+
         _cfg = _AC.load()
         current_user_id = str(self._auth_state.get("userId") or 0)
+        selected_option = (
+            str(self._processing_state.get("selectedOption") or "verbose")
+            .strip()
+            .lower()
+        )
+
         config = PipelineConfig(
             video_dir=video_dir,
             event_json_dir=version.event_json_dir,
             run_json_dir=version.run_json_dir,
+            only_events=selected_option == "only event",
+            only_export=selected_option == "only export",
+            verbose=selected_option == "verbose",
             openai_api_key=openai_key,
             game_name=game.name if game else "",
             version_name=version.name,
@@ -638,6 +658,13 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
     def clear_processing_logs_from_ipc(self) -> None:
         self._processing_state["logs"] = []
+
+    def set_processing_option_from_ipc(self, option: str) -> None:
+        normalized = option.strip().lower()
+        allowed = {"only event", "only export", "verbose"}
+        if normalized not in allowed:
+            raise ValueError(f"Invalid processing option: {option}")
+        self._processing_state["selectedOption"] = normalized
 
     def set_model_from_ipc(self, model: str) -> None:
         self._processing_state["selectedModel"] = model
@@ -660,8 +687,11 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._tuning_state["status"] = "completed" if success else "stopped"
 
     # ---- Tuning IPC public API ----
-    def start_tuning_from_ipc(self, videos: list, enabled_model_ids: list, model_name: str) -> None:
+    def start_tuning_from_ipc(
+        self, videos: list, enabled_model_ids: list, model_name: str
+    ) -> None:
         from app_core.config import AppConfig
+
         app_config = AppConfig.load()
         finetuned_dir = app_config.models_dir / "finetuned"
         finetuned_dir.mkdir(parents=True, exist_ok=True)
@@ -684,6 +714,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
     def get_finetuned_models_from_ipc(self) -> list[dict]:
         from app_core.config import AppConfig
+
         app_config = AppConfig.load()
         finetuned_dir = app_config.models_dir / "finetuned"
         if not finetuned_dir.exists():
@@ -698,7 +729,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
                 suffix = f"_{model_id}"
                 if name.endswith(suffix):
                     model_name = name[: -len(suffix)]
-                    models.append({"name": model_name, "modelId": model_id, "dirName": name})
+                    models.append(
+                        {"name": model_name, "modelId": model_id, "dirName": name}
+                    )
                     break
         return models
 
@@ -706,7 +739,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
     def login_from_ipc(self, email: str) -> dict:
         import requests
+
         from app_core.config import AppConfig
+
         cfg = AppConfig.load()
         resp = requests.post(
             f"{cfg.collector_base_url}/api/v1/auth/login",
@@ -717,8 +752,10 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         data = resp.json()
         user_id = int(data["user_id"])
 
-        from .storage.remote import RemoteCollectorBackend
         from app_core.local_storage import LOCAL_USER_ID, open_local_db
+
+        from .storage.remote import RemoteCollectorBackend
+
         self._active_backend = RemoteCollectorBackend(cfg.collector_base_url, user_id)
         self._auth_state = {
             "loggedIn": True,
@@ -764,6 +801,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         if prev_user_id and prev_user_id != 0:
             try:
                 from app_core.local_storage import LOCAL_USER_ID, open_local_db
+
                 conn = open_local_db()
                 conn.execute(
                     "UPDATE dash_games SET user_id = ? WHERE user_id = ?",
@@ -778,6 +816,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         if self._sync_worker and self._sync_worker.isRunning():
             return  # already syncing
         from .storage.remote import RemoteCollectorBackend
+
         if not isinstance(self._active_backend, RemoteCollectorBackend):
             return
         self._auth_state["syncStatus"] = "syncing"
@@ -800,19 +839,27 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
     # ---- Dashboard IPC public API ----
 
-    def get_dashboard_items_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
+    def get_dashboard_items_from_ipc(
+        self, game_name: str, version_name: str | None
+    ) -> list[dict]:
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_items(user_id, game_name, version_name or None)
 
-    def get_dashboard_bosses_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
+    def get_dashboard_bosses_from_ipc(
+        self, game_name: str, version_name: str | None
+    ) -> list[dict]:
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_bosses(user_id, game_name, version_name or None)
 
-    def get_dashboard_runs_from_ipc(self, game_name: str, version_name: str | None) -> list[dict]:
+    def get_dashboard_runs_from_ipc(
+        self, game_name: str, version_name: str | None
+    ) -> list[dict]:
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_runs(user_id, game_name, None)
 
-    def get_dashboard_stats_from_ipc(self, game_name: str, version_name: str | None) -> dict:
+    def get_dashboard_stats_from_ipc(
+        self, game_name: str, version_name: str | None
+    ) -> dict:
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_stats(user_id, game_name, version_name or None)
 

@@ -81,7 +81,6 @@ async def extract_choices(
     try:
         resp = client.chat.completions.create(
             model=model,
-            temperature=0,
             response_format={"type": "json_object"},
             messages=[
                 {

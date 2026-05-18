@@ -38,39 +38,35 @@ class PipelineRunner(QObject):
         self._stopping = False
         self._queue = []
 
-        self._queue.append(
-            (
-                "Detecting Events...",
-                [
-                    sys.executable,
-                    "-m",
-                    "scripts.event_detector.cli",
-                    "--input-dir",
-                    str(config.video_dir),
-                    "--output-dir",
-                    str(config.event_json_dir),
-                    "--verbose",
-                ],
-            )
-        )
+        if not config.only_export:
+            detect_cmd = [
+                sys.executable,
+                "-m",
+                "scripts.event_detector.cli",
+                "--input-dir",
+                str(config.video_dir),
+                "--output-dir",
+                str(config.event_json_dir),
+            ]
+            if config.verbose:
+                detect_cmd.append("--verbose")
+            self._queue.append(("Detecting Events...", detect_cmd))
 
-        self._queue.append(
-            (
-                "Processing Events...",
-                [
-                    sys.executable,
-                    "-m",
-                    "scripts.run_exporter.cli",
-                    "--json-dir",
-                    str(config.event_json_dir),
-                    "--video-dir",
-                    str(config.video_dir),
-                    "--output-dir",
-                    str(config.run_json_dir),
-                    "--verbose",
-                ],
-            )
-        )
+        if not config.only_events:
+            export_cmd = [
+                sys.executable,
+                "-m",
+                "scripts.run_exporter.cli",
+                "--json-dir",
+                str(config.event_json_dir),
+                "--video-dir",
+                str(config.video_dir),
+                "--output-dir",
+                str(config.run_json_dir),
+            ]
+            if config.verbose:
+                export_cmd.append("--verbose")
+            self._queue.append(("Processing Events...", export_cmd))
 
         if config.game_name and config.version_name:
             self._queue.append(
@@ -135,7 +131,7 @@ class PipelineRunner(QObject):
         process = QProcess(self)
         process.setWorkingDirectory(str(PROJECT_ROOT))
         process.setProcessEnvironment(self._build_process_environment())
-        process.setProcessChannelMode(QProcess.MergedChannels)
+        process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
         process.readyReadStandardOutput.connect(self._read_output)
         process.finished.connect(self._handle_finished)
         process.errorOccurred.connect(self._handle_error)
@@ -161,7 +157,9 @@ class PipelineRunner(QObject):
     def _read_output(self) -> None:
         if self._process is None:
             return
-        data = self._process.readAllStandardOutput().data().decode(errors="replace")
+        data = bytes(self._process.readAllStandardOutput().data()).decode(
+            errors="replace"
+        )
         if not data:
             return
         self._output_buffer += data
@@ -173,7 +171,9 @@ class PipelineRunner(QObject):
 
     def _flush_output_buffer(self) -> None:
         if self._process is not None:
-            remaining = self._process.readAllStandardOutput().data().decode(errors="replace")
+            remaining = bytes(self._process.readAllStandardOutput().data()).decode(
+                errors="replace"
+            )
             if remaining:
                 self._output_buffer += remaining
         if self._output_buffer:
@@ -181,7 +181,9 @@ class PipelineRunner(QObject):
             self._output_buffer = ""
 
     @Slot(int, QProcess.ExitStatus)
-    def _handle_finished(self, exit_code: int, _exit_status: QProcess.ExitStatus) -> None:
+    def _handle_finished(
+        self, exit_code: int, _exit_status: QProcess.ExitStatus
+    ) -> None:
         if self._process is None:
             return
 
@@ -198,7 +200,9 @@ class PipelineRunner(QObject):
             self._cleanup_process()
             self.busy_changed.emit(False)
             self.stage_changed.emit("Failed")
-            self.pipeline_finished.emit(False, f"Stage failed with exit code {exit_code}.")
+            self.pipeline_finished.emit(
+                False, f"Stage failed with exit code {exit_code}."
+            )
             return
 
         self.log_message.emit("\n")

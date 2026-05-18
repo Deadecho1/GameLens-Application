@@ -56,7 +56,9 @@ async def extract_boss_name(
     try:
         image_bytes = await file.read()
     except Exception:
-        raise HTTPException(status_code=400, detail="Could not read the uploaded image.")
+        raise HTTPException(
+            status_code=400, detail="Could not read the uploaded image."
+        )
 
     b64_encoded = base64.b64encode(image_bytes).decode("ascii")
     data_url = f"data:{file.content_type};base64,{b64_encoded}"
@@ -64,7 +66,6 @@ async def extract_boss_name(
     try:
         resp = client.chat.completions.create(
             model=model,
-            temperature=0,
             response_format={"type": "json_object"},
             messages=[
                 {

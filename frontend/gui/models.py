@@ -9,11 +9,12 @@ class PipelineConfig:
     video_dir: Path
     event_json_dir: Path
     run_json_dir: Path
-    only_events: bool
-    only_export: bool
-    verbose: bool
+    only_events: bool = False
+    only_export: bool = False
+    verbose: bool = True
+    openai_api_key: str = ""
     game_name: str = ""
     version_name: str = ""
-    user_id: str = "1"
+    user_id: str = "0"
     collector_url: str = "http://localhost:8000"
     model_dir: Path | None = None  # if set, overrides GAMELENS_EVENT_DETECTOR_MODEL_DIR

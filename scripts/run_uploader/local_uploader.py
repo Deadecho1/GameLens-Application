@@ -12,9 +12,15 @@ logger = get_logger(__name__)
 class LocalRunUploader:
     """Writes processed run JSONs directly to the local SQLite database."""
 
-    def __init__(self, db_path: Path | None = None, user_id: int = LOCAL_USER_ID) -> None:
+    def __init__(
+        self,
+        db_path: Path | None = None,
+        user_id: int = LOCAL_USER_ID,
+        cleanup_run_json: bool = False,
+    ) -> None:
         self._db_path = db_path
         self._user_id = user_id
+        self._cleanup_run_json = cleanup_run_json
 
     # ------------------------------------------------------------------
     # Entity helpers (create-or-get, idempotent)
@@ -117,7 +123,9 @@ class LocalRunUploader:
             ),
         )
         if cur.rowcount == 0:
-            return False  # already existed — skip pickups/encounters to avoid duplicates
+            return (
+                False  # already existed — skip pickups/encounters to avoid duplicates
+            )
 
         run_id = cur.lastrowid
 
@@ -131,7 +139,12 @@ class LocalRunUploader:
                 INSERT INTO dash_item_pickups (run_id, item_id, picked_at_seconds, options)
                 VALUES (?, ?, ?, ?)
                 """,
-                (run_id, item_id, pickup.get("picked_at_seconds"), json.dumps(pickup.get("options", []))),
+                (
+                    run_id,
+                    item_id,
+                    pickup.get("picked_at_seconds"),
+                    json.dumps(pickup.get("options", [])),
+                ),
             )
 
         for encounter in payload.get("boss_encounters", []):
@@ -140,15 +153,23 @@ class LocalRunUploader:
                 continue
             boss_id = self._ensure_boss(conn, game_id, boss_name, version_id)
             player_died_raw = encounter.get("player_died")
-            player_died = 1 if player_died_raw else (0 if player_died_raw is not None else None)
+            player_died = (
+                1 if player_died_raw else (0 if player_died_raw is not None else None)
+            )
             conn.execute(
                 """
                 INSERT INTO dash_boss_encounters
                     (run_id, boss_id, start_time, end_time, duration_seconds, player_died)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (run_id, boss_id, encounter.get("start_time"), encounter.get("end_time"),
-                 encounter.get("duration_seconds"), player_died),
+                (
+                    run_id,
+                    boss_id,
+                    encounter.get("start_time"),
+                    encounter.get("end_time"),
+                    encounter.get("duration_seconds"),
+                    player_died,
+                ),
             )
         return True
 
@@ -156,7 +177,9 @@ class LocalRunUploader:
     # Public entry point
     # ------------------------------------------------------------------
 
-    def upload_from_dir(self, run_json_dir: Path, game_name: str, version_name: str) -> None:
+    def upload_from_dir(
+        self, run_json_dir: Path, game_name: str, version_name: str
+    ) -> None:
         run_files = sorted(run_json_dir.glob("*_run_*.json"))
         if not run_files:
             logger.warning("No run JSON files found in: %s", run_json_dir)
@@ -164,7 +187,9 @@ class LocalRunUploader:
 
         logger.info(
             "Saving %d run(s) to local DB: game=%r version=%r",
-            len(run_files), game_name, version_name,
+            len(run_files),
+            game_name,
+            version_name,
         )
 
         conn = open_local_db(self._db_path)
@@ -173,27 +198,42 @@ class LocalRunUploader:
             version_id = self._ensure_version(conn, game_id, version_name)
 
             saved = skipped = 0
-            to_delete: list[Path] = []
+            uploaded_files: list[Path] = []
             for path in run_files:
                 try:
                     run_data = json.loads(path.read_text(encoding="utf-8"))
-                    inserted = self._insert_run(conn, game_id, version_id, self._run_json_to_payload(run_data, path.name))
+                    inserted = self._insert_run(
+                        conn,
+                        game_id,
+                        version_id,
+                        self._run_json_to_payload(run_data, path.name),
+                    )
                     if inserted:
                         saved += 1
                     else:
                         skipped += 1
-                    to_delete.append(path)
+                    uploaded_files.append(path)
                 except Exception as e:
                     logger.error("  skipping %s: %s", path.name, e)
 
             conn.commit()
 
-            for path in to_delete:
-                try:
-                    path.unlink()
-                except Exception as e:
-                    logger.warning("  could not delete %s: %s", path.name, e)
-
-            logger.info("Local save complete: %d new, %d already existed. JSONs cleaned up.", saved, skipped)
+            if self._cleanup_run_json:
+                for path in uploaded_files:
+                    try:
+                        path.unlink()
+                    except Exception as e:
+                        logger.warning("  could not delete %s: %s", path.name, e)
+                logger.info(
+                    "Local save complete: %d new, %d already existed. JSONs cleaned up.",
+                    saved,
+                    skipped,
+                )
+            else:
+                logger.info(
+                    "Local save complete: %d new, %d already existed. JSON files retained.",
+                    saved,
+                    skipped,
+                )
         finally:
             conn.close()

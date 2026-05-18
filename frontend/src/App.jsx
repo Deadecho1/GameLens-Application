@@ -105,9 +105,18 @@ function App() {
           ]);
         } else {
           [items, bosses, runsHistory] = await Promise.all([
-            ipcRequest("dashboard:items", { game_name: gameName, version_name: versionName }),
-            ipcRequest("dashboard:bosses", { game_name: gameName, version_name: versionName }),
-            ipcRequest("dashboard:runs", { game_name: gameName, version_name: versionName }),
+            ipcRequest("dashboard:items", {
+              game_name: gameName,
+              version_name: versionName,
+            }),
+            ipcRequest("dashboard:bosses", {
+              game_name: gameName,
+              version_name: versionName,
+            }),
+            ipcRequest("dashboard:runs", {
+              game_name: gameName,
+              version_name: versionName,
+            }),
           ]);
         }
         if (!cancelled) {
@@ -121,8 +130,15 @@ function App() {
       }
     })();
 
-    return () => { cancelled = true; };
-  }, [data.ui.activeMainTab, data.setup.selectedGame, data.setup.selectedVersion, ipcRequest]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    data.ui.activeMainTab,
+    data.setup.selectedGame,
+    data.setup.selectedVersion,
+    ipcRequest,
+  ]);
 
   const mergePatch = useCallback(
     async (patch) => {
@@ -144,6 +160,12 @@ function App() {
         if (patch.processing?.selectedModel !== undefined) {
           latestState = await ipcRequest("processing:set_model", {
             model: patch.processing.selectedModel,
+          });
+        }
+
+        if (patch.processing?.selectedOption !== undefined) {
+          latestState = await ipcRequest("processing:set_option", {
+            option: patch.processing.selectedOption,
           });
         }
 
@@ -295,14 +317,17 @@ function App() {
     }
   }, [data.setup.selectedGame, data.ui.newVersionNameDraft, ipcRequest]);
 
-  const handleLogin = useCallback(async (email) => {
-    try {
-      const state = await ipcRequest("auth:login", { email });
-      setData(state);
-    } catch (e) {
-      setModalError(String(e?.message || e));
-    }
-  }, [ipcRequest]);
+  const handleLogin = useCallback(
+    async (email) => {
+      try {
+        const state = await ipcRequest("auth:login", { email });
+        setData(state);
+      } catch (e) {
+        setModalError(String(e?.message || e));
+      }
+    },
+    [ipcRequest],
+  );
 
   const handleLogout = useCallback(async () => {
     try {
@@ -330,9 +355,13 @@ function App() {
       <MissionSuccessOverlay active={data.ui.completionCelebrationActive} />
 
       <div className="relative z-10">
-        <Header data={data} onLogin={handleLogin} onLogout={handleLogout} onOpenSettings={() => setSettingsOpen(true)} />
+        <Header
+          data={data}
+          onLogin={handleLogin}
+          onLogout={handleLogout}
+          onOpenSettings={() => setSettingsOpen(true)}
+        />
         <MainTabNav data={data} onPatch={mergePatch} />
-
 
         <div className="relative min-h-[calc(100vh-8rem)]">
           <AnimatePresence mode="wait">
@@ -443,7 +472,10 @@ function App() {
               >
                 <div className="pointer-events-auto w-full max-w-md rounded-xl border border-red-500/30 bg-slate-900 shadow-2xl">
                   <div className="flex items-start gap-3 p-5">
-                    <AlertTriangle className="mt-0.5 shrink-0 text-red-400" size={20} />
+                    <AlertTriangle
+                      className="mt-0.5 shrink-0 text-red-400"
+                      size={20}
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="font-display text-sm font-semibold uppercase tracking-widest text-red-300 mb-1">
                         Error

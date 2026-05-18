@@ -1,0 +1,494 @@
+{
+  "video_name": "megabonk_5.mp4",
+  "fps": 60.0,
+  "duration_seconds": 625.8,
+  "runs": [
+    {
+      "run_index": 1,
+      "start_event": {
+        "time": 6.0,
+        "frame": 360,
+        "confidence": 0.9995636343955994,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 620.0,
+        "frame": 37200,
+        "confidence": 0.9982879757881165,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [
+        {
+          "time": 16.0,
+          "frame": 960,
+          "confidence": 0.9517678618431091,
+          "retry_frames": [
+            960,
+            955,
+            950,
+            940,
+            930,
+            900
+          ],
+          "retry_times": [
+            16.0,
+            15.916666666666666,
+            15.833333333333334,
+            15.666666666666666,
+            15.5,
+            15.0
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 48.2,
+          "frame": 2892,
+          "confidence": 0.8085079789161682,
+          "retry_frames": [
+            2892,
+            2887,
+            2882,
+            2872,
+            2862,
+            2832
+          ],
+          "retry_times": [
+            48.2,
+            48.11666666666667,
+            48.03333333333333,
+            47.86666666666667,
+            47.7,
+            47.2
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 57.8,
+          "frame": 3468,
+          "confidence": 0.9133012294769287,
+          "retry_frames": [
+            3468,
+            3463,
+            3458,
+            3448,
+            3438,
+            3408
+          ],
+          "retry_times": [
+            57.8,
+            57.71666666666667,
+            57.63333333333333,
+            57.46666666666667,
+            57.3,
+            56.8
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 82.9,
+          "frame": 4974,
+          "confidence": 0.818300724029541,
+          "retry_frames": [
+            4974,
+            4969,
+            4964,
+            4954,
+            4944,
+            4914
+          ],
+          "retry_times": [
+            82.9,
+            82.81666666666666,
+            82.73333333333333,
+            82.56666666666666,
+            82.4,
+            81.9
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 93.6,
+          "frame": 5616,
+          "confidence": 0.8932371735572815,
+          "retry_frames": [
+            5616,
+            5611,
+            5606,
+            5596,
+            5586,
+            5556
+          ],
+          "retry_times": [
+            93.6,
+            93.51666666666667,
+            93.43333333333334,
+            93.26666666666667,
+            93.1,
+            92.6
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 119.6,
+          "frame": 7176,
+          "confidence": 0.987506628036499,
+          "retry_frames": [
+            7176,
+            7171,
+            7166,
+            7156,
+            7146,
+            7116
+          ],
+          "retry_times": [
+            119.6,
+            119.51666666666667,
+            119.43333333333334,
+            119.26666666666667,
+            119.1,
+            118.6
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 155.1,
+          "frame": 9306,
+          "confidence": 0.7150292992591858,
+          "retry_frames": [
+            9306,
+            9301,
+            9296,
+            9286,
+            9276
+          ],
+          "retry_times": [
+            155.1,
+            155.01666666666668,
+            154.93333333333334,
+            154.76666666666668,
+            154.6
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 220.0,
+          "frame": 13200,
+          "confidence": 0.9573703408241272,
+          "retry_frames": [
+            13200,
+            13195,
+            13190,
+            13180,
+            13170,
+            13140
+          ],
+          "retry_times": [
+            220.0,
+            219.91666666666666,
+            219.83333333333334,
+            219.66666666666666,
+            219.5,
+            219.0
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 241.0,
+          "frame": 14460,
+          "confidence": 0.9935065507888794,
+          "retry_frames": [
+            14460,
+            14455,
+            14450,
+            14440,
+            14436
+          ],
+          "retry_times": [
+            241.0,
+            240.91666666666666,
+            240.83333333333334,
+            240.66666666666666,
+            240.6
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 291.3,
+          "frame": 17478,
+          "confidence": 0.932673454284668,
+          "retry_frames": [
+            17478,
+            17473,
+            17468,
+            17458,
+            17448,
+            17436
+          ],
+          "retry_times": [
+            291.3,
+            291.21666666666664,
+            291.1333333333333,
+            290.96666666666664,
+            290.8,
+            290.6
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 309.9,
+          "frame": 18594,
+          "confidence": 0.9452099800109863,
+          "retry_frames": [
+            18594,
+            18589,
+            18584,
+            18574,
+            18564,
+            18534
+          ],
+          "retry_times": [
+            309.9,
+            309.81666666666666,
+            309.73333333333335,
+            309.56666666666666,
+            309.4,
+            308.9
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 346.7,
+          "frame": 20802,
+          "confidence": 0.9304806590080261,
+          "retry_frames": [
+            20802,
+            20797,
+            20792,
+            20782,
+            20772,
+            20742
+          ],
+          "retry_times": [
+            346.7,
+            346.6166666666667,
+            346.53333333333336,
+            346.3666666666667,
+            346.2,
+            345.7
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 367.1,
+          "frame": 22026,
+          "confidence": 0.9374717473983765,
+          "retry_frames": [
+            22026,
+            22021,
+            22016,
+            22006,
+            21996
+          ],
+          "retry_times": [
+            367.1,
+            367.01666666666665,
+            366.93333333333334,
+            366.76666666666665,
+            366.6
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 385.7,
+          "frame": 23142,
+          "confidence": 0.8136445879936218,
+          "retry_frames": [
+            23142,
+            23137,
+            23132,
+            23122,
+            23112,
+            23082
+          ],
+          "retry_times": [
+            385.7,
+            385.6166666666667,
+            385.53333333333336,
+            385.3666666666667,
+            385.2,
+            384.7
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 432.0,
+          "frame": 25920,
+          "confidence": 0.9128197431564331,
+          "retry_frames": [
+            25920,
+            25915,
+            25910,
+            25900,
+            25890,
+            25860
+          ],
+          "retry_times": [
+            432.0,
+            431.9166666666667,
+            431.8333333333333,
+            431.6666666666667,
+            431.5,
+            431.0
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 483.2,
+          "frame": 28992,
+          "confidence": 0.8330934047698975,
+          "retry_frames": [
+            28992,
+            28987,
+            28982,
+            28972,
+            28962,
+            28956
+          ],
+          "retry_times": [
+            483.2,
+            483.1166666666667,
+            483.03333333333336,
+            482.8666666666667,
+            482.7,
+            482.6
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 524.1,
+          "frame": 31446,
+          "confidence": 0.7397233843803406,
+          "retry_frames": [
+            31446,
+            31441,
+            31436,
+            31426,
+            31416,
+            31386
+          ],
+          "retry_times": [
+            524.1,
+            524.0166666666667,
+            523.9333333333333,
+            523.7666666666667,
+            523.6,
+            523.1
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 577.2,
+          "frame": 34632,
+          "confidence": 0.9754160046577454,
+          "retry_frames": [
+            34632,
+            34627,
+            34622,
+            34612,
+            34602,
+            34596
+          ],
+          "retry_times": [
+            577.2,
+            577.1166666666667,
+            577.0333333333333,
+            576.8666666666667,
+            576.7,
+            576.6
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 593.0,
+          "frame": 35580,
+          "confidence": 0.9775043725967407,
+          "retry_frames": [
+            35580,
+            35575,
+            35570,
+            35560,
+            35556
+          ],
+          "retry_times": [
+            593.0,
+            592.9166666666666,
+            592.8333333333334,
+            592.6666666666666,
+            592.6
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 604.1,
+          "frame": 36246,
+          "confidence": 0.9612947702407837,
+          "retry_frames": [
+            36246,
+            36241,
+            36236,
+            36226,
+            36216,
+            36186
+          ],
+          "retry_times": [
+            604.1,
+            604.0166666666667,
+            603.9333333333333,
+            603.7666666666667,
+            603.6,
+            603.1
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        }
+      ],
+      "drop_events": [
+        {
+          "time": 102.25,
+          "frame": 6135,
+          "confidence": 0.9997251629829407,
+          "refinement_method": "hillclimb"
+        },
+        {
+          "time": 111.25,
+          "frame": 6675,
+          "confidence": 0.997633695602417,
+          "refinement_method": "hillclimb"
+        },
+        {
+          "time": 260.0,
+          "frame": 15600,
+          "confidence": 0.9998773336410522,
+          "refinement_method": "hillclimb"
+        },
+        {
+          "time": 375.25,
+          "frame": 22515,
+          "confidence": 0.9998931884765625,
+          "refinement_method": "hillclimb"
+        },
+        {
+          "time": 433.25,
+          "frame": 25995,
+          "confidence": 0.9994662404060364,
+          "refinement_method": "hillclimb"
+        },
+        {
+          "time": 591.5,
+          "frame": 35490,
+          "confidence": 0.9950272440910339,
+          "refinement_method": "hillclimb"
+        }
+      ]
+    }
+  ]
+}
