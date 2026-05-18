@@ -1,0 +1,120 @@
+{
+  "video_name": "holocure_test.mp4",
+  "fps": 60.0,
+  "duration_seconds": 159.78333333333333,
+  "runs": [
+    {
+      "run_index": 1,
+      "start_event": {
+        "time": 9.5,
+        "frame": 570,
+        "confidence": 0.9415411353111267,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 73.5,
+        "frame": 4410,
+        "confidence": 0.99843829870224,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [
+        {
+          "time": 39.3,
+          "frame": 2358,
+          "confidence": 0.7461404204368591,
+          "retry_frames": [
+            2358,
+            2353,
+            2348,
+            2338,
+            2328,
+            2316
+          ],
+          "retry_times": [
+            39.3,
+            39.21666666666667,
+            39.13333333333333,
+            38.96666666666667,
+            38.8,
+            38.6
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 60.8,
+          "frame": 3648,
+          "confidence": 0.8873560428619385,
+          "retry_frames": [
+            3648,
+            3643,
+            3638,
+            3628,
+            3618,
+            3588
+          ],
+          "retry_times": [
+            60.8,
+            60.71666666666667,
+            60.63333333333333,
+            60.46666666666667,
+            60.3,
+            59.8
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        }
+      ],
+      "drop_events": []
+    },
+    {
+      "run_index": 2,
+      "start_event": {
+        "time": 74.75,
+        "frame": 4485,
+        "confidence": 0.5063920617103577,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 84.5,
+        "frame": 5070,
+        "confidence": 0.8495934009552002,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [],
+      "drop_events": []
+    },
+    {
+      "run_index": 3,
+      "start_event": {
+        "time": 114.75,
+        "frame": 6885,
+        "confidence": 0.2077951729297638,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 117.5,
+        "frame": 7050,
+        "confidence": 0.9896184802055359,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [],
+      "drop_events": []
+    },
+    {
+      "run_index": 4,
+      "start_event": {
+        "time": 123.75,
+        "frame": 7425,
+        "confidence": 0.9560258984565735,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 154.25,
+        "frame": 9255,
+        "confidence": 0.9531420469284058,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [],
+      "drop_events": []
+    }
+  ]
+}

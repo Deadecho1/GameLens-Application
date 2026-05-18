@@ -1,0 +1,344 @@
+{
+  "video_name": "megabonk_3.mp4",
+  "fps": 60.0,
+  "duration_seconds": 509.5833333333333,
+  "runs": [
+    {
+      "run_index": 1,
+      "start_event": {
+        "time": 6.5,
+        "frame": 390,
+        "confidence": 0.9998291730880737,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 492.0,
+        "frame": 29520,
+        "confidence": 0.999987006187439,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [
+        {
+          "time": 26.4,
+          "frame": 1584,
+          "confidence": 0.9604947566986084,
+          "retry_frames": [
+            1584,
+            1579,
+            1574,
+            1564,
+            1554,
+            1524
+          ],
+          "retry_times": [
+            26.4,
+            26.316666666666666,
+            26.233333333333334,
+            26.066666666666666,
+            25.9,
+            25.4
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 47.9,
+          "frame": 2874,
+          "confidence": 0.9919722080230713,
+          "retry_frames": [
+            2874,
+            2869,
+            2864,
+            2854,
+            2844,
+            2814
+          ],
+          "retry_times": [
+            47.9,
+            47.81666666666667,
+            47.733333333333334,
+            47.56666666666667,
+            47.4,
+            46.9
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 89.2,
+          "frame": 5352,
+          "confidence": 0.9870907068252563,
+          "retry_frames": [
+            5352,
+            5347,
+            5342,
+            5332,
+            5322,
+            5316
+          ],
+          "retry_times": [
+            89.2,
+            89.11666666666666,
+            89.03333333333333,
+            88.86666666666666,
+            88.7,
+            88.6
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 110.5,
+          "frame": 6630,
+          "confidence": 0.8823067545890808,
+          "retry_frames": [
+            6630,
+            6625,
+            6620,
+            6610,
+            6600,
+            6570
+          ],
+          "retry_times": [
+            110.5,
+            110.41666666666667,
+            110.33333333333333,
+            110.16666666666667,
+            110.0,
+            109.5
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 193.1,
+          "frame": 11586,
+          "confidence": 0.751044750213623,
+          "retry_frames": [
+            11586,
+            11581,
+            11576,
+            11566,
+            11556,
+            11526
+          ],
+          "retry_times": [
+            193.1,
+            193.01666666666668,
+            192.93333333333334,
+            192.76666666666668,
+            192.6,
+            192.1
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 221.1,
+          "frame": 13266,
+          "confidence": 0.9569743871688843,
+          "retry_frames": [
+            13266,
+            13261,
+            13256,
+            13246,
+            13236
+          ],
+          "retry_times": [
+            221.1,
+            221.01666666666668,
+            220.93333333333334,
+            220.76666666666668,
+            220.6
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 247.0,
+          "frame": 14820,
+          "confidence": 0.9484732747077942,
+          "retry_frames": [
+            14820,
+            14815,
+            14810,
+            14800,
+            14790,
+            14760
+          ],
+          "retry_times": [
+            247.0,
+            246.91666666666666,
+            246.83333333333334,
+            246.66666666666666,
+            246.5,
+            246.0
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 261.2,
+          "frame": 15672,
+          "confidence": 0.9147310853004456,
+          "retry_frames": [
+            15672,
+            15667,
+            15662,
+            15652,
+            15642,
+            15612
+          ],
+          "retry_times": [
+            261.2,
+            261.1166666666667,
+            261.03333333333336,
+            260.8666666666667,
+            260.7,
+            260.2
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 276.7,
+          "frame": 16602,
+          "confidence": 0.984352171421051,
+          "retry_frames": [
+            16602,
+            16597,
+            16592,
+            16582,
+            16572,
+            16542
+          ],
+          "retry_times": [
+            276.7,
+            276.6166666666667,
+            276.53333333333336,
+            276.3666666666667,
+            276.2,
+            275.7
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 334.8,
+          "frame": 20088,
+          "confidence": 0.9270305633544922,
+          "retry_frames": [
+            20088,
+            20083,
+            20078,
+            20068,
+            20058,
+            20028
+          ],
+          "retry_times": [
+            334.8,
+            334.71666666666664,
+            334.6333333333333,
+            334.46666666666664,
+            334.3,
+            333.8
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 349.7,
+          "frame": 20982,
+          "confidence": 0.9653785824775696,
+          "retry_frames": [
+            20982,
+            20977,
+            20972,
+            20962,
+            20952,
+            20922
+          ],
+          "retry_times": [
+            349.7,
+            349.6166666666667,
+            349.53333333333336,
+            349.3666666666667,
+            349.2,
+            348.7
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 413.0,
+          "frame": 24780,
+          "confidence": 0.9925697445869446,
+          "retry_frames": [
+            24780,
+            24775,
+            24770,
+            24760,
+            24750,
+            24720
+          ],
+          "retry_times": [
+            413.0,
+            412.9166666666667,
+            412.8333333333333,
+            412.6666666666667,
+            412.5,
+            412.0
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 476.4,
+          "frame": 28584,
+          "confidence": 0.7422642111778259,
+          "retry_frames": [
+            28584,
+            28579,
+            28574,
+            28564,
+            28554,
+            28524
+          ],
+          "retry_times": [
+            476.4,
+            476.31666666666666,
+            476.23333333333335,
+            476.06666666666666,
+            475.9,
+            475.4
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 488.9,
+          "frame": 29334,
+          "confidence": 0.601019561290741,
+          "retry_frames": [
+            29334,
+            29329,
+            29324,
+            29314,
+            29304,
+            29274
+          ],
+          "retry_times": [
+            488.9,
+            488.81666666666666,
+            488.73333333333335,
+            488.56666666666666,
+            488.4,
+            487.9
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        }
+      ],
+      "drop_events": [
+        {
+          "time": 201.0,
+          "frame": 12060,
+          "confidence": 0.9983990788459778,
+          "refinement_method": "hillclimb"
+        },
+        {
+          "time": 340.25,
+          "frame": 20415,
+          "confidence": 0.9992218017578125,
+          "refinement_method": "hillclimb"
+        }
+      ]
+    }
+  ]
+}

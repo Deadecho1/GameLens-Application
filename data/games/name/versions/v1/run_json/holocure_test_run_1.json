@@ -1,0 +1,25 @@
+{
+  "start_time": 9.5,
+  "end_time": 73.5,
+  "duration_seconds": 64.0,
+  "choices": [
+    {
+      "options": [
+        "Bubba",
+        "Detective Eye",
+        "The Ame Way",
+        "Piki Piki Piman"
+      ],
+      "selected_option": "Bubba"
+    },
+    {
+      "options": [
+        "Elite Lava Bucket",
+        "Piki Piki Piman",
+        "Just Bandage",
+        "Body Pillow"
+      ],
+      "selected_option": "Body Pillow"
+    }
+  ]
+}

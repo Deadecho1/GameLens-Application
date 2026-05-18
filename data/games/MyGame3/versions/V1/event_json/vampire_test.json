@@ -1,0 +1,69 @@
+{
+  "video_name": "vampire_test.mp4",
+  "fps": 60.0,
+  "duration_seconds": 110.18333333333334,
+  "runs": [
+    {
+      "run_index": 1,
+      "start_event": {
+        "time": 13.75,
+        "frame": 825,
+        "confidence": 0.9961439371109009,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 98.75,
+        "frame": 5925,
+        "confidence": 0.9870162606239319,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [
+        {
+          "time": 39.9,
+          "frame": 2394,
+          "confidence": 0.8322056531906128,
+          "retry_frames": [
+            2394,
+            2389,
+            2384,
+            2374,
+            2364,
+            2334
+          ],
+          "retry_times": [
+            39.9,
+            39.81666666666667,
+            39.733333333333334,
+            39.56666666666667,
+            39.4,
+            38.9
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 91.5,
+          "frame": 5490,
+          "confidence": 0.939536988735199,
+          "retry_frames": [
+            5490,
+            5485,
+            5480,
+            5470,
+            5460,
+            5436
+          ],
+          "retry_times": [
+            91.5,
+            91.41666666666667,
+            91.33333333333333,
+            91.16666666666667,
+            91.0,
+            90.6
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        }
+      ],
+      "drop_events": []
+    }
+  ]
+}

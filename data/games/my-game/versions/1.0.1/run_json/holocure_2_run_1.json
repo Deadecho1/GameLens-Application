@@ -1,0 +1,25 @@
+{
+  "start_time": 151.25,
+  "end_time": 218.5,
+  "duration_seconds": 67.25,
+  "choices": [
+    {
+      "options": [
+        "Phoenix Sword LV 2",
+        "Trailblazer",
+        "Spider Cooking",
+        "Body Pillow"
+      ],
+      "selected_option": "Trailblazer"
+    },
+    {
+      "options": [
+        "Headphones",
+        "Trailblazer LV 2",
+        "Plug Type Asacoco",
+        "Phoenix Sword LV 2"
+      ],
+      "selected_option": "Phoenix Sword LV 2"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "video_name": "torment_test.mp4",
+  "fps": 60.0,
+  "duration_seconds": 148.56666666666666,
+  "runs": [
+    {
+      "run_index": 1,
+      "start_event": {
+        "time": 10.0,
+        "frame": 600,
+        "confidence": 0.9970784187316895,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 103.25,
+        "frame": 6195,
+        "confidence": 0.9885005950927734,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [
+        {
+          "time": 35.5,
+          "frame": 2130,
+          "confidence": 0.9931737780570984,
+          "retry_frames": [
+            2130,
+            2125,
+            2120,
+            2110,
+            2100,
+            2070
+          ],
+          "retry_times": [
+            35.5,
+            35.416666666666664,
+            35.333333333333336,
+            35.166666666666664,
+            35.0,
+            34.5
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 54.1,
+          "frame": 3246,
+          "confidence": 0.9341702461242676,
+          "retry_frames": [
+            3246,
+            3241,
+            3236,
+            3226,
+            3216,
+            3186
+          ],
+          "retry_times": [
+            54.1,
+            54.016666666666666,
+            53.93333333333333,
+            53.766666666666666,
+            53.6,
+            53.1
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 93.4,
+          "frame": 5604,
+          "confidence": 0.9958336353302002,
+          "retry_frames": [
+            5604,
+            5599,
+            5594,
+            5584,
+            5574,
+            5544
+          ],
+          "retry_times": [
+            93.4,
+            93.31666666666666,
+            93.23333333333333,
+            93.06666666666666,
+            92.9,
+            92.4
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        }
+      ],
+      "drop_events": []
+    }
+  ]
+}

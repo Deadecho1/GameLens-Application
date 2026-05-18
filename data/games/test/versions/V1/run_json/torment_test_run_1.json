@@ -1,0 +1,34 @@
+{
+  "start_time": 10.0,
+  "end_time": 103.25,
+  "duration_seconds": 93.25,
+  "choices": [
+    {
+      "options": [
+        "Swift Feet I (Fast)",
+        "Vanguard I",
+        "Long Fingers I",
+        "Collateral Damage I"
+      ],
+      "selected_option": "Long Fingers I"
+    },
+    {
+      "options": [
+        "Cunning Tactician I",
+        "Swift Feet I (Fast)",
+        "Collateral Damage I",
+        "Vanguard I"
+      ],
+      "selected_option": "Cunning Tactician I"
+    },
+    {
+      "options": [
+        "Parry I",
+        "Strength I",
+        "Quick Hands I",
+        "Vitality I"
+      ],
+      "selected_option": "Quick Hands I"
+    }
+  ]
+}

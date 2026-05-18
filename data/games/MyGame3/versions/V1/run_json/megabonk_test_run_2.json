@@ -1,0 +1,15 @@
+{
+  "start_time": 110.25,
+  "end_time": 144.0,
+  "duration_seconds": 33.75,
+  "choices": [
+    {
+      "options": [
+        "Firestaff",
+        "Aura",
+        "Lightning Staff"
+      ],
+      "selected_option": "Firestaff"
+    }
+  ]
+}

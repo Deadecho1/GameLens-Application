@@ -1,0 +1,69 @@
+{
+  "video_name": "holocure_2.mp4",
+  "fps": 60.0,
+  "duration_seconds": 221.71666666666667,
+  "runs": [
+    {
+      "run_index": 1,
+      "start_event": {
+        "time": 151.25,
+        "frame": 9075,
+        "confidence": 0.9650509357452393,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 218.5,
+        "frame": 13110,
+        "confidence": 0.9855349063873291,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [
+        {
+          "time": 171.5,
+          "frame": 10290,
+          "confidence": 0.938998818397522,
+          "retry_frames": [
+            10290,
+            10285,
+            10280,
+            10270,
+            10260,
+            10236
+          ],
+          "retry_times": [
+            171.5,
+            171.41666666666666,
+            171.33333333333334,
+            171.16666666666666,
+            171.0,
+            170.6
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 198.4,
+          "frame": 11904,
+          "confidence": 0.9451135993003845,
+          "retry_frames": [
+            11904,
+            11899,
+            11894,
+            11884,
+            11874,
+            11844
+          ],
+          "retry_times": [
+            198.4,
+            198.31666666666666,
+            198.23333333333332,
+            198.06666666666666,
+            197.9,
+            197.4
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        }
+      ],
+      "drop_events": []
+    }
+  ]
+}
