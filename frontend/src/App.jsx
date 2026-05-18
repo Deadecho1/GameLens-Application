@@ -238,7 +238,7 @@ function App() {
     try {
       const folder = await window.gamelens?.chooseFolder?.();
       if (!folder) return;
-      const state = await ipcRequest("processing:set_pipeline_path", {
+      const state = await ipcRequest("processing:stage_folder", {
         pipeline_path: folder,
       });
       setData(state);

@@ -540,7 +540,16 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         path = Path(pipeline_path)
         if not path.exists() or not path.is_dir():
             raise ValueError(f"Invalid folder: {pipeline_path}")
-        files = sorted([p.name for p in path.glob("*.mp4")])
+
+        allowed_video_exts = {".mp4", ".webm", ".mov", ".mkv", ".avi"}
+        files = sorted(
+            [
+                p.name
+                for p in path.iterdir()
+                if p.is_file() and p.suffix.lower() in allowed_video_exts
+            ]
+        )
+
         self._processing_state["pipelinePath"] = str(path)
         self._processing_state["videoFiles"] = files
         self._processing_state["videoFilePaths"] = [str(path / name) for name in files]
