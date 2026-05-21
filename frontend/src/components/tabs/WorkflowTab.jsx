@@ -60,12 +60,27 @@ export default function WorkflowTab({
   const logRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef(null);
+  const [followLogs, setFollowLogs] = useState(true);
   const logCount = processing.logs.length;
+
+  const handleLogScroll = useCallback(() => {
+    const el = logRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setFollowLogs(distanceFromBottom < 24);
+  }, []);
 
   useEffect(() => {
     const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [processing.logs, step]);
+    if (!el || !followLogs) return;
+    el.scrollTop = el.scrollHeight;
+  }, [processing.logs, step, followLogs]);
+
+  useEffect(() => {
+    if (step !== 3) {
+      setFollowLogs(true);
+    }
+  }, [step]);
 
   const ingestFiles = useCallback(
     (fileList) => {
@@ -499,6 +514,7 @@ export default function WorkflowTab({
               </div>
               <div
                 ref={logRef}
+                onScroll={handleLogScroll}
                 className="gl-terminal-scanlines max-h-72 min-h-[220px] overflow-y-auto rounded-2xl border border-cyan-500/15 bg-black/80 p-4 font-data text-xs leading-relaxed text-emerald-400/95 shadow-[inset_0_0_48px_rgba(34,211,238,0.04)] backdrop-blur-sm"
               >
                 {processing.logs.length === 0 ? (

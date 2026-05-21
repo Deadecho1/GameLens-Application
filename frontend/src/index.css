@@ -99,7 +99,27 @@ body {
 
 .gl-terminal-scanlines {
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(16 185 129 / 0.45) transparent;
+}
+
+.gl-terminal-scanlines::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gl-terminal-scanlines::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gl-terminal-scanlines::-webkit-scrollbar-thumb {
+  background-color: rgb(16 185 129 / 0.35);
+  border-radius: 9999px;
+}
+
+.gl-terminal-scanlines:hover::-webkit-scrollbar-thumb {
+  background-color: rgb(34 211 238 / 0.55);
 }
 .gl-terminal-scanlines::after {
   content: "";
