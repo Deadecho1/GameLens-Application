@@ -338,6 +338,15 @@ function App() {
     }
   }, [ipcRequest]);
 
+  const handleSyncNow = useCallback(async () => {
+    try {
+      const state = await ipcRequest("auth:sync");
+      setData(state);
+    } catch (e) {
+      setModalError(String(e?.message || e));
+    }
+  }, [ipcRequest]);
+
   const tab = data.ui.activeMainTab;
 
   return (
@@ -359,6 +368,7 @@ function App() {
           data={data}
           onLogin={handleLogin}
           onLogout={handleLogout}
+          onSyncNow={handleSyncNow}
           onOpenSettings={() => setSettingsOpen(true)}
         />
         <MainTabNav data={data} onPatch={mergePatch} />

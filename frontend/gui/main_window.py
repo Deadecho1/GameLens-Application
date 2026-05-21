@@ -95,6 +95,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "syncMessage": "",
         }
         self._active_backend: StorageBackend = LocalSQLiteBackend()
+        self._remote_backend = None
         self._sync_worker: SyncWorker | None = None
         self._tuning_state: dict = {
             "status": "idle",
@@ -244,7 +245,11 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
                 VersionInfo(
                     name=n,
                     root_dir=GAMES_ROOT / game.name / "versions" / n,
-                    event_json_dir=GAMES_ROOT / game.name / "versions" / n / "event_json",
+                    event_json_dir=GAMES_ROOT
+                    / game.name
+                    / "versions"
+                    / n
+                    / "event_json",
                     run_json_dir=GAMES_ROOT / game.name / "versions" / n / "run_json",
                 )
                 for n in LocalSQLiteBackend().list_version_names(user_id, game.name)
@@ -793,7 +798,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
         from .storage.remote import RemoteCollectorBackend
 
-        self._active_backend = RemoteCollectorBackend(cfg.collector_base_url, user_id)
+        self._remote_backend = RemoteCollectorBackend(cfg.collector_base_url, user_id)
+        self._active_backend = self._remote_backend
         self._auth_state = {
             "loggedIn": True,
             "email": email,
@@ -826,6 +832,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             self._sync_worker.wait(2000)
 
         prev_user_id = self._auth_state.get("userId")
+        self._remote_backend = None
         self._active_backend = LocalSQLiteBackend()
         self._auth_state = {
             "loggedIn": False,
@@ -855,13 +862,25 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
     def _start_sync(self) -> None:
         if self._sync_worker and self._sync_worker.isRunning():
             return  # already syncing
+        if not self._auth_state.get("loggedIn"):
+            return
+
+        from app_core.config import AppConfig
+
         from .storage.remote import RemoteCollectorBackend
 
-        if not isinstance(self._active_backend, RemoteCollectorBackend):
-            return
+        remote = self._remote_backend
+        if not isinstance(remote, RemoteCollectorBackend):
+            user_id_raw = self._auth_state.get("userId")
+            if not user_id_raw:
+                return
+            cfg = AppConfig.load()
+            remote = RemoteCollectorBackend(cfg.collector_base_url, int(user_id_raw))
+            self._remote_backend = remote
+
         self._auth_state["syncStatus"] = "syncing"
         self._auth_state["syncMessage"] = "Starting sync..."
-        self._sync_worker = SyncWorker(self._active_backend)
+        self._sync_worker = SyncWorker(remote)
         self._sync_worker.sync_progress.connect(self._on_sync_progress)
         self._sync_worker.sync_finished.connect(self._on_sync_finished)
         self._sync_worker.start()
@@ -879,6 +898,11 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             self._load_games()
 
     # ---- Dashboard IPC public API ----
+
+    def sync_now_from_ipc(self) -> None:
+        if not self._auth_state.get("loggedIn"):
+            raise ValueError("Sign in first to sync with the server")
+        self._start_sync()
 
     def get_dashboard_items_from_ipc(
         self, game_name: str, version_name: str | None
@@ -908,7 +932,13 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self, game_name: str, version_name: str | None
     ) -> dict:
         if not game_name:
-            return {"totalRuns": 0, "avgDuration": None, "longestRun": None, "bossKillPercent": 0.0, "mostPopularItem": None}
+            return {
+                "totalRuns": 0,
+                "avgDuration": None,
+                "longestRun": None,
+                "bossKillPercent": 0.0,
+                "mostPopularItem": None,
+            }
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_stats(user_id, game_name, version_name or None)
 
@@ -920,8 +950,12 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         user_id = self._auth_state.get("userId") or 0
         if game_name:
             dashboard = {
-                "items": self._active_backend.get_items(user_id, game_name, version_name),
-                "bosses": self._active_backend.get_bosses(user_id, game_name, version_name),
+                "items": self._active_backend.get_items(
+                    user_id, game_name, version_name
+                ),
+                "bosses": self._active_backend.get_bosses(
+                    user_id, game_name, version_name
+                ),
                 "runsHistory": self._active_backend.get_runs(user_id, game_name, None),
             }
         else:

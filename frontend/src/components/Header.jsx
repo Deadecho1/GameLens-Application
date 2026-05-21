@@ -9,7 +9,13 @@ import {
   Settings,
 } from "lucide-react";
 
-export default function Header({ data, onLogin, onLogout, onOpenSettings }) {
+export default function Header({
+  data,
+  onLogin,
+  onLogout,
+  onSyncNow,
+  onOpenSettings,
+}) {
   const status = data.processing.status;
   const auth = data.auth ?? {
     loggedIn: false,
@@ -108,8 +114,23 @@ export default function Header({ data, onLogin, onLogout, onOpenSettings }) {
                 </p>
               </div>
               <button
+                onClick={onSyncNow}
+                disabled={auth.syncStatus === "syncing"}
+                className="ml-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title={
+                  auth.syncStatus === "syncing"
+                    ? "Sync in progress"
+                    : "Sync DB now"
+                }
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${auth.syncStatus === "syncing" ? "animate-spin" : ""}`}
+                  aria-hidden
+                />
+              </button>
+              <button
                 onClick={onLogout}
-                className="ml-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-red-400 hover:border-red-500/40 transition-colors"
+                className="rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-red-400 hover:border-red-500/40 transition-colors"
                 title="Sign out"
               >
                 <LogOut className="h-3.5 w-3.5" aria-hidden />

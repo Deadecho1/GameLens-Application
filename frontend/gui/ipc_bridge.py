@@ -171,6 +171,10 @@ class IpcBridge(QObject):
             self._window.logout_from_ipc()
             return self._window.get_frontend_state_from_ipc()
 
+        if method == "auth:sync":
+            self._window.sync_now_from_ipc()
+            return self._window.get_frontend_state_from_ipc()
+
         if method == "auth:state":
             state = self._window.get_frontend_state_from_ipc()
             return state["auth"]
