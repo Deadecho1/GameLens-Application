@@ -5,7 +5,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
-from app_core.local_storage import LOCAL_USER_ID, open_local_db
+from app_core.local_storage import open_local_db
 
 from .storage.remote import RemoteCollectorBackend
 
@@ -33,7 +33,7 @@ class SyncWorker(QThread):
         conn = open_local_db(self._db_path)
         try:
             games = conn.execute(
-                "SELECT id, name FROM dash_games WHERE user_id = ?", (LOCAL_USER_ID,)
+                "SELECT id, name FROM dash_games WHERE user_id = ?", (self._remote.user_id,)
             ).fetchall()
 
             for local_game_id, game_name in games:

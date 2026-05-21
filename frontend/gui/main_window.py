@@ -218,8 +218,14 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._tuning_runner.busy_changed.connect(self._on_tuning_busy_changed)
 
     def _load_games(self) -> None:
+        from .config import GAMES_ROOT
+
         current_game = self.game_combo.currentText().strip()
-        self._games = self._repo.list_games()
+        user_id = self._auth_state.get("userId") or 0
+        self._games = [
+            GameInfo(name=n, root_dir=GAMES_ROOT / n)
+            for n in LocalSQLiteBackend().list_game_names(user_id)
+        ]
         populate_combo_restoring_selection(
             self.game_combo,
             [g.name for g in self._games],
@@ -228,9 +234,23 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._load_versions()
 
     def _load_versions(self) -> None:
+        from .config import GAMES_ROOT
+
         game = self._current_game()
         current_version = self.version_combo.currentText().strip()
-        self._versions = self._repo.list_versions(game) if game is not None else []
+        if game is not None:
+            user_id = self._auth_state.get("userId") or 0
+            self._versions = [
+                VersionInfo(
+                    name=n,
+                    root_dir=GAMES_ROOT / game.name / "versions" / n,
+                    event_json_dir=GAMES_ROOT / game.name / "versions" / n / "event_json",
+                    run_json_dir=GAMES_ROOT / game.name / "versions" / n / "run_json",
+                )
+                for n in LocalSQLiteBackend().list_version_names(user_id, game.name)
+            ]
+        else:
+            self._versions = []
         populate_combo_restoring_selection(
             self.version_combo,
             [v.name for v in self._versions],
@@ -381,7 +401,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._processing_state["logs"].append(message)
         self._processing_state["status"] = "completed" if success else "stopped"
         if success:
-            self._refresh_dashboard()
+            self._load_games()
             if self._auth_state.get("loggedIn"):
                 self._start_sync()
 
@@ -413,7 +433,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             QMessageBox.warning(self, APP_NAME, f"Game '{game_name}' already exists.")
             return
 
+        user_id = self._auth_state.get("userId") or 0
         self._repo.ensure_game(game_name)
+        LocalSQLiteBackend().ensure_game(user_id, game_name)
         self._load_games()
 
         index = self.game_combo.findText(game_name)
@@ -445,7 +467,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             )
             return
 
+        user_id = self._auth_state.get("userId") or 0
         self._repo.ensure_version(game, version_name)
+        LocalSQLiteBackend().ensure_version(user_id, game.name, version_name)
         self._load_versions()
 
         index = self.version_combo.findText(version_name)
@@ -517,7 +541,9 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         cleaned = game_name.strip()
         if not cleaned:
             raise ValueError("Game name cannot be empty.")
+        user_id = self._auth_state.get("userId") or 0
         self._repo.ensure_game(cleaned)
+        LocalSQLiteBackend().ensure_game(user_id, cleaned)
         self._load_games()
         self.select_game_from_ipc(cleaned)
 
@@ -526,12 +552,14 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         cleaned_version = version_name.strip()
         if not cleaned_game or not cleaned_version:
             raise ValueError("game_name and version_name are required")
+        user_id = self._auth_state.get("userId") or 0
         game = next(
             (g for g in self._repo.list_games() if g.name == cleaned_game), None
         )
         if game is None:
             game = self._repo.ensure_game(cleaned_game)
         self._repo.ensure_version(game, cleaned_version)
+        LocalSQLiteBackend().ensure_version(user_id, cleaned_game, cleaned_version)
         self._load_games()
         self.select_game_from_ipc(cleaned_game)
         self.select_version_from_ipc(cleaned_version)
@@ -788,6 +816,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             except Exception:
                 pass
 
+        self._load_games()
         self._start_sync()
         return dict(self._auth_state)
 
@@ -821,6 +850,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             except Exception:
                 pass
 
+        self._load_games()
+
     def _start_sync(self) -> None:
         if self._sync_worker and self._sync_worker.isRunning():
             return  # already syncing
@@ -845,30 +876,39 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._auth_state["syncMessage"] = message
         if success:
             self._active_backend = LocalSQLiteBackend()
+            self._load_games()
 
     # ---- Dashboard IPC public API ----
 
     def get_dashboard_items_from_ipc(
         self, game_name: str, version_name: str | None
     ) -> list[dict]:
+        if not game_name:
+            return []
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_items(user_id, game_name, version_name or None)
 
     def get_dashboard_bosses_from_ipc(
         self, game_name: str, version_name: str | None
     ) -> list[dict]:
+        if not game_name:
+            return []
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_bosses(user_id, game_name, version_name or None)
 
     def get_dashboard_runs_from_ipc(
         self, game_name: str, version_name: str | None
     ) -> list[dict]:
+        if not game_name:
+            return []
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_runs(user_id, game_name, None)
 
     def get_dashboard_stats_from_ipc(
         self, game_name: str, version_name: str | None
     ) -> dict:
+        if not game_name:
+            return {"totalRuns": 0, "avgDuration": None, "longestRun": None, "bossKillPercent": 0.0, "mostPopularItem": None}
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_stats(user_id, game_name, version_name or None)
 
@@ -878,11 +918,14 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         game_name = current_game.name if current_game else ""
         version_name = current_version.name if current_version else None
         user_id = self._auth_state.get("userId") or 0
-        dashboard = {
-            "items": self._active_backend.get_items(user_id, game_name, version_name),
-            "bosses": self._active_backend.get_bosses(user_id, game_name, version_name),
-            "runsHistory": self._active_backend.get_runs(user_id, game_name, None),
-        }
+        if game_name:
+            dashboard = {
+                "items": self._active_backend.get_items(user_id, game_name, version_name),
+                "bosses": self._active_backend.get_bosses(user_id, game_name, version_name),
+                "runsHistory": self._active_backend.get_runs(user_id, game_name, None),
+            }
+        else:
+            dashboard = {"items": [], "bosses": [], "runsHistory": []}
 
         finetuned_models = self.get_finetuned_models_from_ipc()
 

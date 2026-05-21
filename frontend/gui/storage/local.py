@@ -305,6 +305,65 @@ class LocalSQLiteBackend(StorageBackend):
         finally:
             conn.close()
 
+    def ensure_game(self, user_id: int, game_name: str) -> None:
+        conn = self._connect()
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO dash_games (user_id, name) VALUES (?, ?)",
+                (user_id, game_name),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def ensure_version(self, user_id: int, game_name: str, version_name: str) -> None:
+        conn = self._connect()
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO dash_games (user_id, name) VALUES (?, ?)",
+                (user_id, game_name),
+            )
+            game_row = conn.execute(
+                "SELECT id FROM dash_games WHERE user_id = ? AND name = ?",
+                (user_id, game_name),
+            ).fetchone()
+            if game_row:
+                conn.execute(
+                    "INSERT OR IGNORE INTO dash_game_versions (game_id, name) VALUES (?, ?)",
+                    (game_row[0], version_name),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def list_game_names(self, user_id: int) -> list[str]:
+        conn = self._connect()
+        try:
+            rows = conn.execute(
+                "SELECT name FROM dash_games WHERE user_id = ? ORDER BY name",
+                (user_id,),
+            ).fetchall()
+            return [r[0] for r in rows]
+        finally:
+            conn.close()
+
+    def list_version_names(self, user_id: int, game_name: str) -> list[str]:
+        conn = self._connect()
+        try:
+            game_row = conn.execute(
+                "SELECT id FROM dash_games WHERE user_id = ? AND name = ?",
+                (user_id, game_name),
+            ).fetchone()
+            if not game_row:
+                return []
+            rows = conn.execute(
+                "SELECT name FROM dash_game_versions WHERE game_id = ? ORDER BY name",
+                (game_row[0],),
+            ).fetchall()
+            return [r[0] for r in rows]
+        finally:
+            conn.close()
+
     @staticmethod
     def _empty_stats() -> dict:
         return {
