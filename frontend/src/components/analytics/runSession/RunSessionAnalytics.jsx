@@ -19,7 +19,6 @@ import {
   Scatter,
   ReferenceLine,
 } from 'recharts';
-import { initialData } from '../../../dataStore.js';
 import { durationToSeconds, formatSecondsAsHMS } from '../../../utils/duration';
 
 /** Flat-top hexagon corners for SVG polygon */
@@ -88,15 +87,12 @@ const glitchInjectVariants = {
  */
 export default function RunSessionAnalytics({ data }) {
   const runsHistory = useMemo(() => {
-    const fallbackRuns = initialData.dashboard.runsHistory ?? [];
-    if (!data?.dashboard) return fallbackRuns;
-    const runs = data.dashboard.runsHistory;
-    if (!Array.isArray(runs) || runs.length === 0) return fallbackRuns;
-    return runs;
+    const runs = data?.dashboard?.runsHistory;
+    return Array.isArray(runs) ? runs : [];
   }, [data]);
 
-  const itemsCatalog = data?.dashboard?.items?.length ? data.dashboard.items : (initialData.dashboard.items ?? []);
-  const bossesCatalog = data?.dashboard?.bosses?.length ? data.dashboard.bosses : (initialData.dashboard.bosses ?? []);
+  const itemsCatalog = data?.dashboard?.items ?? [];
+  const bossesCatalog = data?.dashboard?.bosses ?? [];
 
   const globalAverageDurationSeconds = useMemo(() => {
     if (!runsHistory.length) return 0;

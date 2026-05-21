@@ -26,8 +26,7 @@ function applyGameLibrarySlice(data, game, version) {
   const gameLibrary = dashboard.gameLibrary ?? {};
   const gameNode = game ? gameLibrary[game] : null;
   const versionNode = version ? gameNode?.[version] : null;
-  const fallbackVersionNode = !versionNode && version ? gameLibrary['Elden Ring']?.[version] : null;
-  const libraryNode = versionNode ?? fallbackVersionNode ?? null;
+  const libraryNode = versionNode ?? null;
   return {
     ...data,
     dashboard: {

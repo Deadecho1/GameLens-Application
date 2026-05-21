@@ -203,7 +203,7 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate font-data text-sm font-semibold text-slate-100">{displayName}</p>
-                      <p className="truncate font-data text-[11px] text-slate-500">{user.email ?? 'admin@gamelens.io'}</p>
+                      <p className="truncate font-data text-[11px] text-slate-500">{user.email ?? ''}</p>
                     </div>
                   </div>
                   <button
