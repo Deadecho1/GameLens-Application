@@ -69,10 +69,8 @@ export default function WorkflowTab({
 
   const ingestFiles = useCallback(
     (fileList) => {
-      const files = Array.from(fileList || []).filter(
-        (f) =>
-          f.type.startsWith("video/") ||
-          /\.(mp4|webm|mov|mkv|avi)$/i.test(f.name),
+      const files = Array.from(fileList || []).filter((f) =>
+        /\.mp4$/i.test(f.name),
       );
       if (files.length === 0) return;
 
@@ -103,6 +101,10 @@ export default function WorkflowTab({
     },
     [onPatch, processing],
   );
+
+  const handleResetStagedFiles = useCallback(() => {
+    onPatch({ processing: { videoFiles: [], videoFilePaths: [] } });
+  }, [onPatch]);
 
   const progressVisual = useMemo(() => {
     const s = processing.status;
@@ -278,7 +280,7 @@ export default function WorkflowTab({
                 <input
                   ref={inputRef}
                   type="file"
-                  accept="video/*,.mp4,.webm,.mov,.mkv,.avi"
+                  accept="video/mp4,.mp4"
                   multiple
                   className="hidden"
                   onChange={(e) => {
@@ -293,10 +295,27 @@ export default function WorkflowTab({
                 <button
                   type="button"
                   className="font-data inline-flex items-center gap-2 rounded-xl border border-blue-500/35 bg-slate-900/60 px-4 py-2 text-sm text-cyan-200 backdrop-blur-sm transition hover:border-cyan-400/50"
+                  onClick={() => inputRef.current?.click()}
+                >
+                  <UploadCloud className="h-4 w-4" />
+                  Select MP4 file(s)
+                </button>
+                <button
+                  type="button"
+                  className="font-data inline-flex items-center gap-2 rounded-xl border border-cyan-500/35 bg-slate-900/60 px-4 py-2 text-sm text-cyan-200 backdrop-blur-sm transition hover:border-cyan-400/50"
                   onClick={onChooseFolder}
                 >
                   <FolderOpen className="h-4 w-4" />
-                  upload file
+                  Select folder
+                </button>
+                <button
+                  type="button"
+                  className="font-data inline-flex items-center gap-2 rounded-xl border border-red-500/35 bg-slate-900/60 px-4 py-2 text-sm text-red-200 backdrop-blur-sm transition hover:border-red-400/50 disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={handleResetStagedFiles}
+                  disabled={processing.videoFiles.length === 0}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Reset staged files
                 </button>
                 <code className="font-data max-w-full flex-1 truncate rounded-lg border border-slate-800 bg-black/50 px-3 py-2 text-[11px] text-cyan-600/80">
                   {processing.pipelinePath}
@@ -305,7 +324,7 @@ export default function WorkflowTab({
               <ul className="font-data mt-4 max-h-28 space-y-1 overflow-y-auto rounded-xl border border-slate-800 bg-black/35 p-2 text-xs">
                 {processing.videoFiles.length === 0 ? (
                   <li className="py-4 text-center text-slate-600">
-                    No clips staged
+                    No MP4 clips staged
                   </li>
                 ) : (
                   processing.videoFiles.map((f) => (

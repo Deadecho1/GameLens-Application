@@ -5,6 +5,7 @@ declare global {
     gamelens?: {
       request(method: string, params?: Record<string, unknown>): Promise<any>;
       chooseFolder(): Promise<string | null>;
+      chooseFile(opts?: Record<string, unknown>): Promise<string | null>;
     };
   }
 }

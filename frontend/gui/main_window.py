@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import shutil
+import uuid
 from datetime import date
 from pathlib import Path
 
@@ -86,6 +88,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "selectedModel": "base",
             "logs": ["[INFO] System ready..."],
         }
+        self._staged_video_dir: Path | None = None
         self._pipeline_runner = PipelineRunner()
         self._auth_state: dict = {
             "loggedIn": False,
@@ -405,6 +408,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
     def _on_pipeline_finished(self, success: bool, message: str) -> None:
         self._processing_state["logs"].append(message)
         self._processing_state["status"] = "completed" if success else "stopped"
+        self._cleanup_staged_video_dir()
         if success:
             self._load_games()
             if self._auth_state.get("loggedIn"):
@@ -574,7 +578,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         if not path.exists() or not path.is_dir():
             raise ValueError(f"Invalid folder: {pipeline_path}")
 
-        allowed_video_exts = {".mp4", ".webm", ".mov", ".mkv", ".avi"}
+        allowed_video_exts = {".mp4"}
         files = sorted(
             [
                 p.name
@@ -593,10 +597,18 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         pipeline_path: str | None = None,
         file_paths: list[str] | None = None,
     ) -> None:
-        cleaned = [str(name).strip() for name in file_names if str(name).strip()]
+        cleaned = [
+            str(name).strip()
+            for name in file_names
+            if str(name).strip() and str(name).strip().lower().endswith(".mp4")
+        ]
         self._processing_state["videoFiles"] = sorted(list(dict.fromkeys(cleaned)))
 
-        cleaned_paths = [str(p).strip() for p in (file_paths or []) if str(p).strip()]
+        cleaned_paths = [
+            str(p).strip()
+            for p in (file_paths or [])
+            if str(p).strip() and str(p).strip().lower().endswith(".mp4")
+        ]
         self._processing_state["videoFilePaths"] = sorted(
             list(dict.fromkeys(cleaned_paths))
         )
@@ -609,6 +621,57 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         if not path.exists() or not path.is_dir():
             raise ValueError(f"Invalid folder: {pipeline_path}")
         self._processing_state["pipelinePath"] = str(path)
+
+    def _cleanup_staged_video_dir(self) -> None:
+        if self._staged_video_dir is None:
+            return
+        shutil.rmtree(self._staged_video_dir, ignore_errors=True)
+        self._staged_video_dir = None
+
+    def _prepare_staged_video_dir(self, staged_file_paths: list[str]) -> Path:
+        from app_core.config import AppConfig as _AC
+
+        self._cleanup_staged_video_dir()
+
+        cfg = _AC.load()
+        staging_root = cfg.project_root / "data" / ".pipeline_staging"
+        staging_root.mkdir(parents=True, exist_ok=True)
+
+        run_dir = staging_root / uuid.uuid4().hex
+        run_dir.mkdir(parents=True, exist_ok=True)
+
+        used_names: set[str] = set()
+        staged_count = 0
+
+        for raw_path in staged_file_paths:
+            src = Path(str(raw_path).strip())
+            if not src.exists() or not src.is_file():
+                continue
+            if src.suffix.lower() != ".mp4":
+                continue
+
+            stem = src.stem
+            suffix = src.suffix.lower()
+            candidate_name = f"{stem}{suffix}"
+            bump = 2
+            while candidate_name in used_names:
+                candidate_name = f"{stem}_{bump}{suffix}"
+                bump += 1
+            used_names.add(candidate_name)
+
+            dst = run_dir / candidate_name
+            try:
+                dst.symlink_to(src.resolve())
+            except Exception:
+                shutil.copy2(src, dst)
+            staged_count += 1
+
+        if staged_count == 0:
+            shutil.rmtree(run_dir, ignore_errors=True)
+            raise ValueError("No valid MP4 files were staged.")
+
+        self._staged_video_dir = run_dir
+        return run_dir
 
     def _resolve_openai_api_key(self) -> str:
         ui_key = (
@@ -626,37 +689,33 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         if version is None:
             raise ValueError("Select a game version before running the pipeline")
 
-        pipeline_path = str(self._processing_state.get("pipelinePath") or "").strip()
-        if not pipeline_path:
-            raise ValueError("Pipeline path is not set")
-
-        video_dir = Path(pipeline_path)
-        if not video_dir.exists() or not video_dir.is_dir():
-            raise ValueError(f"Pipeline path is not a valid folder: {pipeline_path}")
-
-        staged_file_paths = self._processing_state.get("videoFilePaths") or []
-        if isinstance(staged_file_paths, list) and staged_file_paths:
-            parent_dirs = sorted(
-                {
-                    str(Path(p).resolve().parent)
-                    for p in staged_file_paths
-                    if Path(p).exists()
-                }
-            )
-            if len(parent_dirs) == 1:
-                video_dir = Path(parent_dirs[0])
-                self._processing_state["pipelinePath"] = str(video_dir)
-            elif len(parent_dirs) > 1:
-                raise ValueError(
-                    "Staged files come from multiple folders. Please stage files from one folder only, "
-                    "or choose a single pipeline path folder."
-                )
-
         openai_key = self._resolve_openai_api_key()
         if not openai_key:
             raise ValueError(
                 "OpenAI API key is not set. Add it in Settings or set OPENAI_API_KEY before running the pipeline."
             )
+
+        staged_file_paths_raw = self._processing_state.get("videoFilePaths") or []
+        staged_file_paths = (
+            [str(p).strip() for p in staged_file_paths_raw if str(p).strip()]
+            if isinstance(staged_file_paths_raw, list)
+            else []
+        )
+
+        if staged_file_paths:
+            video_dir = self._prepare_staged_video_dir(staged_file_paths)
+        else:
+            self._cleanup_staged_video_dir()
+            pipeline_path = str(
+                self._processing_state.get("pipelinePath") or ""
+            ).strip()
+            if not pipeline_path:
+                raise ValueError("Pipeline path is not set")
+            video_dir = Path(pipeline_path)
+            if not video_dir.exists() or not video_dir.is_dir():
+                raise ValueError(
+                    f"Pipeline path is not a valid folder: {pipeline_path}"
+                )
 
         selected_model = self._processing_state.get("selectedModel", "base")
         model_dir = None
@@ -693,6 +752,10 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         )
         self._processing_state["status"] = "running"
         self._processing_state["logs"].append("[RUN] Started from Electron")
+        if staged_file_paths:
+            self._processing_state["logs"].append(
+                f"[RUN] Using {len(staged_file_paths)} staged MP4 file(s)."
+            )
         self._pipeline_runner.start_pipeline(config)
 
     def stop_pipeline_from_ipc(self) -> None:
