@@ -29,6 +29,11 @@ models/choice/models/**
 # output data
 data/versions
 
+# local SQLite database (created at runtime, never committed)
+data/gamelens_local.db
+data/gamelens_local.db-shm
+data/gamelens_local.db-wal
+
 # logs
 *.log
 
