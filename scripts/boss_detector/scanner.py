@@ -2,27 +2,30 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Protocol
 
 from app_core.logging import get_logger
 
-from .classifier import BossClassifier
-
 if TYPE_CHECKING:
     from scripts.run_exporter.video_frame_provider import VideoFrameProvider
+
+
+class BossClassifierProtocol(Protocol):
+    def classify_frame(self, image): ...
+
 
 logger = get_logger(__name__)
 
 
 @dataclass
 class BossFightSegment:
-    boss_class: str               # raw YOLO class name
-    boss_names: list              # human-readable names from OpenAI (filled later)
+    boss_class: str  # raw YOLO class name
+    boss_names: list  # human-readable names from OpenAI (filled later)
     start_time: float
     end_time: float
     duration: float
     player_died: bool
-    sample_frame_index: int       # highest-confidence frame index for OpenAI
+    sample_frame_index: int  # highest-confidence frame index for OpenAI
 
 
 @dataclass
@@ -36,7 +39,7 @@ class _FrameDetection:
 class BossScanner:
     def __init__(
         self,
-        classifier: BossClassifier,
+        classifier: BossClassifierProtocol,
         confidence_threshold: float = 0.99,
         sample_stride: int = 30,
         min_duration_s: float = 2.0,
@@ -84,15 +87,19 @@ class BossScanner:
                 result.confidence >= self.confidence_threshold
                 and result.class_name not in self.exclude_classes
             ):
-                detections.append(_FrameDetection(
-                    frame_index=frame_index,
-                    time=frame_index / fps,
-                    class_name=result.class_name,
-                    confidence=result.confidence,
-                ))
+                detections.append(
+                    _FrameDetection(
+                        frame_index=frame_index,
+                        time=frame_index / fps,
+                        class_name=result.class_name,
+                        confidence=result.confidence,
+                    )
+                )
                 logger.debug(
                     "  boss frame %d: class=%s conf=%.3f",
-                    frame_index, result.class_name, result.confidence,
+                    frame_index,
+                    result.class_name,
+                    result.confidence,
                 )
 
             frame_index += self.sample_stride
@@ -131,7 +138,9 @@ class BossScanner:
             if duration < self.min_duration_s:
                 logger.debug(
                     "  boss segment [%.1fs-%.1fs] too short (%.1fs), discarding",
-                    start_time, end_time, duration,
+                    start_time,
+                    end_time,
+                    duration,
                 )
                 continue
 
@@ -143,18 +152,24 @@ class BossScanner:
 
             player_died = abs(end_time - run_end_time) <= self.died_tolerance_s
 
-            segments.append(BossFightSegment(
-                boss_class=boss_class,
-                boss_names=[],
-                start_time=start_time,
-                end_time=end_time,
-                duration=duration,
-                player_died=player_died,
-                sample_frame_index=sample_det.frame_index,
-            ))
+            segments.append(
+                BossFightSegment(
+                    boss_class=boss_class,
+                    boss_names=[],
+                    start_time=start_time,
+                    end_time=end_time,
+                    duration=duration,
+                    player_died=player_died,
+                    sample_frame_index=sample_det.frame_index,
+                )
+            )
             logger.debug(
                 "  boss segment: class=%s start=%.1fs end=%.1fs duration=%.1fs died=%s",
-                boss_class, start_time, end_time, duration, player_died,
+                boss_class,
+                start_time,
+                end_time,
+                duration,
+                player_died,
             )
 
         return segments

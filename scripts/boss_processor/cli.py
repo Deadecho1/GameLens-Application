@@ -2,10 +2,12 @@ import argparse
 import logging
 from pathlib import Path
 
-from app_core.config import AppConfig
-from app_core.logging import configure_logging
-
 from dotenv import load_dotenv
+
+from app_core.config import AppConfig
+from app_core.logging import configure_logging, get_logger
+
+logger = get_logger(__name__)
 
 
 def main():
@@ -41,6 +43,14 @@ def main():
         action="store_true",
         help="Print detailed progress logs",
     )
+    parser.add_argument(
+        "--allow-llm-fallback",
+        action="store_true",
+        help=(
+            "Allow automatic fallback to Gemma/OpenAI if YOLO backend initialization fails. "
+            "Disabled by default to avoid accidental LLM usage."
+        ),
+    )
     args = parser.parse_args()
 
     configure_logging(logging.DEBUG if args.verbose else logging.INFO)
@@ -60,21 +70,61 @@ def main():
 
     config = AppConfig.load()
 
+    scanner_kwargs: dict = {}
+
     if args.boss_backend == "gemma":
         from scripts.boss_detector.gemma_classifier import GemmaBossClassifier
+
         classifier = GemmaBossClassifier()
+        # Remote LLM classification is expensive; scan more sparsely.
+        scanner_kwargs = {
+            "confidence_threshold": 0.75,
+            "sample_stride": 150,
+            "gap_tolerance_frames": 300,
+        }
     else:
         if args.boss_model is None:
             parser.error("--boss-model is required when --boss-backend=yolo")
         boss_model_path = Path(args.boss_model)
         if not boss_model_path.exists():
             raise FileNotFoundError(f"Boss model not found: {boss_model_path}")
-        from scripts.boss_detector.classifier import BossClassifier
-        classifier = BossClassifier(str(boss_model_path))
+
+        try:
+            from scripts.boss_detector.classifier import BossClassifier
+
+            classifier = BossClassifier(str(boss_model_path))
+        except Exception as e:
+            if args.allow_llm_fallback:
+                logger.warning(
+                    "YOLO boss backend unavailable (%s). Falling back to LLM backend because --allow-llm-fallback is enabled.",
+                    e,
+                )
+                from scripts.boss_detector.gemma_classifier import GemmaBossClassifier
+
+                classifier = GemmaBossClassifier()
+                scanner_kwargs = {
+                    "confidence_threshold": 0.75,
+                    "sample_stride": 150,
+                    "gap_tolerance_frames": 300,
+                }
+            else:
+                hint = ""
+                if "cv2" in str(e) and "IMREAD_COLOR" in str(e):
+                    hint = (
+                        " Detected a broken OpenCV import (missing cv2.IMREAD_COLOR). "
+                        "Reinstall opencv-python/opencv-python-headless in this environment."
+                    )
+                raise RuntimeError(
+                    "YOLO boss backend initialization failed. "
+                    "LLM fallback is disabled by default."
+                    f"{hint}"
+                    " If you explicitly want fallback, pass --allow-llm-fallback."
+                    f" Original error: {e}"
+                ) from e
 
     processor = BossProcessor(
         frame_provider=VideoFrameProvider(video_dir=video_dir),
-        boss_scanner=BossScanner(classifier=classifier),
+        boss_scanner=BossScanner(classifier=classifier, **scanner_kwargs),
         boss_name_extractor=BossNameExtractor(base_url=config.classifier_base_url),
     )
 

@@ -12,7 +12,8 @@ from PIL import Image
 from .model import BossDetectionResult
 
 _GOOGLE_AI_STUDIO_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
-_DEFAULT_MODEL = "models/gemma-4-26b-a4b-it"
+_DEFAULT_GOOGLE_MODEL = "models/gemma-4-26b-a4b-it"
+_DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
 _PROMPT = """You are analyzing a gameplay screenshot.
 Determine whether this frame shows a boss fight or regular gameplay.
 
@@ -30,12 +31,31 @@ The "confidence" field must be a float between 0.0 and 1.0.
 
 
 class GemmaBossClassifier:
-    """Classifies gameplay frames as boss fight or regular gameplay using Gemma 4 via Google AI Studio."""
+    """Classifies gameplay frames as boss fight or regular gameplay using a vision LLM.
 
-    def __init__(self, model: str = _DEFAULT_MODEL) -> None:
-        api_key = os.environ.get("GOOGLE_AI_STUDIO_API_KEY")
-        self._client = OpenAI(api_key=api_key, base_url=_GOOGLE_AI_STUDIO_BASE_URL)
-        self._model = model
+    Priority order:
+    1) Google AI Studio Gemma (if GOOGLE_AI_STUDIO_API_KEY is set)
+    2) OpenAI API (if OPENAI_API_KEY is set)
+    """
+
+    def __init__(self, model: str | None = None) -> None:
+        google_api_key = (os.environ.get("GOOGLE_AI_STUDIO_API_KEY") or "").strip()
+        openai_api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
+
+        if google_api_key:
+            self._client = OpenAI(
+                api_key=google_api_key,
+                base_url=_GOOGLE_AI_STUDIO_BASE_URL,
+            )
+            self._model = model or _DEFAULT_GOOGLE_MODEL
+        elif openai_api_key:
+            self._client = OpenAI(api_key=openai_api_key)
+            self._model = model or _DEFAULT_OPENAI_MODEL
+        else:
+            raise RuntimeError(
+                "No API key found for LLM boss classifier. "
+                "Set GOOGLE_AI_STUDIO_API_KEY or OPENAI_API_KEY."
+            )
 
     def classify_frame(self, image: Image.Image) -> BossDetectionResult:
         buf = BytesIO()
@@ -61,8 +81,12 @@ class GemmaBossClassifier:
 
         content = resp.choices[0].message.content
         if isinstance(content, str):
-            content = re.sub(r"^<thought>.*?</thought>", "", content, flags=re.DOTALL).strip()
+            content = re.sub(
+                r"^<thought>.*?</thought>", "", content, flags=re.DOTALL
+            ).strip()
         parsed = json.loads(content) if isinstance(content, str) else content
+        if not isinstance(parsed, dict):
+            parsed = {}
         class_name = str(parsed.get("class", "regular_gameplay"))
         confidence = float(parsed.get("confidence", 0.0))
         return BossDetectionResult(class_name=class_name, confidence=confidence)

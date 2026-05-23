@@ -704,6 +704,10 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
         if staged_file_paths:
             video_dir = self._prepare_staged_video_dir(staged_file_paths)
+            # Isolate intermediate JSON outputs for this staged run to avoid
+            # mixing with stale files from previous runs in the selected version.
+            event_json_dir = video_dir / "event_json"
+            run_json_dir = video_dir / "run_json"
         else:
             self._cleanup_staged_video_dir()
             pipeline_path = str(
@@ -716,6 +720,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
                 raise ValueError(
                     f"Pipeline path is not a valid folder: {pipeline_path}"
                 )
+            event_json_dir = version.event_json_dir
+            run_json_dir = version.run_json_dir
 
         selected_model = self._processing_state.get("selectedModel", "base")
         model_dir = None
@@ -738,8 +744,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
 
         config = PipelineConfig(
             video_dir=video_dir,
-            event_json_dir=version.event_json_dir,
-            run_json_dir=version.run_json_dir,
+            event_json_dir=event_json_dir,
+            run_json_dir=run_json_dir,
             only_events=selected_option == "only event",
             only_export=selected_option == "only export",
             verbose=selected_option == "verbose",

@@ -68,6 +68,24 @@ class PipelineRunner(QObject):
                 export_cmd.append("--verbose")
             self._queue.append(("Processing Events...", export_cmd))
 
+            from app_core.config import AppConfig
+
+            boss_model_path = AppConfig.load().boss_model_path
+            boss_cmd = [
+                sys.executable,
+                "-m",
+                "scripts.boss_processor.cli",
+                "--run-json-dir",
+                str(config.run_json_dir),
+                "--video-dir",
+                str(config.video_dir),
+                "--boss-model",
+                str(boss_model_path),
+            ]
+            if config.verbose:
+                boss_cmd.append("--verbose")
+            self._queue.append(("Processing Boss Encounters...", boss_cmd))
+
         if config.game_name and config.version_name:
             self._queue.append(
                 (

@@ -4,7 +4,7 @@ import gc
 import json
 import re
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from app_core.logging import get_logger
 from scripts.boss_detector.scanner import BossScanner
@@ -39,13 +39,20 @@ class BossProcessor:
     def _process_run_json(self, run_json_path: Path, video_dir: Path) -> None:
         match = _RUN_JSON_RE.match(run_json_path.name)
         if not match:
-            logger.warning("Skipping %s: filename does not match expected pattern", run_json_path.name)
+            logger.warning(
+                "Skipping %s: filename does not match expected pattern",
+                run_json_path.name,
+            )
             return
 
         video_stem = match.group(1)
         video_path = self._find_video(video_dir, video_stem)
         if video_path is None:
-            logger.warning("Skipping %s: no matching video found for stem %r", run_json_path.name, video_stem)
+            logger.warning(
+                "Skipping %s: no matching video found for stem %r",
+                run_json_path.name,
+                video_stem,
+            )
             return
 
         with open(run_json_path, encoding="utf-8") as f:
@@ -55,11 +62,19 @@ class BossProcessor:
         end_time: Optional[float] = run_data.get("end_time")
 
         if start_time is None or end_time is None:
-            logger.warning("Skipping %s: missing start_time or end_time", run_json_path.name)
+            logger.warning(
+                "Skipping %s: missing start_time or end_time", run_json_path.name
+            )
             return
 
         fps = self.frame_provider.get_fps(video_path.name)
-        logger.debug("%s: fps=%.2f start=%.2fs end=%.2fs", run_json_path.name, fps, start_time, end_time)
+        logger.debug(
+            "%s: fps=%.2f start=%.2fs end=%.2fs",
+            run_json_path.name,
+            fps,
+            start_time,
+            end_time,
+        )
 
         try:
             segments = self.boss_scanner.scan_time_range(
@@ -90,29 +105,45 @@ class BossProcessor:
                     name_result = self.boss_name_extractor.extract_name(fb)
                     del fb
                     seg.boss_names = name_result.boss_names
-                    logger.debug("  class=%s -> names=%r", seg.boss_class, seg.boss_names)
+                    logger.debug(
+                        "  class=%s -> names=%r", seg.boss_class, seg.boss_names
+                    )
                 except Exception as e:
-                    logger.warning("  boss name extraction failed for class=%s: %s", seg.boss_class, e)
+                    logger.warning(
+                        "  boss name extraction failed for class=%s: %s",
+                        seg.boss_class,
+                        e,
+                    )
                     seg.boss_names = []
                 finally:
                     self.frame_provider.release_video(video_path.name)
                     gc.collect()
 
             if not seg.boss_names:
-                logger.debug(
-                    "  segment [%.1fs-%.1fs] discarded: no boss names extracted",
-                    seg.start_time, seg.end_time,
+                fallback_name = (
+                    seg.boss_class
+                    if seg.boss_class
+                    and seg.boss_class not in {"boss", "regular_gameplay"}
+                    else "Unknown Boss"
                 )
-                continue
+                seg.boss_names = [fallback_name]
+                logger.debug(
+                    "  segment [%.1fs-%.1fs] no boss name extracted, using fallback=%r",
+                    seg.start_time,
+                    seg.end_time,
+                    fallback_name,
+                )
 
-            boss_fights.append({
-                "boss_names": seg.boss_names,
-                "boss_class": seg.boss_class,
-                "start_time": seg.start_time,
-                "end_time": seg.end_time,
-                "duration_seconds": seg.duration,
-                "player_died": seg.player_died,
-            })
+            boss_fights.append(
+                {
+                    "boss_names": seg.boss_names,
+                    "boss_class": seg.boss_class,
+                    "start_time": seg.start_time,
+                    "end_time": seg.end_time,
+                    "duration_seconds": seg.duration,
+                    "player_died": seg.player_died,
+                }
+            )
 
         run_data["boss_fights"] = boss_fights
 
@@ -128,7 +159,9 @@ class BossProcessor:
             logger.warning("No run JSON files found in: %s", run_json_dir)
             return
 
-        logger.info("Boss processing: %d run JSON(s) in %s", len(run_jsons), run_json_dir)
+        logger.info(
+            "Boss processing: %d run JSON(s) in %s", len(run_jsons), run_json_dir
+        )
 
         ok = 0
         failed = 0
