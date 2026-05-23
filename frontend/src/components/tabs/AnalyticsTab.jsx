@@ -1,27 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronDown, Columns2, GitCompare } from 'lucide-react';
-import GeneralMissionStats from '../analytics/GeneralMissionStats';
-import BossesAnalytics from '../analytics/BossesAnalytics';
-import ItemsPowerLab from '../analytics/ItemsPowerLab';
-import { initialData } from '../../dataStore.js';
-import { sliceAnalyticsDataByVersion } from '../../utils/analyticsVersionSlice';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { ChevronDown, Columns2, GitCompare } from "lucide-react";
+import GeneralMissionStats from "../analytics/GeneralMissionStats";
+import BossesAnalytics from "../analytics/BossesAnalytics";
+import ItemsPowerLab from "../analytics/ItemsPowerLab";
+import { initialData } from "../../dataStore.js";
+import { sliceAnalyticsDataByVersion } from "../../utils/analyticsVersionSlice";
 
 const SUB_TABS = [
-  { id: 'general', label: 'GENERAL' },
-  { id: 'bosses', label: 'BOSSES' },
-  { id: 'items', label: 'ITEMS' },
+  { id: "general", label: "GENERAL" },
+  { id: "bosses", label: "BOSSES" },
+  { id: "items", label: "ITEMS" },
 ];
 
 function renderActiveSubView(sub, data) {
-  if (sub === 'general') return <GeneralMissionStats data={data} />;
-  if (sub === 'bosses') return <BossesAnalytics data={data} />;
-  if (sub === 'items') return <ItemsPowerLab data={data} />;
+  if (sub === "general") return <GeneralMissionStats data={data} />;
+  if (sub === "bosses") return <BossesAnalytics data={data} />;
+  if (sub === "items") return <ItemsPowerLab data={data} />;
   return null;
 }
 
 function applyGameLibrarySlice(data, game, version) {
-  if (!data || typeof data !== 'object') return data;
+  if (!data || typeof data !== "object") return data;
   const dashboard = data.dashboard ?? {};
   const gameLibrary = dashboard.gameLibrary ?? {};
   const gameNode = game ? gameLibrary[game] : null;
@@ -31,9 +31,9 @@ function applyGameLibrarySlice(data, game, version) {
     ...data,
     dashboard: {
       ...dashboard,
-      items: libraryNode?.items ?? [],
-      bosses: libraryNode?.bosses ?? [],
-      generalStats: libraryNode?.generalStats ?? [],
+      items: libraryNode?.items ?? dashboard.items ?? [],
+      bosses: libraryNode?.bosses ?? dashboard.bosses ?? [],
+      generalStats: libraryNode?.generalStats ?? dashboard.generalStats ?? [],
     },
   };
 }
@@ -59,13 +59,13 @@ function VersionDropdown({
       if (rootRef.current && !rootRef.current.contains(e.target)) close();
     };
     const onKey = (e) => {
-      if (e.key === 'Escape') close();
+      if (e.key === "Escape") close();
     };
-    document.addEventListener('mousedown', onDocDown);
-    document.addEventListener('keydown', onKey);
+    document.addEventListener("mousedown", onDocDown);
+    document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener('mousedown', onDocDown);
-      document.removeEventListener('keydown', onKey);
+      document.removeEventListener("mousedown", onDocDown);
+      document.removeEventListener("keydown", onKey);
     };
   }, [isOpen, close]);
 
@@ -80,7 +80,10 @@ function VersionDropdown({
   };
 
   return (
-    <div ref={rootRef} className="relative inline-flex max-w-full shrink-0 flex-col items-start gap-1">
+    <div
+      ref={rootRef}
+      className="relative inline-flex max-w-full shrink-0 flex-col items-start gap-1"
+    >
       <span
         id={`${id}-label`}
         className="shrink-0 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500"
@@ -97,12 +100,12 @@ function VersionDropdown({
         disabled={disabled}
         onClick={toggle}
         className={`font-data relative box-border flex h-8 min-w-[5ch] max-w-[16rem] w-max cursor-pointer items-center justify-center gap-1 rounded-lg border bg-slate-900 px-3 pr-8 text-xs leading-none text-slate-200 outline-none transition ring-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 ${
-          isOpen ? 'border-cyan-500/50' : 'border-slate-800'
+          isOpen ? "border-cyan-500/50" : "border-slate-800"
         }`}
       >
-        <span className="min-w-0 truncate text-center">{value || '—'}</span>
+        <span className="min-w-0 truncate text-center">{value || "—"}</span>
         <ChevronDown
-          className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
           strokeWidth={2}
           aria-hidden
         />
@@ -124,8 +127,8 @@ function VersionDropdown({
                   aria-selected={selected}
                   className={`font-data w-full px-3 py-2 text-left text-xs leading-snug outline-none ring-0 transition focus:outline-none ${
                     selected
-                      ? 'bg-slate-800/55 text-cyan-100 hover:bg-cyan-500/20 hover:text-cyan-200 focus:bg-cyan-500/20 focus:text-cyan-200'
-                      : 'text-slate-200 hover:bg-cyan-500/20 hover:text-cyan-200 focus:bg-cyan-500/20 focus:text-cyan-200'
+                      ? "bg-slate-800/55 text-cyan-100 hover:bg-cyan-500/20 hover:text-cyan-200 focus:bg-cyan-500/20 focus:text-cyan-200"
+                      : "text-slate-200 hover:bg-cyan-500/20 hover:text-cyan-200 focus:bg-cyan-500/20 focus:text-cyan-200"
                   }`}
                   onClick={() => selectVersion(v)}
                 >
@@ -153,8 +156,10 @@ export default function AnalyticsTab({ data, onPatch }) {
     return initialData.setup.versions ?? [];
   }, [data?.setup?.versions]);
 
-  const [versionA, setVersionA] = useState(() => versions[0] ?? '');
-  const [versionB, setVersionB] = useState(() => versions[1] ?? versions[0] ?? '');
+  const [versionA, setVersionA] = useState(() => versions[0] ?? "");
+  const [versionB, setVersionB] = useState(
+    () => versions[1] ?? versions[0] ?? "",
+  );
   const [splitView, setSplitView] = useState(false);
   const [isOpenA, setIsOpenA] = useState(false);
   const [isOpenB, setIsOpenB] = useState(false);
@@ -170,7 +175,7 @@ export default function AnalyticsTab({ data, onPatch }) {
   }, []);
 
   useEffect(() => {
-    const a = versions[0] ?? '';
+    const a = versions[0] ?? "";
     const b = versions[1] ?? a;
     setVersionA((prev) => (versions.includes(prev) ? prev : a));
     setVersionB((prev) => (versions.includes(prev) ? prev : b));
@@ -181,25 +186,25 @@ export default function AnalyticsTab({ data, onPatch }) {
     setIsOpenB(false);
   }, [versions]);
 
-  const dataA = useMemo(
-    () => {
-      const source = splitView ? sliceAnalyticsDataByVersion(data, versionA) : data;
-      const activeGame = source?.setup?.selectedGame ?? initialData.setup.selectedGame;
-      const activeVersion = splitView ? versionA : source?.setup?.selectedVersion;
-      return applyGameLibrarySlice(source, activeGame, activeVersion);
-    },
-    [data, splitView, versionA],
-  );
+  const dataA = useMemo(() => {
+    const source = splitView
+      ? sliceAnalyticsDataByVersion(data, versionA)
+      : data;
+    const activeGame =
+      source?.setup?.selectedGame ?? initialData.setup.selectedGame;
+    const activeVersion = splitView ? versionA : source?.setup?.selectedVersion;
+    return applyGameLibrarySlice(source, activeGame, activeVersion);
+  }, [data, splitView, versionA]);
 
-  const dataB = useMemo(
-    () => {
-      const source = splitView ? sliceAnalyticsDataByVersion(data, versionB) : data;
-      const activeGame = source?.setup?.selectedGame ?? initialData.setup.selectedGame;
-      const activeVersion = splitView ? versionB : source?.setup?.selectedVersion;
-      return applyGameLibrarySlice(source, activeGame, activeVersion);
-    },
-    [data, splitView, versionB],
-  );
+  const dataB = useMemo(() => {
+    const source = splitView
+      ? sliceAnalyticsDataByVersion(data, versionB)
+      : data;
+    const activeGame =
+      source?.setup?.selectedGame ?? initialData.setup.selectedGame;
+    const activeVersion = splitView ? versionB : source?.setup?.selectedVersion;
+    return applyGameLibrarySlice(source, activeGame, activeVersion);
+  }, [data, splitView, versionB]);
 
   const leftScrollRef = useRef(null);
   const rightScrollRef = useRef(null);
@@ -248,7 +253,10 @@ export default function AnalyticsTab({ data, onPatch }) {
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex shrink-0 items-center gap-2 text-slate-400">
-            <GitCompare className="h-4 w-4 shrink-0 text-cyan-500/80" aria-hidden />
+            <GitCompare
+              className="h-4 w-4 shrink-0 text-cyan-500/80"
+              aria-hidden
+            />
             <p className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-slate-300">
               Version comparison
             </p>
@@ -293,13 +301,13 @@ export default function AnalyticsTab({ data, onPatch }) {
                 onClick={() => setSplitView((s) => !s)}
                 className={`relative h-6 w-11 shrink-0 rounded-full border transition ${
                   splitView
-                    ? 'border-cyan-500/50 bg-cyan-500/20'
-                    : 'border-slate-600 bg-slate-800/80'
+                    ? "border-cyan-500/50 bg-cyan-500/20"
+                    : "border-slate-600 bg-slate-800/80"
                 }`}
               >
                 <span
                   className={`absolute top-0.5 h-5 w-5 rounded-full bg-slate-200 shadow transition-transform ${
-                    splitView ? 'left-5 translate-x-0.5' : 'left-0.5'
+                    splitView ? "left-5 translate-x-0.5" : "left-0.5"
                   }`}
                 />
               </button>
@@ -308,7 +316,8 @@ export default function AnalyticsTab({ data, onPatch }) {
         </div>
         {versions.length === 0 ? (
           <p className="font-data mt-2 text-[11px] text-amber-200/80">
-            No versions in setup — add versions under Mission setup to enable comparison.
+            No versions in setup — add versions under Mission setup to enable
+            comparison.
           </p>
         ) : null}
       </div>
@@ -319,7 +328,7 @@ export default function AnalyticsTab({ data, onPatch }) {
       >
         {SUB_TABS.map((t) => {
           const active = sub === t.id;
-          const itemsTab = t.id === 'items';
+          const itemsTab = t.id === "items";
           return (
             <button
               key={t.id}
@@ -329,9 +338,9 @@ export default function AnalyticsTab({ data, onPatch }) {
               className={`relative flex-1 rounded-lg px-4 py-2.5 font-display text-[10px] font-bold tracking-[0.2em] transition sm:flex-none sm:min-w-[100px] ${
                 active
                   ? itemsTab
-                    ? 'bg-violet-500/15 text-violet-200 ring-1 ring-violet-500/40'
-                    : 'bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/35'
-                  : 'text-slate-500 hover:bg-slate-900/60 hover:text-slate-300'
+                    ? "bg-violet-500/15 text-violet-200 ring-1 ring-violet-500/40"
+                    : "bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/35"
+                  : "text-slate-500 hover:bg-slate-900/60 hover:text-slate-300"
               }`}
               onClick={() =>
                 onPatch({
@@ -350,7 +359,7 @@ export default function AnalyticsTab({ data, onPatch }) {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.22 }}
-        className={splitView ? 'min-h-0' : ''}
+        className={splitView ? "min-h-0" : ""}
       >
         {!splitView ? (
           renderActiveSubView(sub, data)
@@ -363,7 +372,7 @@ export default function AnalyticsTab({ data, onPatch }) {
             >
               <div className="mb-2 border-b border-slate-800/60 pb-2">
                 <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-500/90">
-                  {versionA || 'Version A'}
+                  {versionA || "Version A"}
                 </p>
               </div>
               <div className="min-w-0">{renderActiveSubView(sub, dataA)}</div>
@@ -383,7 +392,7 @@ export default function AnalyticsTab({ data, onPatch }) {
             >
               <div className="mb-2 border-b border-slate-800/60 pb-2">
                 <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-indigo-300/90">
-                  {versionB || 'Version B'}
+                  {versionB || "Version B"}
                 </p>
               </div>
               <div className="min-w-0">{renderActiveSubView(sub, dataB)}</div>
