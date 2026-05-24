@@ -126,7 +126,9 @@ export default function RunSessionAnalytics({ data }) {
 
   const { chartData, n, yMin, yMax, yPad } = chartBundle;
 
+  /** Label-only: updated on brush drag end — never wired to <Brush startIndex/endIndex>. */
   const [zoomRange, setZoomRange] = useState({ start: 0, end: 0 });
+  const [chartKey, setChartKey] = useState(0);
 
   const runsDataKey = useMemo(() => {
     if (!runsHistory.length) return '0';
@@ -139,33 +141,29 @@ export default function RunSessionAnalytics({ data }) {
     setZoomRange({ start: 0, end });
   }, [runsDataKey, n]);
 
-  const brushStartIndex = Math.min(
-    Math.max(0, zoomRange.start),
-    Math.max(0, n - 1),
-  );
-  const brushEndIndex = Math.min(
-    Math.max(brushStartIndex, zoomRange.end),
-    Math.max(0, n - 1),
-  );
-
   const zoomRangeLabel = useMemo(() => {
     if (!chartData.length || n <= 1) return null;
-    const isFullRange = brushStartIndex === 0 && brushEndIndex >= n - 1;
-    if (isFullRange) return null;
-    const startRow = chartData[brushStartIndex];
-    const endRow = chartData[brushEndIndex];
-    const startRunIndex = startRow?.run_index ?? brushStartIndex + 1;
-    const endRunIndex = endRow?.run_index ?? brushEndIndex + 1;
+    const startIdx = Math.min(Math.max(0, zoomRange.start), n - 1);
+    const endIdx = Math.min(Math.max(startIdx, zoomRange.end), n - 1);
+    if (startIdx === 0 && endIdx >= n - 1) return null;
+    const startRow = chartData[startIdx];
+    const endRow = chartData[endIdx];
+    const startRunIndex = startRow?.run_index ?? startIdx + 1;
+    const endRunIndex = endRow?.run_index ?? endIdx + 1;
     return `Runs ${startRunIndex}–${endRunIndex} of ${n}`;
-  }, [chartData, brushStartIndex, brushEndIndex, n]);
+  }, [chartData, zoomRange.start, zoomRange.end, n]);
 
-  const handleBrushDragEnd = useCallback((state) => {
-    if (state?.startIndex == null || state?.endIndex == null) return;
-    setZoomRange({ start: state.startIndex, end: state.endIndex });
-  }, []);
+  const handleBrushDragEnd = useCallback(
+    (state) => {
+      if (state?.startIndex == null || state?.endIndex == null) return;
+      setZoomRange({ start: state.startIndex, end: state.endIndex });
+    },
+    [],
+  );
 
   const handleResetZoom = useCallback(() => {
     setZoomRange({ start: 0, end: Math.max(0, n - 1) });
+    setChartKey((k) => k + 1);
   }, [n]);
 
   const [selectedRunId, setSelectedRunId] = useState(null);
@@ -371,6 +369,7 @@ export default function RunSessionAnalytics({ data }) {
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
+                    key={`${runsDataKey}-${chartKey}`}
                     data={chartData}
                     margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
                   >
@@ -495,8 +494,6 @@ export default function RunSessionAnalytics({ data }) {
                         travellerWidth={10}
                         stroke="rgba(34, 211, 238, 0.65)"
                         fill="rgba(15, 23, 42, 0.94)"
-                        startIndex={brushStartIndex}
-                        endIndex={brushEndIndex}
                         onDragEnd={handleBrushDragEnd}
                         tickFormatter={(v) => String(v)}
                         alwaysShowText={false}
