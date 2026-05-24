@@ -13,10 +13,10 @@ const SUB_TABS = [
   { id: "items", label: "ITEMS" },
 ];
 
-function renderActiveSubView(sub, data) {
+function renderActiveSubView(sub, data, compact = false) {
   if (sub === "general") return <GeneralMissionStats data={data} />;
   if (sub === "bosses") return <BossesAnalytics data={data} />;
-  if (sub === "items") return <ItemsPowerLab data={data} />;
+  if (sub === "items") return <ItemsPowerLab data={data} compact={compact} />;
   return null;
 }
 
@@ -375,7 +375,7 @@ export default function AnalyticsTab({ data, onPatch }) {
                   {versionA || "Version A"}
                 </p>
               </div>
-              <div className="min-w-0">{renderActiveSubView(sub, dataA)}</div>
+              <div className="min-w-0">{renderActiveSubView(sub, dataA, true)}</div>
             </div>
 
             <div className="relative flex shrink-0 items-center justify-center py-2 lg:hidden">
@@ -395,7 +395,7 @@ export default function AnalyticsTab({ data, onPatch }) {
                   {versionB || "Version B"}
                 </p>
               </div>
-              <div className="min-w-0">{renderActiveSubView(sub, dataB)}</div>
+              <div className="min-w-0">{renderActiveSubView(sub, dataB, true)}</div>
             </div>
 
             <div
