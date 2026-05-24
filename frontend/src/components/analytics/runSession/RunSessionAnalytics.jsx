@@ -114,8 +114,9 @@ export default function RunSessionAnalytics({ data }) {
     const spread = yMax - yMin || 1;
     const yPad = Math.max(30, spread * 0.06);
     const n = trendSeries.length;
-    const scatterData = trendSeries.map((point) => ({
+    const scatterData = trendSeries.map((point, index) => ({
       ...point,
+      displayOrder: index + 1,
       minSec: yMin,
       maxSec: yMax,
     }));
@@ -131,7 +132,7 @@ export default function RunSessionAnalytics({ data }) {
   /** Full chart series — moving average computed once per runsHistory change. */
   const { scatterData: chartData, n, yMin, yMax, yPad } = scatterAxis;
 
-  const [brushRange, setBrushRange] = useState({ startIndex: 0, endIndex: 0 });
+  const [brushKey, setBrushKey] = useState(0);
 
   const chartSeriesKey = useMemo(() => {
     if (!chartData.length) return '0';
@@ -140,32 +141,9 @@ export default function RunSessionAnalytics({ data }) {
     return `${chartData.length}:${first}:${last}`;
   }, [chartData]);
 
-  useEffect(() => {
-    const end = Math.max(0, chartData.length - 1);
-    setBrushRange({ startIndex: 0, endIndex: end });
-  }, [chartSeriesKey, chartData.length]);
-
-  const brushEndIndex = Math.min(
-    Math.max(brushRange.endIndex, brushRange.startIndex),
-    Math.max(0, n - 1),
-  );
-  const brushStartIndex = Math.min(brushRange.startIndex, brushEndIndex);
-
-  const brushViewStart = chartData[brushStartIndex]?.run_index ?? 1;
-  const brushViewEnd = chartData[brushEndIndex]?.run_index ?? n;
-  const isBrushZoomed = n > 1 && (brushStartIndex > 0 || brushEndIndex < n - 1);
-
-  const handleBrushChange = useCallback((range) => {
-    if (range?.startIndex == null || range?.endIndex == null) return;
-    setBrushRange({
-      startIndex: range.startIndex,
-      endIndex: range.endIndex,
-    });
-  }, []);
-
   const handleResetZoom = useCallback(() => {
-    setBrushRange({ startIndex: 0, endIndex: Math.max(0, n - 1) });
-  }, [n]);
+    setBrushKey((k) => k + 1);
+  }, []);
 
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [hoveredRunId, setHoveredRunId] = useState(null);
@@ -329,25 +307,17 @@ export default function RunSessionAnalytics({ data }) {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {isBrushZoomed ? (
-                  <span className="font-data text-[10px] tabular-nums text-cyan-500/70">
-                    Runs {brushViewStart}–{brushViewEnd} of {n}
-                  </span>
-                ) : null}
-                {n > 1 ? (
-                  <button
-                    type="button"
-                    onClick={handleResetZoom}
-                    disabled={!isBrushZoomed}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 transition enabled:hover:border-cyan-500/45 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Reset chart zoom to show all runs"
-                  >
-                    <RotateCcw className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-                    Reset zoom
-                  </button>
-                ) : null}
-              </div>
+              {n > 1 ? (
+                <button
+                  type="button"
+                  onClick={handleResetZoom}
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 transition hover:border-cyan-500/45 hover:text-cyan-200"
+                  aria-label="Reset chart zoom to show all runs"
+                >
+                  <RotateCcw className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+                  Reset zoom
+                </button>
+              ) : null}
               {selectedRunId ? (
                 <button
                   type="button"
@@ -370,23 +340,20 @@ export default function RunSessionAnalytics({ data }) {
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
+                    key={`${chartSeriesKey}-${brushKey}`}
                     data={chartData}
                     margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
                     <XAxis
-                      type="number"
-                      dataKey="run_index"
-                      domain={['dataMin', 'dataMax']}
-                      scale="linear"
-                      minTickGap={36}
+                      dataKey="displayOrder"
+                      minTickGap={32}
+                      interval="preserveStartEnd"
                       tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
                       axisLine={{ stroke: '#475569' }}
                       tickLine={{ stroke: '#475569' }}
-                      allowDecimals={false}
-                      tickFormatter={(v) => (Number.isFinite(v) ? String(Math.round(v)) : '')}
                       label={{
-                        value: 'Run index (chronological)',
+                        value: 'Session order (1…n)',
                         position: 'insideBottom',
                         offset: n > 1 ? -36 : -6,
                         fill: '#64748b',
@@ -443,13 +410,21 @@ export default function RunSessionAnalytics({ data }) {
                         return (
                           <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl">
                             <p className="font-display text-xs font-bold uppercase tracking-wide text-cyan-200">
-                              {p.runId}
+                              Run ID · {p.runId}
                             </p>
-                            <p className="font-data mt-1 text-sm tabular-nums text-white">
+                            <p className="font-data mt-1 text-[10px] tabular-nums text-slate-500">
+                              DB run index ·{' '}
+                              <span className="text-cyan-300/90">{p.run_index ?? '—'}</span>
+                              <span className="text-slate-600">
+                                {' '}
+                                · slot {p.displayOrder} of {n}
+                              </span>
+                            </p>
+                            <p className="font-data mt-2 text-sm tabular-nums text-white">
                               {p.durationLabel ?? formatSecondsAsHMS(p.durationSec)}
                             </p>
                             <p className="font-data text-[10px] tabular-nums text-slate-500">
-                              {formatSecondsAsHMS(p.durationSec)} · run #{p.run_index ?? p.order}
+                              {formatSecondsAsHMS(p.durationSec)}
                             </p>
                             {typeof p.movingAverage === 'number' ? (
                               <p className="font-data mt-2 border-t border-slate-800 pt-2 text-[10px] text-slate-500">
@@ -485,15 +460,12 @@ export default function RunSessionAnalytics({ data }) {
                     />
                     {n > 1 ? (
                       <Brush
-                        dataKey="run_index"
+                        dataKey="displayOrder"
                         height={28}
                         travellerWidth={10}
                         stroke="rgba(34, 211, 238, 0.65)"
                         fill="rgba(15, 23, 42, 0.94)"
-                        startIndex={brushStartIndex}
-                        endIndex={brushEndIndex}
-                        onChange={handleBrushChange}
-                        tickFormatter={(v) => `#${Math.round(v)}`}
+                        tickFormatter={(v) => String(v)}
                         alwaysShowText={false}
                       />
                     ) : null}

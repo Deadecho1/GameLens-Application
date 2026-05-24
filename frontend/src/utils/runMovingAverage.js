@@ -12,6 +12,19 @@ export function getRunDurationSeconds(run) {
   return durationToSeconds(run.duration);
 }
 
+/** Database / catalog run index (may have gaps); falls back to chronological slot. */
+export function resolveRunIndex(run, chronologicalOrder) {
+  if (run && typeof run.run_index === 'number' && Number.isFinite(run.run_index)) {
+    return run.run_index;
+  }
+  if (run && typeof run.runIndex === 'number' && Number.isFinite(run.runIndex)) {
+    return run.runIndex;
+  }
+  const fromId = Number.parseInt(String(run?.id ?? ''), 10);
+  if (Number.isFinite(fromId)) return fromId;
+  return chronologicalOrder;
+}
+
 /** Oldest → newest by `date`, then stable tie-break on `id`. */
 export function sortRunsChronologically(runs = []) {
   return [...runs].sort((a, b) => {
@@ -49,7 +62,7 @@ export function attachMovingAverage(points, windowSize = MOVING_AVERAGE_WINDOW) 
 export function buildRunDurationTrendSeries(runs = [], windowSize = MOVING_AVERAGE_WINDOW) {
   const ordered = sortRunsChronologically(runs);
   const base = ordered.map((run, index) => ({
-    run_index: index + 1,
+    run_index: resolveRunIndex(run, index + 1),
     order: index + 1,
     durationSec: getRunDurationSeconds(run),
     runId: run.id,
