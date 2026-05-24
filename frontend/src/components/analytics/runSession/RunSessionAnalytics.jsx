@@ -11,15 +11,17 @@ import {
 } from 'lucide-react';
 import {
   ResponsiveContainer,
-  ScatterChart,
+  ComposedChart,
   CartesianGrid,
   XAxis,
   YAxis,
   Tooltip,
   Scatter,
+  Line,
   ReferenceLine,
 } from 'recharts';
 import { durationToSeconds, formatSecondsAsHMS } from '../../../utils/duration';
+import { buildRunDurationTrendSeries } from '../../../utils/runMovingAverage';
 
 /** Flat-top hexagon corners for SVG polygon */
 function hexPolygonPoints(cx, cy, r) {
@@ -54,22 +56,24 @@ function bossNameById(catalog, id) {
   return catalog.find((b) => b.id === id)?.name ?? null;
 }
 
-/** Cyan intensity vs slate by duration; selected uses brighter cyan only. */
-function shardFill(durationSec, minSec, maxSec, isSelected) {
+/** Background shards: very low opacity; selected/hover stay readable. */
+function shardFill(durationSec, minSec, maxSec, isSelected, isHover) {
+  if (isSelected) return '#22d3ee';
+  if (isHover) return 'rgba(34,211,238,0.45)';
   const spread = maxSec - minSec || 1;
   const t = Math.min(1, Math.max(0, (durationSec - minSec) / spread));
-  if (isSelected) return '#22d3ee';
-  if (t >= 0.66) return 'rgba(34,211,238,0.35)';
-  if (t >= 0.33) return 'rgba(34,211,238,0.2)';
-  return 'rgba(148,163,184,0.25)';
+  if (t >= 0.66) return 'rgba(34,211,238,0.18)';
+  if (t >= 0.33) return 'rgba(34,211,238,0.14)';
+  return 'rgba(148,163,184,0.15)';
 }
 
-function shardStroke(durationSec, minSec, maxSec, isSelected) {
+function shardStroke(durationSec, minSec, maxSec, isSelected, isHover) {
   if (isSelected) return '#67e8f9';
+  if (isHover) return 'rgba(103,232,249,0.75)';
   const spread = maxSec - minSec || 1;
   const t = Math.min(1, Math.max(0, (durationSec - minSec) / spread));
-  if (t >= 0.5) return 'rgba(34,211,238,0.55)';
-  return 'rgba(100,116,139,0.7)';
+  if (t >= 0.5) return 'rgba(34,211,238,0.28)';
+  return 'rgba(100,116,139,0.22)';
 }
 
 const glitchInjectVariants = {
@@ -104,25 +108,19 @@ export default function RunSessionAnalytics({ data }) {
     if (!runsHistory.length) {
       return { scatterData: [], n: 0, yMin: 0, yMax: 1, yPad: 0, xTicks: [] };
     }
-    const secs = runsHistory.map((r) => runDurationToSeconds(r.duration));
-    const yMin = Math.min(...secs);
-    const yMax = Math.max(...secs);
+    const trendSeries = buildRunDurationTrendSeries(runsHistory);
+    const secs = trendSeries.map((p) => p.durationSec);
+    const avgSecs = trendSeries.map((p) => p.movingAverage);
+    const yMin = Math.min(...secs, ...avgSecs);
+    const yMax = Math.max(...secs, ...avgSecs);
     const spread = yMax - yMin || 1;
     const yPad = Math.max(30, spread * 0.06);
-    const n = runsHistory.length;
-    const scatterData = runsHistory.map((run, index) => {
-      const durationSec = secs[index];
-      return {
-        order: index + 1,
-        durationSec,
-        runId: run.id,
-        date: run.date,
-        durationLabel: run.duration,
-        run,
-        minSec: yMin,
-        maxSec: yMax,
-      };
-    });
+    const n = trendSeries.length;
+    const scatterData = trendSeries.map((point) => ({
+      ...point,
+      minSec: yMin,
+      maxSec: yMax,
+    }));
     const xTicks = Array.from({ length: n }, (_, i) => i + 1);
     return {
       scatterData,
@@ -165,8 +163,8 @@ export default function RunSessionAnalytics({ data }) {
       const active = payload.runId === selectedRunId;
       const hover = payload.runId === hoveredRunId;
       const hr = active ? 10 : hover ? 9 : 8;
-      const fill = shardFill(payload.durationSec, payload.minSec, payload.maxSec, active);
-      const stroke = shardStroke(payload.durationSec, payload.minSec, payload.maxSec, active);
+      const fill = shardFill(payload.durationSec, payload.minSec, payload.maxSec, active, hover);
+      const stroke = shardStroke(payload.durationSec, payload.minSec, payload.maxSec, active, hover);
       const strokeW = active ? 2 : hover ? 1.5 : 1;
       const glow =
         active || hover
@@ -314,7 +312,7 @@ export default function RunSessionAnalytics({ data }) {
                 }`}
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart margin={{ top: 16, right: 20, bottom: 20, left: 12 }}>
+                  <ComposedChart data={scatterData} margin={{ top: 16, right: 20, bottom: 20, left: 12 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
                     <XAxis
                       type="number"
@@ -376,26 +374,53 @@ export default function RunSessionAnalytics({ data }) {
                         fontSize: 12,
                         fontFamily: 'JetBrains Mono, monospace',
                       }}
-                      formatter={(_, name, item) => {
-                        if (name === 'durationSec') {
-                          const sec = item?.payload?.durationSec ?? 0;
-                          return [formatSecondsAsHMS(sec), 'Duration'];
-                        }
-                        return [_, name];
-                      }}
-                      labelFormatter={(_, items) => {
-                        const p = items?.[0]?.payload;
-                        return p ? `${p.runId} · #${p.order}` : '';
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const p = payload[0]?.payload;
+                        if (!p) return null;
+                        return (
+                          <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl">
+                            <p className="font-data text-[10px] font-semibold text-cyan-300/90">
+                              {p.runId} · #{p.order}
+                            </p>
+                            <p className="font-data mt-1 text-[10px] text-slate-500">{p.date}</p>
+                            <p className="font-data mt-2 text-xs text-slate-200">
+                              Duration{' '}
+                              <span className="tabular-nums text-slate-300">
+                                {formatSecondsAsHMS(p.durationSec)}
+                              </span>
+                            </p>
+                            <p className="font-data text-xs text-cyan-200">
+                              5-run avg{' '}
+                              <span className="tabular-nums font-semibold">
+                                {formatSecondsAsHMS(Math.round(p.movingAverage))}
+                              </span>
+                            </p>
+                          </div>
+                        );
                       }}
                     />
                     <Scatter
                       name="Runs"
+                      dataKey="durationSec"
                       data={scatterData}
                       fill="#22d3ee"
+                      fillOpacity={0.2}
                       shape={CustomScatterShape}
                       isAnimationActive={false}
                     />
-                  </ScatterChart>
+                    <Line
+                      type="monotone"
+                      dataKey="movingAverage"
+                      name="5-run moving avg"
+                      stroke="#22d3ee"
+                      strokeWidth={3}
+                      dot={false}
+                      activeDot={{ r: 4, fill: '#ecfeff', stroke: '#0891b2', strokeWidth: 2 }}
+                      style={{ filter: 'drop-shadow(0 0 8px rgba(34,211,238,0.65))' }}
+                      isAnimationActive={false}
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             )}
