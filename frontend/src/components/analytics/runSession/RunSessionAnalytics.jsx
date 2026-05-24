@@ -6,7 +6,6 @@ import {
   Clock,
   Crosshair,
   Package,
-  RotateCcw,
   Swords,
   Timer,
 } from 'lucide-react';
@@ -91,47 +90,11 @@ export default function RunSessionAnalytics({ data }) {
 
   const { chartData, n, yMin, yMax, yPad } = chartBundle;
 
-  /** Label-only: updated on brush drag end — never wired to <Brush startIndex/endIndex>. */
-  const [zoomRange, setZoomRange] = useState({ start: 0, end: 0 });
-  const [chartKey, setChartKey] = useState(0);
-
   const runsDataKey = useMemo(() => {
     if (!runsHistory.length) return '0';
     const last = runsHistory[runsHistory.length - 1];
     return `${runsHistory.length}:${runsHistory[0]?.id}:${last?.id}`;
   }, [runsHistory]);
-
-  useEffect(() => {
-    const end = Math.max(0, n - 1);
-    setZoomRange({ start: 0, end });
-  }, [runsDataKey, n]);
-
-  const zoomRangeLabel = useMemo(() => {
-    if (!chartData.length || n <= 1) return null;
-    const startIdx = Math.min(Math.max(0, zoomRange.start), n - 1);
-    const endIdx = Math.min(Math.max(startIdx, zoomRange.end), n - 1);
-    if (startIdx === 0 && endIdx >= n - 1) return null;
-    const startRow = chartData[startIdx];
-    const endRow = chartData[endIdx];
-    const startRunIndex = startRow?.run_index ?? startIdx + 1;
-    const endRunIndex = endRow?.run_index ?? endIdx + 1;
-    return `Runs ${startRunIndex}–${endRunIndex} of ${n}`;
-  }, [chartData, zoomRange.start, zoomRange.end, n]);
-
-  const handleBrushUpdate = useCallback((state) => {
-    if (state?.startIndex == null || state?.endIndex == null) return;
-    setZoomRange({ start: state.startIndex, end: state.endIndex });
-  }, []);
-
-  const chartMountKey = useMemo(
-    () => `${runsDataKey}-${chartKey}`,
-    [runsDataKey, chartKey],
-  );
-
-  const handleResetZoom = useCallback(() => {
-    setZoomRange({ start: 0, end: Math.max(0, n - 1) });
-    setChartKey((k) => k + 1);
-  }, [n]);
 
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [hoveredRunId, setHoveredRunId] = useState(null);
@@ -265,25 +228,6 @@ export default function RunSessionAnalytics({ data }) {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {zoomRangeLabel ? (
-                  <span className="font-data text-[10px] tabular-nums text-cyan-500/80">
-                    {zoomRangeLabel}
-                  </span>
-                ) : null}
-                {n > 1 ? (
-                  <button
-                    type="button"
-                    onClick={handleResetZoom}
-                    disabled={!zoomRangeLabel}
-                    className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 transition enabled:hover:border-cyan-500/45 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Reset chart zoom to show all runs"
-                  >
-                    <RotateCcw className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-                    Reset zoom
-                  </button>
-                ) : null}
-              </div>
               {selectedRunId ? (
                 <button
                   type="button"
@@ -301,14 +245,13 @@ export default function RunSessionAnalytics({ data }) {
             ) : (
               <MemoizedRadarChart
                 data={chartData}
-                chartKey={chartMountKey}
+                chartKey={runsDataKey}
                 n={n}
                 yMin={yMin}
                 yMax={yMax}
                 yPad={yPad}
                 globalAverageDurationSeconds={globalAverageDurationSeconds}
                 avgLabel={avgLabel}
-                onBrushUpdate={handleBrushUpdate}
                 selectedRunId={selectedRunId}
                 hoveredRunId={hoveredRunId}
                 onSelectRun={handleSelectRun}
