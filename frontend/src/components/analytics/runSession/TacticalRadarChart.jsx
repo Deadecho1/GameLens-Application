@@ -133,10 +133,11 @@ function TacticalRadarChart({
     if (!dataLength || n <= 1) return null;
     if (safeStart === 0 && safeEnd >= lastIndex) return null;
     if (!data[safeStart] || !data[safeEnd]) return null;
-    const startRunIndex = getRowRunIndex(data, safeStart);
-    const endRunIndex = getRowRunIndex(data, safeEnd);
-    if (startRunIndex == null || endRunIndex == null) return null;
-    return `Runs ${startRunIndex}–${endRunIndex} of ${n}`;
+    const startRunId =
+      data[safeStart]?.run_index || data[safeStart]?.run_id || data[safeStart]?.id;
+    const endRunId = data[safeEnd]?.run_index || data[safeEnd]?.run_id || data[safeEnd]?.id;
+    if (startRunId == null || endRunId == null) return null;
+    return `Runs ${startRunId}–${endRunId} of ${n}`;
   }, [data, dataLength, safeStart, safeEnd, lastIndex, n]);
 
   const handleBrushChange = useCallback(
