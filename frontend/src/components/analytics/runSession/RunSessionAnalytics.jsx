@@ -228,7 +228,7 @@ export default function RunSessionAnalytics({ data }) {
                     Tactical radar · density cloud + trend
                   </h3>
                   <p className="font-data mt-1 text-[10px] text-slate-600">
-                    Drag the range slider below to zoom · {n} run{n === 1 ? '' : 's'} chronological
+                    Use tactical zoom above the chart · {n} run{n === 1 ? '' : 's'} chronological
                   </p>
                 </div>
               </div>
