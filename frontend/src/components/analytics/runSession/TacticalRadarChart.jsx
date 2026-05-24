@@ -114,13 +114,15 @@ function TacticalRadarChart({
   const lastIndex = Math.max(0, dataLength - 1);
   const plotHeightPx = Math.max(280, Number(plotHeight) || DEFAULT_PLOT_HEIGHT);
 
-  const [brushRange, setBrushRange] = useState(() =>
-    clampBrushIndices(0, lastIndex, dataLength),
-  );
+  const [brushRange, setBrushRange] = useState(() => ({
+    start: 0,
+    end: Math.max(0, dataLength - 1),
+  }));
 
+  /** Reset zoom only when the underlying run series identity changes — not on brush drag. */
   useEffect(() => {
-    setBrushRange(clampBrushIndices(0, dataLength - 1, dataLength));
-  }, [dataLength, chartKey]);
+    setBrushRange({ start: 0, end: Math.max(0, dataLength - 1) });
+  }, [chartKey]);
 
   const { start: safeStart, end: safeEnd } = useMemo(
     () => clampBrushIndices(brushRange.start, brushRange.end, dataLength),
@@ -140,18 +142,9 @@ function TacticalRadarChart({
     return `Runs ${startRunId}–${endRunId} of ${n}`;
   }, [data, dataLength, safeStart, safeEnd, lastIndex, n]);
 
-  const handleBrushChange = useCallback(
-    (state) => {
-      if (state?.startIndex == null || state?.endIndex == null || !dataLength) return;
-      const next = clampBrushIndices(state.startIndex, state.endIndex, dataLength);
-      setBrushRange(next);
-    },
-    [dataLength],
-  );
-
   const handleResetZoom = useCallback(() => {
-    setBrushRange(clampBrushIndices(0, lastIndex, dataLength));
-  }, [lastIndex, dataLength]);
+    setBrushRange({ start: 0, end: lastIndex });
+  }, [lastIndex]);
 
   const renderScatterShape = useCallback(
     (props) => (
@@ -195,7 +188,6 @@ function TacticalRadarChart({
         {canRenderChart ? (
           <ResponsiveContainer width="100%" height={plotHeightPx} minHeight={plotHeightPx}>
             <ComposedChart
-              key={chartKey}
               data={data}
               margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
             >
@@ -203,7 +195,6 @@ function TacticalRadarChart({
             <XAxis
               dataKey="chartIndex"
               type="number"
-              domain={[0, Math.max(0, dataLength - 1)]}
               allowDecimals={false}
               minTickGap={32}
               interval="preserveStartEnd"
@@ -331,9 +322,11 @@ function TacticalRadarChart({
                 travellerWidth={10}
                 stroke="rgba(34, 211, 238, 0.65)"
                 fill="rgba(15, 23, 42, 0.94)"
-                startIndex={safeStart}
-                endIndex={safeEnd}
-                onChange={handleBrushChange}
+                startIndex={brushRange.start}
+                endIndex={brushRange.end}
+                onChange={(e) => {
+                  if (e) setBrushRange({ start: e.startIndex, end: e.endIndex });
+                }}
                 tickFormatter={(v) => (v != null && Number.isFinite(v) ? String(v + 1) : '')}
                 alwaysShowText={false}
               />
