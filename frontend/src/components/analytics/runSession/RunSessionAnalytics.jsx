@@ -10,28 +10,9 @@ import {
   Swords,
   Timer,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Scatter,
-  Line,
-  ReferenceLine,
-  Brush,
-} from 'recharts';
 import { durationToSeconds, formatSecondsAsHMS } from '../../../utils/duration';
 import { buildRunDurationTrendSeries } from '../../../utils/runMovingAverage';
-
-/** Flat-top hexagon corners for SVG polygon */
-function hexPolygonPoints(cx, cy, r) {
-  return Array.from({ length: 6 }, (_, i) => {
-    const a = (Math.PI / 3) * i - Math.PI / 6;
-    return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
-  }).join(' ');
-}
+import { MemoizedRadarChart } from './TacticalRadarChart';
 
 /** Synergy bonus label from catalog popularity (dataStore) — scaled to seconds proxy. */
 function itemSynergySeconds(item) {
@@ -56,22 +37,6 @@ function itemNameById(catalog, id) {
 
 function bossNameById(catalog, id) {
   return catalog.find((b) => b.id === id)?.name ?? null;
-}
-
-/** Density cloud: uniform low-opacity fills so overlaps read brighter. */
-const DENSITY_CLOUD_FILL = 'rgba(34, 211, 238, 0.18)';
-const DENSITY_CLOUD_STROKE = 'rgba(34, 211, 238, 0.12)';
-
-function shardFill(isSelected, isHover) {
-  if (isSelected) return '#22d3ee';
-  if (isHover) return 'rgba(34, 211, 238, 0.55)';
-  return DENSITY_CLOUD_FILL;
-}
-
-function shardStroke(isSelected, isHover) {
-  if (isSelected) return '#a5f3fc';
-  if (isHover) return 'rgba(103, 232, 249, 0.8)';
-  return DENSITY_CLOUD_STROKE;
 }
 
 const glitchInjectVariants = {
@@ -153,12 +118,14 @@ export default function RunSessionAnalytics({ data }) {
     return `Runs ${startRunIndex}–${endRunIndex} of ${n}`;
   }, [chartData, zoomRange.start, zoomRange.end, n]);
 
-  const handleBrushDragEnd = useCallback(
-    (state) => {
-      if (state?.startIndex == null || state?.endIndex == null) return;
-      setZoomRange({ start: state.startIndex, end: state.endIndex });
-    },
-    [],
+  const handleBrushUpdate = useCallback((state) => {
+    if (state?.startIndex == null || state?.endIndex == null) return;
+    setZoomRange({ start: state.startIndex, end: state.endIndex });
+  }, []);
+
+  const chartMountKey = useMemo(
+    () => `${runsDataKey}-${chartKey}`,
+    [runsDataKey, chartKey],
   );
 
   const handleResetZoom = useCallback(() => {
@@ -168,6 +135,15 @@ export default function RunSessionAnalytics({ data }) {
 
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [hoveredRunId, setHoveredRunId] = useState(null);
+
+  const handleSelectRun = useCallback((runId) => {
+    setSelectedRunId(runId);
+  }, []);
+
+  const handleScatterHover = useCallback((runId, entering) => {
+    if (entering) setHoveredRunId(runId);
+    else setHoveredRunId((current) => (current === runId ? null : current));
+  }, []);
 
   useEffect(() => {
     if (runsHistory.length === 0) setSelectedRunId(null);
@@ -187,45 +163,6 @@ export default function RunSessionAnalytics({ data }) {
   const handleListSelect = useCallback((runId) => {
     setSelectedRunId(runId);
   }, []);
-
-  const CustomScatterShape = useCallback(
-    (props) => {
-      const { cx, cy, payload } = props;
-      if (cx == null || cy == null || !payload) return null;
-      const active = payload.runId === selectedRunId;
-      const hover = payload.runId === hoveredRunId;
-      const hr = active ? 10 : hover ? 9 : 8;
-      const fill = shardFill(active, hover);
-      const stroke = shardStroke(active, hover);
-      const strokeW = active ? 2 : hover ? 1.5 : 1;
-      const glow =
-        active || hover
-          ? 'drop-shadow(0 0 5px rgba(34,211,238,0.55))'
-          : 'none';
-      const pts = hexPolygonPoints(cx, cy, hr);
-      const onActivate = (e) => {
-        e.stopPropagation();
-        if (payload.runId != null) setSelectedRunId(payload.runId);
-      };
-      return (
-        <g
-          className="cursor-pointer"
-          onClick={onActivate}
-          onMouseEnter={() => setHoveredRunId(payload.runId)}
-          onMouseLeave={() => setHoveredRunId((h) => (h === payload.runId ? null : h))}
-        >
-          <polygon
-            points={pts}
-            fill={fill}
-            stroke={stroke}
-            strokeWidth={strokeW}
-            style={{ filter: glow, transition: 'filter 0.15s ease, stroke-width 0.15s ease' }}
-          />
-        </g>
-      );
-    },
-    [selectedRunId, hoveredRunId]
-  );
 
   const avgLabel = formatSecondsAsHMS(Math.round(globalAverageDurationSeconds));
 
@@ -362,146 +299,24 @@ export default function RunSessionAnalytics({ data }) {
                 No data to plot.
               </div>
             ) : (
-              <div
+              <MemoizedRadarChart
+                data={chartData}
+                chartKey={chartMountKey}
+                n={n}
+                yMin={yMin}
+                yMax={yMax}
+                yPad={yPad}
+                globalAverageDurationSeconds={globalAverageDurationSeconds}
+                avgLabel={avgLabel}
+                onBrushUpdate={handleBrushUpdate}
+                selectedRunId={selectedRunId}
+                hoveredRunId={hoveredRunId}
+                onSelectRun={handleSelectRun}
+                onHoverRun={handleScatterHover}
                 className={`w-full min-w-0 rounded-xl border border-slate-800 bg-slate-950/70 ${
                   chartIsHero ? 'h-[min(48vh,480px)] md:h-[min(50vh,520px)]' : 'h-[min(220px,32vh)] md:h-[260px]'
                 }`}
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart
-                    key={`${runsDataKey}-${chartKey}`}
-                    data={chartData}
-                    margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
-                    <XAxis
-                      dataKey="displayOrder"
-                      minTickGap={32}
-                      interval="preserveStartEnd"
-                      tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
-                      axisLine={{ stroke: '#475569' }}
-                      tickLine={{ stroke: '#475569' }}
-                      label={{
-                        value: 'Session order (1…n)',
-                        position: 'insideBottom',
-                        offset: n > 1 ? -36 : -6,
-                        fill: '#64748b',
-                        fontSize: 10,
-                      }}
-                    />
-                    <YAxis
-                      type="number"
-                      dataKey="durationSec"
-                      domain={[yMin - yPad, yMax + yPad]}
-                      tick={{ fill: '#94a3b8', fontSize: 11 }}
-                      axisLine={{ stroke: '#475569' }}
-                      tickLine={{ stroke: '#475569' }}
-                      tickFormatter={(v) => `${Math.round(v / 60)}m`}
-                      allowDataOverflow={false}
-                      label={{
-                        value: 'Duration (seconds)',
-                        angle: -90,
-                        position: 'insideLeft',
-                        fill: '#64748b',
-                        fontSize: 10,
-                      }}
-                    />
-                    {globalAverageDurationSeconds > 0 ? (
-                      <ReferenceLine
-                        y={globalAverageDurationSeconds}
-                        stroke="rgb(34, 211, 238)"
-                        strokeDasharray="5 4"
-                        strokeOpacity={0.45}
-                        label={{
-                          value: `Global avg · ${avgLabel}`,
-                          position: 'insideTopRight',
-                          fill: 'rgb(34, 211, 238)',
-                          fontSize: 10,
-                          opacity: 0.85,
-                          fontFamily: 'JetBrains Mono, monospace',
-                        }}
-                      />
-                    ) : null}
-                    <Tooltip
-                      cursor={{ strokeDasharray: '3 3', stroke: '#64748b' }}
-                      contentStyle={{
-                        background: 'rgba(15,23,42,0.96)',
-                        border: '1px solid #334155',
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontFamily: 'JetBrains Mono, monospace',
-                      }}
-                      content={({ active, payload }) => {
-                        if (!active || !payload?.length) return null;
-                        const scatterEntry = payload.find((e) => e?.payload?.runId != null);
-                        const p = scatterEntry?.payload ?? payload[0]?.payload;
-                        if (!p?.runId) return null;
-                        return (
-                          <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl">
-                            <p className="font-display text-xs font-bold uppercase tracking-wide text-cyan-200">
-                              Run ID · {p.runId}
-                            </p>
-                            <p className="font-data mt-1 text-[10px] tabular-nums text-slate-500">
-                              DB run index ·{' '}
-                              <span className="text-cyan-300/90">{p.run_index ?? '—'}</span>
-                              <span className="text-slate-600">
-                                {' '}
-                                · slot {p.displayOrder} of {n}
-                              </span>
-                            </p>
-                            <p className="font-data mt-2 text-sm tabular-nums text-white">
-                              {p.durationLabel ?? formatSecondsAsHMS(p.durationSec)}
-                            </p>
-                            <p className="font-data text-[10px] tabular-nums text-slate-500">
-                              {formatSecondsAsHMS(p.durationSec)}
-                            </p>
-                            {typeof p.movingAverage === 'number' ? (
-                              <p className="font-data mt-2 border-t border-slate-800 pt-2 text-[10px] text-slate-500">
-                                10-run trend{' '}
-                                <span className="tabular-nums text-cyan-400/90">
-                                  {formatSecondsAsHMS(Math.round(p.movingAverage))}
-                                </span>
-                              </p>
-                            ) : null}
-                          </div>
-                        );
-                      }}
-                    />
-                    <Scatter
-                      name="Density cloud"
-                      dataKey="durationSec"
-                      fill="#22d3ee"
-                      fillOpacity={0.18}
-                      shape={CustomScatterShape}
-                      isAnimationActive={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="movingAverage"
-                      name="10-run trend"
-                      stroke="#67e8f9"
-                      strokeWidth={3.5}
-                      strokeOpacity={1}
-                      dot={false}
-                      activeDot={{ r: 5, fill: '#ecfeff', stroke: '#22d3ee', strokeWidth: 2 }}
-                      style={{ filter: 'drop-shadow(0 0 12px rgba(34,211,238,0.85))' }}
-                      isAnimationActive={false}
-                    />
-                    {n > 1 ? (
-                      <Brush
-                        dataKey="displayOrder"
-                        height={28}
-                        travellerWidth={10}
-                        stroke="rgba(34, 211, 238, 0.65)"
-                        fill="rgba(15, 23, 42, 0.94)"
-                        onDragEnd={handleBrushDragEnd}
-                        tickFormatter={(v) => String(v)}
-                        alwaysShowText={false}
-                      />
-                    ) : null}
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+              />
             )}
           </motion.section>
 
