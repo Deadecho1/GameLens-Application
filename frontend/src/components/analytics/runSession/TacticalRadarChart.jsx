@@ -16,21 +16,15 @@ import { formatSecondsAsHMS } from '../../../utils/duration';
 
 const DEFAULT_PLOT_HEIGHT = 400;
 
-const AXIS_TIME_OPTIONS = {
+const chartDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-};
+  year: 'numeric',
+});
 
-function formatAxisTime(unixTime) {
-  if (!Number.isFinite(unixTime)) return '—';
-  return new Date(unixTime).toLocaleDateString(undefined, AXIS_TIME_OPTIONS);
-}
-
-function formatBrushTick(unixTime) {
+function formatChartDate(unixTime) {
   if (!Number.isFinite(unixTime)) return '';
-  return new Date(unixTime).toLocaleDateString();
+  return chartDateFormatter.format(new Date(unixTime));
 }
 
 function runIdFromRow(row) {
@@ -40,7 +34,10 @@ function runIdFromRow(row) {
 
 function dateLabelFromRow(row) {
   if (!row) return '—';
-  if (Number.isFinite(row.timestamp) && row.timestamp > 0) return formatAxisTime(row.timestamp);
+  if (Number.isFinite(row.timestamp) && row.timestamp > 0) {
+    const label = formatChartDate(row.timestamp);
+    return label || '—';
+  }
   if (row.date) return String(row.date);
   return '—';
 }
@@ -224,6 +221,7 @@ function TacticalRadarChart({
               key={`${chartKey}-${brushResetKey}`}
               data={data}
               margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
+              isAnimationActive={false}
             >
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
             <XAxis
@@ -236,9 +234,15 @@ function TacticalRadarChart({
               tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
               axisLine={{ stroke: '#475569' }}
               tickLine={{ stroke: '#475569' }}
-              tickFormatter={formatAxisTime}
+              tickFormatter={(unixTime) =>
+                new Intl.DateTimeFormat('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                }).format(new Date(unixTime))
+              }
               label={{
-                value: 'Session time',
+                value: 'Session date',
                 position: 'insideBottom',
                 offset: n > 1 ? -36 : -6,
                 fill: '#64748b',
@@ -268,6 +272,7 @@ function TacticalRadarChart({
                 stroke="rgb(34, 211, 238)"
                 strokeDasharray="5 4"
                 strokeOpacity={0.45}
+                isAnimationActive={false}
                 label={{
                   value: `Global avg · ${avgLabel}`,
                   position: 'insideTopRight',
@@ -331,6 +336,7 @@ function TacticalRadarChart({
               fillOpacity={0.18}
               shape={renderScatterShape}
               isAnimationActive={false}
+              animationDuration={0}
             />
             <Line
               type="monotone"
@@ -340,9 +346,16 @@ function TacticalRadarChart({
               strokeWidth={3.5}
               strokeOpacity={1}
               dot={false}
-              activeDot={{ r: 5, fill: '#ecfeff', stroke: '#22d3ee', strokeWidth: 2 }}
+              activeDot={{
+                r: 5,
+                fill: '#ecfeff',
+                stroke: '#22d3ee',
+                strokeWidth: 2,
+                isAnimationActive: false,
+              }}
               style={{ filter: 'drop-shadow(0 0 12px rgba(34,211,238,0.85))' }}
               isAnimationActive={false}
+              animationDuration={0}
             />
             {n > 1 && dataLength > 1 ? (
               <Brush
@@ -352,7 +365,14 @@ function TacticalRadarChart({
                 stroke="rgba(34, 211, 238, 0.65)"
                 fill="rgba(15, 23, 42, 0.94)"
                 onChange={updateBrushHeader}
-                tickFormatter={formatBrushTick}
+                tickFormatter={(unixTime) =>
+                  new Intl.DateTimeFormat('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  }).format(new Date(unixTime))
+                }
+                isAnimationActive={false}
                 alwaysShowText={false}
               />
             ) : null}
