@@ -1,26 +1,27 @@
-import { useMemo, useId } from 'react';
+import { useMemo } from 'react';
 import {
   ResponsiveContainer,
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Cell,
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { Activity, Clock, Hourglass, Package, Crosshair, Sparkles, Swords } from 'lucide-react';
 import { useCountUp } from '../../hooks/useCountUp';
-import { durationToSeconds, secondsToMinutes, formatSecondsAsHMS } from '../../utils/duration';
+import { durationToSeconds, formatSecondsAsHMS } from '../../utils/duration';
+import { buildRunDurationDistribution } from '../../utils/runDurationDistribution';
 
 /**
  * GENERAL — Run analytics from dashboard.runsHistory, dashboard.bosses, dashboard.items.
  * No action-type or combat/exploration/menu breakdowns.
  */
-export default function GeneralMissionStats({ data }) {
-  const svgIds = useId().replace(/:/g, '');
-  const lineGlowId = `${svgIds}-line-glow`;
+const HISTOGRAM_BAR_FILL = '#22d3ee';
 
+export default function GeneralMissionStats({ data }) {
   const runsHistory = data.dashboard.runsHistory ?? [];
   const bosses = data.dashboard.bosses ?? [];
   const items = data.dashboard.items ?? [];
@@ -41,15 +42,14 @@ export default function GeneralMissionStats({ data }) {
   const totalRunsAnimated = useCountUp(runMetrics.totalRuns, 1400);
   const totalItemsAnimated = useCountUp(items.length, 1400);
 
-  const chartData = useMemo(
-    () =>
-      runsHistory.map((run) => ({
-        runId: run.id,
-        date: run.date,
-        minutes: secondsToMinutes(durationToSeconds(run.duration)),
-        durationRaw: run.duration,
-      })),
-    [runsHistory]
+  const histogramData = useMemo(
+    () => buildRunDurationDistribution(runsHistory),
+    [runsHistory],
+  );
+
+  const histogramTotal = useMemo(
+    () => histogramData.reduce((sum, row) => sum + row.count, 0),
+    [histogramData],
   );
 
   const sortedRunsDesc = useMemo(() => {
@@ -140,50 +140,46 @@ export default function GeneralMissionStats({ data }) {
           <div className="rounded-2xl border border-slate-800 bg-transparent p-4 backdrop-blur-md md:p-6">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
               <h4 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-blue-400/90">
-                Run duration trend
+                Run duration distribution
               </h4>
-              <span className="font-data text-[10px] text-slate-600">Run ID · minutes</span>
+              <span className="font-data text-[10px] text-slate-600">
+                {histogramTotal} run{histogramTotal === 1 ? '' : 's'} · 5 min buckets
+              </span>
             </div>
             <div className="h-[320px] w-full min-w-0">
-              {chartData.length === 0 ? (
+              {histogramTotal === 0 ? (
                 <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
                   <p className="font-data text-sm text-slate-500">No runs recorded yet.</p>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
-                    <defs>
-                      <filter id={lineGlowId} x="-40%" y="-40%" width="180%" height="180%">
-                        <feGaussianBlur stdDeviation="2" result="blur" />
-                        <feMerge>
-                          <feMergeNode in="blur" />
-                          <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                      </filter>
-                    </defs>
+                  <BarChart data={histogramData} margin={{ top: 8, right: 12, left: 4, bottom: 28 }}>
                     <CartesianGrid strokeDasharray="3 6" stroke="#334155" strokeOpacity={0.6} vertical={false} />
                     <XAxis
-                      dataKey="runId"
-                      name="Run ID"
-                      tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
+                      dataKey="bucket"
+                      tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
                       axisLine={{ stroke: '#475569' }}
                       tickLine={{ stroke: '#475569' }}
+                      interval={0}
+                      angle={-22}
+                      textAnchor="end"
+                      height={52}
                       label={{
-                        value: 'Run ID',
+                        value: 'Duration bucket',
                         position: 'insideBottom',
-                        offset: -2,
+                        offset: -4,
                         fill: '#64748b',
                         fontSize: 10,
                         fontFamily: 'JetBrains Mono, monospace',
                       }}
                     />
                     <YAxis
+                      allowDecimals={false}
                       tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
                       axisLine={{ stroke: '#475569' }}
                       tickLine={{ stroke: '#475569' }}
-                      tickFormatter={(v) => `${v}`}
                       label={{
-                        value: 'Minutes',
+                        value: 'Run count',
                         angle: -90,
                         position: 'insideLeft',
                         fill: '#64748b',
@@ -192,37 +188,35 @@ export default function GeneralMissionStats({ data }) {
                       }}
                     />
                     <Tooltip
-                      cursor={{ stroke: '#475569', strokeDasharray: '4 4' }}
+                      cursor={{ fill: 'rgba(34,211,238,0.08)' }}
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
                         const row = payload[0].payload;
-                        const sec = durationToSeconds(row.durationRaw);
+                        const pct =
+                          histogramTotal > 0
+                            ? Math.round((row.count / histogramTotal) * 100)
+                            : 0;
                         return (
                           <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
-                            <p className="font-data text-xs font-semibold text-cyan-200">{row.runId}</p>
-                            <p className="font-data text-[10px] text-slate-500">{row.date}</p>
+                            <p className="font-data text-xs font-semibold text-cyan-200">{row.bucket}</p>
                             <p className="font-data mt-1 text-sm text-slate-200">
-                              Duration:{' '}
-                              <span className="tabular-nums text-blue-300">{row.durationRaw}</span>
+                              <span className="tabular-nums text-blue-300">{row.count}</span> run
+                              {row.count === 1 ? '' : 's'}
                             </p>
-                            <p className="font-data text-[10px] text-slate-500">
-                              {formatSecondsAsHMS(sec)} · {row.minutes} min
-                            </p>
+                            <p className="font-data text-[10px] text-slate-500">{pct}% of sessions</p>
                           </div>
                         );
                       }}
                     />
-                    <Line
-                      type="monotone"
-                      dataKey="minutes"
-                      name="Duration (min)"
-                      stroke="#22d3ee"
-                      strokeWidth={2.5}
-                      filter={`url(#${lineGlowId})`}
-                      dot={{ r: 3, fill: '#a5f3fc', stroke: '#0891b2', strokeWidth: 1 }}
-                      activeDot={{ r: 5, fill: '#ecfeff', stroke: '#22d3ee', strokeWidth: 2 }}
-                    />
-                  </LineChart>
+                    <Bar dataKey="count" name="Runs" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                      {histogramData.map((entry) => (
+                        <Cell
+                          key={entry.bucket}
+                          fill={entry.count > 0 ? HISTOGRAM_BAR_FILL : 'rgba(51,65,85,0.45)'}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               )}
             </div>
