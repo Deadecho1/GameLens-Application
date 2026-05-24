@@ -102,9 +102,10 @@ export default function RunSessionAnalytics({ data }) {
     return sum / runsHistory.length;
   }, [runsHistory]);
 
-  const scatterAxis = useMemo(() => {
+  /** Stable chart rows: chronological sort, displayOrder, moving avg — only when raw runs change. */
+  const chartBundle = useMemo(() => {
     if (!runsHistory.length) {
-      return { scatterData: [], n: 0, yMin: 0, yMax: 1, yPad: 0 };
+      return { chartData: [], n: 0, yMin: 0, yMax: 1, yPad: 0 };
     }
     const trendSeries = buildRunDurationTrendSeries(runsHistory);
     const secs = trendSeries.map((p) => p.durationSec);
@@ -114,36 +115,58 @@ export default function RunSessionAnalytics({ data }) {
     const spread = yMax - yMin || 1;
     const yPad = Math.max(30, spread * 0.06);
     const n = trendSeries.length;
-    const scatterData = trendSeries.map((point, index) => ({
+    const chartData = trendSeries.map((point, index) => ({
       ...point,
       displayOrder: index + 1,
       minSec: yMin,
       maxSec: yMax,
     }));
-    return {
-      scatterData,
-      n,
-      yMin,
-      yMax,
-      yPad,
-    };
+    return { chartData, n, yMin, yMax, yPad };
   }, [runsHistory]);
 
-  /** Full chart series — moving average computed once per runsHistory change. */
-  const { scatterData: chartData, n, yMin, yMax, yPad } = scatterAxis;
+  const { chartData, n, yMin, yMax, yPad } = chartBundle;
 
-  const [brushKey, setBrushKey] = useState(0);
+  const [zoomRange, setZoomRange] = useState({ start: 0, end: 0 });
 
-  const chartSeriesKey = useMemo(() => {
-    if (!chartData.length) return '0';
-    const first = chartData[0].runId;
-    const last = chartData[chartData.length - 1].runId;
-    return `${chartData.length}:${first}:${last}`;
-  }, [chartData]);
+  const runsDataKey = useMemo(() => {
+    if (!runsHistory.length) return '0';
+    const last = runsHistory[runsHistory.length - 1];
+    return `${runsHistory.length}:${runsHistory[0]?.id}:${last?.id}`;
+  }, [runsHistory]);
+
+  useEffect(() => {
+    const end = Math.max(0, n - 1);
+    setZoomRange({ start: 0, end });
+  }, [runsDataKey, n]);
+
+  const brushStartIndex = Math.min(
+    Math.max(0, zoomRange.start),
+    Math.max(0, n - 1),
+  );
+  const brushEndIndex = Math.min(
+    Math.max(brushStartIndex, zoomRange.end),
+    Math.max(0, n - 1),
+  );
+
+  const zoomRangeLabel = useMemo(() => {
+    if (!chartData.length || n <= 1) return null;
+    const isFullRange = brushStartIndex === 0 && brushEndIndex >= n - 1;
+    if (isFullRange) return null;
+    const startRow = chartData[brushStartIndex];
+    const endRow = chartData[brushEndIndex];
+    const startRunIndex = startRow?.run_index ?? brushStartIndex + 1;
+    const endRunIndex = endRow?.run_index ?? brushEndIndex + 1;
+    return `Runs ${startRunIndex}–${endRunIndex} of ${n}`;
+  }, [chartData, brushStartIndex, brushEndIndex, n]);
+
+  const handleBrushDragEnd = useCallback((state) => {
+    if (state?.startIndex == null || state?.endIndex == null) return;
+    setZoomRange({ start: state.startIndex, end: state.endIndex });
+  }, []);
 
   const handleResetZoom = useCallback(() => {
-    setBrushKey((k) => k + 1);
-  }, []);
+    setZoomRange({ start: 0, end: Math.max(0, n - 1) });
+  }, [n]);
 
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [hoveredRunId, setHoveredRunId] = useState(null);
@@ -307,17 +330,25 @@ export default function RunSessionAnalytics({ data }) {
                   </p>
                 </div>
               </div>
-              {n > 1 ? (
-                <button
-                  type="button"
-                  onClick={handleResetZoom}
-                  className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 transition hover:border-cyan-500/45 hover:text-cyan-200"
-                  aria-label="Reset chart zoom to show all runs"
-                >
-                  <RotateCcw className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-                  Reset zoom
-                </button>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-2">
+                {zoomRangeLabel ? (
+                  <span className="font-data text-[10px] tabular-nums text-cyan-500/80">
+                    {zoomRangeLabel}
+                  </span>
+                ) : null}
+                {n > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handleResetZoom}
+                    disabled={!zoomRangeLabel}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 transition enabled:hover:border-cyan-500/45 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Reset chart zoom to show all runs"
+                  >
+                    <RotateCcw className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+                    Reset zoom
+                  </button>
+                ) : null}
+              </div>
               {selectedRunId ? (
                 <button
                   type="button"
@@ -340,7 +371,6 @@ export default function RunSessionAnalytics({ data }) {
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
-                    key={`${chartSeriesKey}-${brushKey}`}
                     data={chartData}
                     margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
                   >
@@ -465,6 +495,9 @@ export default function RunSessionAnalytics({ data }) {
                         travellerWidth={10}
                         stroke="rgba(34, 211, 238, 0.65)"
                         fill="rgba(15, 23, 42, 0.94)"
+                        startIndex={brushStartIndex}
+                        endIndex={brushEndIndex}
+                        onDragEnd={handleBrushDragEnd}
                         tickFormatter={(v) => String(v)}
                         alwaysShowText={false}
                       />
