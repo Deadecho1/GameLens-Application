@@ -66,7 +66,7 @@ export default function RunSessionAnalytics({ data }) {
     return sum / runsHistory.length;
   }, [runsHistory]);
 
-  /** Stable chart rows: chronological sort, chartIndex (0…n-1), moving avg — only when raw runs change. */
+  /** Stable chart rows: chronological sort, Unix timestamps, moving avg — only when raw runs change. */
   const chartBundle = useMemo(() => {
     if (!runsHistory.length) {
       return { chartData: [], n: 0, yMin: 0, yMax: 1, yPad: 0 };
@@ -79,9 +79,8 @@ export default function RunSessionAnalytics({ data }) {
     const spread = yMax - yMin || 1;
     const yPad = Math.max(30, spread * 0.06);
     const n = trendSeries.length;
-    const chartData = trendSeries.map((point, index) => ({
+    const chartData = trendSeries.map((point) => ({
       ...point,
-      chartIndex: index,
       run_id: point.run_id ?? point.runId ?? point.run?.id ?? null,
       minSec: yMin,
       maxSec: yMax,

@@ -16,9 +16,33 @@ import { formatSecondsAsHMS } from '../../../utils/duration';
 
 const DEFAULT_PLOT_HEIGHT = 400;
 
-function runLabelFromRow(row) {
+const AXIS_TIME_OPTIONS = {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+};
+
+function formatAxisTime(unixTime) {
+  if (!Number.isFinite(unixTime)) return '—';
+  return new Date(unixTime).toLocaleDateString(undefined, AXIS_TIME_OPTIONS);
+}
+
+function formatBrushTick(unixTime) {
+  if (!Number.isFinite(unixTime)) return '';
+  return new Date(unixTime).toLocaleDateString();
+}
+
+function runIdFromRow(row) {
   if (!row) return '…';
-  return row.run_index || row.run_id || row.id || '…';
+  return row.run_id ?? row.runId ?? row.id ?? '…';
+}
+
+function dateLabelFromRow(row) {
+  if (!row) return '—';
+  if (Number.isFinite(row.timestamp) && row.timestamp > 0) return formatAxisTime(row.timestamp);
+  if (row.date) return String(row.date);
+  return '—';
 }
 
 function safeYDomain(yMin, yMax, yPad) {
@@ -136,9 +160,13 @@ function TacticalRadarChart({
       return;
     }
 
-    const startRun = runLabelFromRow(rows[e.startIndex]);
-    const endRun = runLabelFromRow(rows[e.endIndex]);
-    el.textContent = `Runs ${startRun}–${endRun} of ${rows.length}`;
+    const startRow = rows[e.startIndex];
+    const endRow = rows[e.endIndex];
+    const startDate = dateLabelFromRow(startRow);
+    const endDate = dateLabelFromRow(endRow);
+    const startRunId = runIdFromRow(startRow);
+    const endRunId = runIdFromRow(endRow);
+    el.textContent = `${startDate} – ${endDate} · Run ${startRunId}–${endRunId}`;
     el.classList.remove('invisible');
   }, []);
 
@@ -199,18 +227,18 @@ function TacticalRadarChart({
             >
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
             <XAxis
-              dataKey="chartIndex"
+              dataKey="timestamp"
               type="number"
+              scale="time"
               domain={['dataMin', 'dataMax']}
-              allowDecimals={false}
               minTickGap={32}
               interval="preserveStartEnd"
               tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
               axisLine={{ stroke: '#475569' }}
               tickLine={{ stroke: '#475569' }}
-              tickFormatter={(v) => (Number.isFinite(v) ? String(v + 1) : '')}
+              tickFormatter={formatAxisTime}
               label={{
-                value: 'Session order (1…n)',
+                value: 'Session time',
                 position: 'insideBottom',
                 offset: n > 1 ? -36 : -6,
                 fill: '#64748b',
@@ -265,24 +293,18 @@ function TacticalRadarChart({
                 if (!p) return null;
                 const runId = p.run_id ?? p.runId;
                 if (runId == null) return null;
-                const slot =
-                  typeof p.chartIndex === 'number' && Number.isFinite(p.chartIndex)
-                    ? p.chartIndex + 1
-                    : null;
+                const when = dateLabelFromRow(p);
                 return (
                   <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl">
                     <p className="font-display text-xs font-bold uppercase tracking-wide text-cyan-200">
                       Run ID · {runId}
                     </p>
                     <p className="font-data mt-1 text-[10px] tabular-nums text-slate-500">
-                      DB run index ·{' '}
-                      <span className="text-cyan-300/90">{p.run_index ?? '—'}</span>
-                      {slot != null ? (
-                        <span className="text-slate-600">
-                          {' '}
-                          · slot {slot} of {n}
-                        </span>
-                      ) : null}
+                      <span className="text-cyan-300/90">{when}</span>
+                      <span className="text-slate-600">
+                        {' '}
+                        · DB index {p.run_index ?? '—'}
+                      </span>
                     </p>
                     <p className="font-data mt-2 text-sm tabular-nums text-white">
                       {p.durationLabel ?? formatSecondsAsHMS(p.durationSec)}
@@ -324,13 +346,13 @@ function TacticalRadarChart({
             />
             {n > 1 && dataLength > 1 ? (
               <Brush
-                dataKey="chartIndex"
+                dataKey="timestamp"
                 height={28}
                 travellerWidth={10}
                 stroke="rgba(34, 211, 238, 0.65)"
                 fill="rgba(15, 23, 42, 0.94)"
                 onChange={updateBrushHeader}
-                tickFormatter={(v) => (v != null && Number.isFinite(v) ? String(v + 1) : '')}
+                tickFormatter={formatBrushTick}
                 alwaysShowText={false}
               />
             ) : null}

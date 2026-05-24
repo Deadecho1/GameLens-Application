@@ -25,6 +25,13 @@ export function resolveRunIndex(run, chronologicalOrder) {
   return chronologicalOrder;
 }
 
+/** Unix ms for chart X-axis / Brush (continuous time scale). */
+export function resolveRunTimestamp(run) {
+  const raw = run?.date ?? run?.created_at ?? run?.createdAt;
+  const ms = Date.parse(raw ?? '');
+  return Number.isFinite(ms) ? ms : 0;
+}
+
 /** Oldest → newest by `date`, then stable tie-break on `id`. */
 export function sortRunsChronologically(runs = []) {
   return [...runs].sort((a, b) => {
@@ -62,8 +69,7 @@ export function attachMovingAverage(points, windowSize = MOVING_AVERAGE_WINDOW) 
 export function buildRunDurationTrendSeries(runs = [], windowSize = MOVING_AVERAGE_WINDOW) {
   const ordered = sortRunsChronologically(runs);
   const base = ordered.map((run, index) => ({
-    /** Strict 0…n-1 layout axis — never use sparse DB ids for Recharts X/Brush. */
-    chartIndex: index,
+    timestamp: resolveRunTimestamp(run),
     run_id: run?.id ?? null,
     run_index: resolveRunIndex(run, index + 1),
     order: index + 1,
