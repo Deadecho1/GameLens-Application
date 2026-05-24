@@ -10,7 +10,10 @@ import {
   Timer,
 } from 'lucide-react';
 import { durationToSeconds, formatSecondsAsHMS } from '../../../utils/duration';
-import { buildRunDurationTrendSeries } from '../../../utils/runMovingAverage';
+import {
+  buildRunDurationTrendSeries,
+  resolveRunTimestamp,
+} from '../../../utils/runMovingAverage';
 import { MemoizedRadarChart } from './TacticalRadarChart';
 
 /** Synergy bonus label from catalog popularity (dataStore) — scaled to seconds proxy. */
@@ -79,8 +82,9 @@ export default function RunSessionAnalytics({ data }) {
     const spread = yMax - yMin || 1;
     const yPad = Math.max(30, spread * 0.06);
     const n = trendSeries.length;
-    const chartData = trendSeries.map((point) => ({
+    const chartData = trendSeries.map((point, index) => ({
       ...point,
+      timestamp: resolveRunTimestamp(point.run) + index,
       run_id: point.run_id ?? point.runId ?? point.run?.id ?? null,
       minSec: yMin,
       maxSec: yMax,
