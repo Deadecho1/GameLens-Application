@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
@@ -19,9 +19,15 @@ import {
   Scatter,
   Line,
   ReferenceLine,
+  Brush,
 } from 'recharts';
 import { durationToSeconds, formatSecondsAsHMS } from '../../../utils/duration';
 import { buildRunDurationTrendSeries } from '../../../utils/runMovingAverage';
+import {
+  formatSparseOrderTick,
+  runOrderTickStep,
+  sparseRunOrderTicks,
+} from '../../../utils/chartAxisTicks';
 
 /** Flat-top hexagon corners for SVG polygon */
 function hexPolygonPoints(cx, cy, r) {
@@ -102,7 +108,7 @@ export default function RunSessionAnalytics({ data }) {
 
   const scatterAxis = useMemo(() => {
     if (!runsHistory.length) {
-      return { scatterData: [], n: 0, yMin: 0, yMax: 1, yPad: 0, xTicks: [] };
+      return { scatterData: [], n: 0, yMin: 0, yMax: 1, yPad: 0 };
     }
     const trendSeries = buildRunDurationTrendSeries(runsHistory);
     const secs = trendSeries.map((p) => p.durationSec);
@@ -117,18 +123,63 @@ export default function RunSessionAnalytics({ data }) {
       minSec: yMin,
       maxSec: yMax,
     }));
-    const xTicks = Array.from({ length: n }, (_, i) => i + 1);
     return {
       scatterData,
       n,
       yMin,
       yMax,
       yPad,
-      xTicks,
     };
   }, [runsHistory]);
 
-  const { scatterData, n, yMin, yMax, yPad, xTicks } = scatterAxis;
+  const { scatterData, n, yMin, yMax, yPad } = scatterAxis;
+
+  const chartWrapRef = useRef(null);
+  const [chartWidth, setChartWidth] = useState(720);
+  const [brushRange, setBrushRange] = useState({ startIndex: 0, endIndex: 0 });
+
+  useEffect(() => {
+    const el = chartWrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect?.width;
+      if (w && w > 0) setChartWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const end = Math.max(0, scatterData.length - 1);
+    setBrushRange({ startIndex: 0, endIndex: end });
+  }, [scatterData.length]);
+
+  const brushStartOrder = scatterData[brushRange.startIndex]?.order ?? 1;
+  const brushEndOrder = scatterData[brushRange.endIndex]?.order ?? n;
+  const visibleRunCount = Math.max(0, brushRange.endIndex - brushRange.startIndex + 1);
+
+  const xTickStep = useMemo(
+    () => runOrderTickStep(visibleRunCount || n, chartWidth),
+    [visibleRunCount, n, chartWidth],
+  );
+
+  const xAxisTicks = useMemo(() => {
+    const span = visibleRunCount || n;
+    if (span <= 24) {
+      return Array.from({ length: span }, (_, i) => brushStartOrder + i);
+    }
+    return sparseRunOrderTicks(span, Math.max(6, Math.floor(chartWidth / 52))).map(
+      (t) => brushStartOrder + t - 1,
+    );
+  }, [visibleRunCount, n, chartWidth, brushStartOrder]);
+
+  const handleBrushChange = useCallback((range) => {
+    if (range?.startIndex == null || range?.endIndex == null) return;
+    setBrushRange({
+      startIndex: range.startIndex,
+      endIndex: range.endIndex,
+    });
+  }, []);
 
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [hoveredRunId, setHoveredRunId] = useState(null);
@@ -283,10 +334,20 @@ export default function RunSessionAnalytics({ data }) {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Activity className="h-4 w-4 text-cyan-400/80" aria-hidden />
-                <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
-                  Tactical radar · duration vs run index
-                </h3>
+                <div>
+                  <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
+                    Tactical radar · density cloud + trend
+                  </h3>
+                  <p className="font-data mt-1 text-[10px] text-slate-600">
+                    Drag the range slider below to zoom · {n} run{n === 1 ? '' : 's'} chronological
+                  </p>
+                </div>
               </div>
+              {n > 0 && visibleRunCount < n ? (
+                <span className="font-data text-[10px] tabular-nums text-cyan-500/70">
+                  Runs {brushStartOrder}–{brushEndOrder} of {n}
+                </span>
+              ) : null}
               {selectedRunId ? (
                 <button
                   type="button"
@@ -303,27 +364,43 @@ export default function RunSessionAnalytics({ data }) {
               </div>
             ) : (
               <div
+                ref={chartWrapRef}
                 className={`w-full min-w-0 rounded-xl border border-slate-800 bg-slate-950/70 ${
                   chartIsHero ? 'h-[min(48vh,480px)] md:h-[min(50vh,520px)]' : 'h-[min(220px,32vh)] md:h-[260px]'
                 }`}
               >
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={scatterData} margin={{ top: 16, right: 20, bottom: 20, left: 12 }}>
+                  <ComposedChart
+                    data={scatterData}
+                    margin={{ top: 16, right: 20, bottom: n > 1 ? 56 : 24, left: 12 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
                     <XAxis
                       type="number"
                       dataKey="order"
                       domain={n <= 1 ? [0.5, 1.5] : [0.5, n + 0.5]}
-                      ticks={xTicks}
-                      tick={{ fill: '#94a3b8', fontSize: 11 }}
+                      allowDataOverflow
+                      minTickGap={32}
+                      ticks={n > 24 ? xAxisTicks : undefined}
+                      tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
                       axisLine={{ stroke: '#475569' }}
                       tickLine={{ stroke: '#475569' }}
                       allowDecimals={false}
                       padding={{ left: 0, right: 0 }}
+                      tickFormatter={(value) => {
+                        const v = Math.round(Number(value));
+                        if (n > 24) return Number.isFinite(v) ? String(v) : '';
+                        return formatSparseOrderTick(
+                          value,
+                          xTickStep,
+                          brushStartOrder,
+                          brushEndOrder,
+                        );
+                      }}
                       label={{
-                        value: 'Run # (order)',
+                        value: 'Run # (chronological)',
                         position: 'insideBottom',
-                        offset: -6,
+                        offset: n > 1 ? -40 : -6,
                         fill: '#64748b',
                         fontSize: 10,
                       }}
@@ -419,6 +496,29 @@ export default function RunSessionAnalytics({ data }) {
                       style={{ filter: 'drop-shadow(0 0 12px rgba(34,211,238,0.85))' }}
                       isAnimationActive={false}
                     />
+                    {n > 1 ? (
+                      <Brush
+                        dataKey="order"
+                        height={32}
+                        travellerWidth={12}
+                        stroke="rgba(34, 211, 238, 0.55)"
+                        fill="rgba(15, 23, 42, 0.92)"
+                        startIndex={brushRange.startIndex}
+                        endIndex={brushRange.endIndex}
+                        onChange={handleBrushChange}
+                        tickFormatter={(v) => `#${Math.round(v)}`}
+                        alwaysShowText={false}
+                      >
+                        <Line
+                          type="monotone"
+                          dataKey="movingAverage"
+                          stroke="rgba(34, 211, 238, 0.45)"
+                          strokeWidth={1}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      </Brush>
+                    ) : null}
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
