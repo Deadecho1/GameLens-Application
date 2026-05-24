@@ -256,9 +256,8 @@ export default function RunSessionAnalytics({ data }) {
                 hoveredRunId={hoveredRunId}
                 onSelectRun={handleSelectRun}
                 onHoverRun={handleScatterHover}
-                className={`w-full min-w-0 rounded-xl border border-slate-800 bg-slate-950/70 ${
-                  chartIsHero ? 'h-[min(48vh,480px)] md:h-[min(50vh,520px)]' : 'h-[min(220px,32vh)] md:h-[260px]'
-                }`}
+                className="w-full min-w-0 rounded-xl border border-slate-800 bg-slate-950/70"
+                plotHeight={chartIsHero ? 480 : 400}
               />
             )}
           </motion.section>

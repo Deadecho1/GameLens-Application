@@ -14,6 +14,32 @@ import {
 } from 'recharts';
 import { formatSecondsAsHMS } from '../../../utils/duration';
 
+const DEFAULT_PLOT_HEIGHT = 400;
+
+/** Brush indices are array positions, not sparse run_index values. */
+function clampBrushIndices(start, end, dataLength) {
+  if (!dataLength || dataLength <= 0) return { start: 0, end: 0 };
+  const last = dataLength - 1;
+  const safeStart = Math.min(Math.max(0, Math.floor(Number(start) || 0)), last);
+  const safeEnd = Math.min(Math.max(safeStart, Math.floor(Number(end) || 0)), last);
+  return { start: safeStart, end: safeEnd };
+}
+
+function getRowRunIndex(data, arrayIndex) {
+  if (!data?.length || arrayIndex < 0 || arrayIndex >= data.length) return null;
+  const row = data[arrayIndex];
+  if (!row) return null;
+  if (typeof row.run_index === 'number' && Number.isFinite(row.run_index)) return row.run_index;
+  return arrayIndex + 1;
+}
+
+function safeYDomain(yMin, yMax, yPad) {
+  const lo = yMin - yPad;
+  const hi = yMax + yPad;
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi <= lo) return [0, 3600];
+  return [lo, hi];
+}
+
 function hexPolygonPoints(cx, cy, r) {
   return Array.from({ length: 6 }, (_, i) => {
     const a = (Math.PI / 3) * i - Math.PI / 6;
@@ -90,36 +116,49 @@ function TacticalRadarChart({
   onSelectRun,
   onHoverRun,
   className,
+  plotHeight = DEFAULT_PLOT_HEIGHT,
 }) {
-  const lastIndex = Math.max(0, n - 1);
+  const dataLength = data?.length ?? 0;
+  const lastIndex = Math.max(0, dataLength - 1);
+  const plotHeightPx = Math.max(280, Number(plotHeight) || DEFAULT_PLOT_HEIGHT);
 
-  const [brushRange, setBrushRange] = useState({ start: 0, end: lastIndex });
+  const [brushRange, setBrushRange] = useState(() =>
+    clampBrushIndices(0, lastIndex, dataLength),
+  );
 
   useEffect(() => {
-    setBrushRange({ start: 0, end: Math.max(0, data.length - 1) });
-  }, [data.length, chartKey]);
+    setBrushRange(clampBrushIndices(0, dataLength - 1, dataLength));
+  }, [dataLength, chartKey]);
 
-  const brushStart = Math.min(Math.max(0, brushRange.start), lastIndex);
-  const brushEnd = Math.min(Math.max(brushStart, brushRange.end), lastIndex);
+  const { start: safeStart, end: safeEnd } = useMemo(
+    () => clampBrushIndices(brushRange.start, brushRange.end, dataLength),
+    [brushRange.start, brushRange.end, dataLength],
+  );
+
+  const yDomain = useMemo(() => safeYDomain(yMin, yMax, yPad), [yMin, yMax, yPad]);
 
   const rangeLabel = useMemo(() => {
-    if (!data.length || n <= 1) return null;
-    if (brushStart === 0 && brushEnd >= lastIndex) return null;
-    const startRow = data[brushStart];
-    const endRow = data[brushEnd];
-    const startRunIndex = startRow?.run_index ?? brushStart + 1;
-    const endRunIndex = endRow?.run_index ?? brushEnd + 1;
+    if (!dataLength || n <= 1) return null;
+    if (safeStart === 0 && safeEnd >= lastIndex) return null;
+    if (!data[safeStart] || !data[safeEnd]) return null;
+    const startRunIndex = getRowRunIndex(data, safeStart);
+    const endRunIndex = getRowRunIndex(data, safeEnd);
+    if (startRunIndex == null || endRunIndex == null) return null;
     return `Runs ${startRunIndex}–${endRunIndex} of ${n}`;
-  }, [data, brushStart, brushEnd, lastIndex, n]);
+  }, [data, dataLength, safeStart, safeEnd, lastIndex, n]);
 
-  const handleBrushChange = useCallback((state) => {
-    if (state?.startIndex == null || state?.endIndex == null) return;
-    setBrushRange({ start: state.startIndex, end: state.endIndex });
-  }, []);
+  const handleBrushChange = useCallback(
+    (state) => {
+      if (state?.startIndex == null || state?.endIndex == null || !dataLength) return;
+      const next = clampBrushIndices(state.startIndex, state.endIndex, dataLength);
+      setBrushRange(next);
+    },
+    [dataLength],
+  );
 
   const handleResetZoom = useCallback(() => {
-    setBrushRange({ start: 0, end: lastIndex });
-  }, [lastIndex]);
+    setBrushRange(clampBrushIndices(0, lastIndex, dataLength));
+  }, [lastIndex, dataLength]);
 
   const renderScatterShape = useCallback(
     (props) => (
@@ -134,8 +173,10 @@ function TacticalRadarChart({
     [selectedRunId, hoveredRunId, onSelectRun, onHoverRun],
   );
 
+  const canRenderChart = dataLength > 0 && plotHeightPx > 0;
+
   return (
-    <div className={`flex flex-col ${className ?? ''}`}>
+    <div className={`flex w-full min-w-0 flex-col ${className ?? ''}`}>
       {n > 1 ? (
         <div className="mb-2 flex shrink-0 flex-wrap items-center justify-end gap-2 px-1">
           {rangeLabel ? (
@@ -154,13 +195,17 @@ function TacticalRadarChart({
         </div>
       ) : null}
 
-      <div className="min-h-0 flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart
-            key={chartKey}
-            data={data}
-            margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
-          >
+      <div
+        className="w-full shrink-0"
+        style={{ width: '100%', height: plotHeightPx, minHeight: plotHeightPx }}
+      >
+        {canRenderChart ? (
+          <ResponsiveContainer width="100%" height={plotHeightPx} minHeight={plotHeightPx}>
+            <ComposedChart
+              key={chartKey}
+              data={data}
+              margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
+            >
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
             <XAxis
               dataKey="displayOrder"
@@ -180,7 +225,7 @@ function TacticalRadarChart({
             <YAxis
               type="number"
               dataKey="durationSec"
-              domain={[yMin - yPad, yMax + yPad]}
+              domain={yDomain}
               tick={{ fill: '#94a3b8', fontSize: 11 }}
               axisLine={{ stroke: '#475569' }}
               tickLine={{ stroke: '#475569' }}
@@ -275,22 +320,30 @@ function TacticalRadarChart({
               style={{ filter: 'drop-shadow(0 0 12px rgba(34,211,238,0.85))' }}
               isAnimationActive={false}
             />
-            {n > 1 ? (
+            {n > 1 && dataLength > 1 ? (
               <Brush
                 dataKey="displayOrder"
                 height={28}
                 travellerWidth={10}
                 stroke="rgba(34, 211, 238, 0.65)"
                 fill="rgba(15, 23, 42, 0.94)"
-                startIndex={brushStart}
-                endIndex={brushEnd}
+                startIndex={safeStart}
+                endIndex={safeEnd}
                 onChange={handleBrushChange}
-                tickFormatter={(v) => String(v)}
+                tickFormatter={(v) => (v != null && Number.isFinite(v) ? String(v) : '')}
                 alwaysShowText={false}
               />
             ) : null}
           </ComposedChart>
-        </ResponsiveContainer>
+          </ResponsiveContainer>
+        ) : (
+          <div
+            className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/40 font-data text-sm text-slate-500"
+            style={{ minHeight: plotHeightPx }}
+          >
+            No data to plot.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -299,6 +352,7 @@ function TacticalRadarChart({
 function radarChartPropsAreEqual(prev, next) {
   if (prev.data !== next.data) return false;
   if (prev.chartKey !== next.chartKey) return false;
+  if (prev.plotHeight !== next.plotHeight) return false;
   if (prev.selectedRunId !== next.selectedRunId) return false;
   if (prev.hoveredRunId !== next.hoveredRunId) return false;
   return true;
