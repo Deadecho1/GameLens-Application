@@ -62,6 +62,9 @@ export function attachMovingAverage(points, windowSize = MOVING_AVERAGE_WINDOW) 
 export function buildRunDurationTrendSeries(runs = [], windowSize = MOVING_AVERAGE_WINDOW) {
   const ordered = sortRunsChronologically(runs);
   const base = ordered.map((run, index) => ({
+    /** Strict 0…n-1 layout axis — never use sparse DB ids for Recharts X/Brush. */
+    chartIndex: index,
+    run_id: run?.id ?? null,
     run_index: resolveRunIndex(run, index + 1),
     order: index + 1,
     durationSec: getRunDurationSeconds(run),

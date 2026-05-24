@@ -16,21 +16,13 @@ import { formatSecondsAsHMS } from '../../../utils/duration';
 
 const DEFAULT_PLOT_HEIGHT = 400;
 
-/** Brush indices are array positions, not sparse run_index values. */
+/** Brush startIndex/endIndex are array positions, not chartIndex or DB run_id. */
 function clampBrushIndices(start, end, dataLength) {
   if (!dataLength || dataLength <= 0) return { start: 0, end: 0 };
   const last = dataLength - 1;
   const safeStart = Math.min(Math.max(0, Math.floor(Number(start) || 0)), last);
   const safeEnd = Math.min(Math.max(safeStart, Math.floor(Number(end) || 0)), last);
   return { start: safeStart, end: safeEnd };
-}
-
-function getRowRunIndex(data, arrayIndex) {
-  if (!data?.length || arrayIndex < 0 || arrayIndex >= data.length) return null;
-  const row = data[arrayIndex];
-  if (!row) return null;
-  if (typeof row.run_index === 'number' && Number.isFinite(row.run_index)) return row.run_index;
-  return arrayIndex + 1;
 }
 
 function safeYDomain(yMin, yMax, yPad) {
@@ -208,12 +200,16 @@ function TacticalRadarChart({
             >
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
             <XAxis
-              dataKey="displayOrder"
+              dataKey="chartIndex"
+              type="number"
+              domain={[0, Math.max(0, dataLength - 1)]}
+              allowDecimals={false}
               minTickGap={32}
               interval="preserveStartEnd"
               tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
               axisLine={{ stroke: '#475569' }}
               tickLine={{ stroke: '#475569' }}
+              tickFormatter={(v) => (Number.isFinite(v) ? String(v + 1) : '')}
               label={{
                 value: 'Session order (1…n)',
                 position: 'insideBottom',
@@ -266,21 +262,28 @@ function TacticalRadarChart({
               }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
-                const scatterEntry = payload.find((e) => e?.payload?.runId != null);
-                const p = scatterEntry?.payload ?? payload[0]?.payload;
-                if (!p?.runId) return null;
+                const p = payload[0]?.payload;
+                if (!p) return null;
+                const runId = p.run_id ?? p.runId;
+                if (runId == null) return null;
+                const slot =
+                  typeof p.chartIndex === 'number' && Number.isFinite(p.chartIndex)
+                    ? p.chartIndex + 1
+                    : null;
                 return (
                   <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl">
                     <p className="font-display text-xs font-bold uppercase tracking-wide text-cyan-200">
-                      Run ID · {p.runId}
+                      Run ID · {runId}
                     </p>
                     <p className="font-data mt-1 text-[10px] tabular-nums text-slate-500">
                       DB run index ·{' '}
                       <span className="text-cyan-300/90">{p.run_index ?? '—'}</span>
-                      <span className="text-slate-600">
-                        {' '}
-                        · slot {p.displayOrder} of {n}
-                      </span>
+                      {slot != null ? (
+                        <span className="text-slate-600">
+                          {' '}
+                          · slot {slot} of {n}
+                        </span>
+                      ) : null}
                     </p>
                     <p className="font-data mt-2 text-sm tabular-nums text-white">
                       {p.durationLabel ?? formatSecondsAsHMS(p.durationSec)}
@@ -322,7 +325,7 @@ function TacticalRadarChart({
             />
             {n > 1 && dataLength > 1 ? (
               <Brush
-                dataKey="displayOrder"
+                dataKey="chartIndex"
                 height={28}
                 travellerWidth={10}
                 stroke="rgba(34, 211, 238, 0.65)"
@@ -330,7 +333,7 @@ function TacticalRadarChart({
                 startIndex={safeStart}
                 endIndex={safeEnd}
                 onChange={handleBrushChange}
-                tickFormatter={(v) => (v != null && Number.isFinite(v) ? String(v) : '')}
+                tickFormatter={(v) => (v != null && Number.isFinite(v) ? String(v + 1) : '')}
                 alwaysShowText={false}
               />
             ) : null}
