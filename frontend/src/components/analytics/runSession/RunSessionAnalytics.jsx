@@ -56,24 +56,20 @@ function bossNameById(catalog, id) {
   return catalog.find((b) => b.id === id)?.name ?? null;
 }
 
-/** Background shards: very low opacity; selected/hover stay readable. */
-function shardFill(durationSec, minSec, maxSec, isSelected, isHover) {
+/** Density cloud: uniform low-opacity fills so overlaps read brighter. */
+const DENSITY_CLOUD_FILL = 'rgba(34, 211, 238, 0.18)';
+const DENSITY_CLOUD_STROKE = 'rgba(34, 211, 238, 0.12)';
+
+function shardFill(isSelected, isHover) {
   if (isSelected) return '#22d3ee';
-  if (isHover) return 'rgba(34,211,238,0.45)';
-  const spread = maxSec - minSec || 1;
-  const t = Math.min(1, Math.max(0, (durationSec - minSec) / spread));
-  if (t >= 0.66) return 'rgba(34,211,238,0.18)';
-  if (t >= 0.33) return 'rgba(34,211,238,0.14)';
-  return 'rgba(148,163,184,0.15)';
+  if (isHover) return 'rgba(34, 211, 238, 0.55)';
+  return DENSITY_CLOUD_FILL;
 }
 
-function shardStroke(durationSec, minSec, maxSec, isSelected, isHover) {
-  if (isSelected) return '#67e8f9';
-  if (isHover) return 'rgba(103,232,249,0.75)';
-  const spread = maxSec - minSec || 1;
-  const t = Math.min(1, Math.max(0, (durationSec - minSec) / spread));
-  if (t >= 0.5) return 'rgba(34,211,238,0.28)';
-  return 'rgba(100,116,139,0.22)';
+function shardStroke(isSelected, isHover) {
+  if (isSelected) return '#a5f3fc';
+  if (isHover) return 'rgba(103, 232, 249, 0.8)';
+  return DENSITY_CLOUD_STROKE;
 }
 
 const glitchInjectVariants = {
@@ -163,8 +159,8 @@ export default function RunSessionAnalytics({ data }) {
       const active = payload.runId === selectedRunId;
       const hover = payload.runId === hoveredRunId;
       const hr = active ? 10 : hover ? 9 : 8;
-      const fill = shardFill(payload.durationSec, payload.minSec, payload.maxSec, active, hover);
-      const stroke = shardStroke(payload.durationSec, payload.minSec, payload.maxSec, active, hover);
+      const fill = shardFill(active, hover);
+      const stroke = shardStroke(active, hover);
       const strokeW = active ? 2 : hover ? 1.5 : 1;
       const glow =
         active || hover
@@ -376,48 +372,51 @@ export default function RunSessionAnalytics({ data }) {
                       }}
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
-                        const p = payload[0]?.payload;
-                        if (!p) return null;
+                        const scatterEntry = payload.find((e) => e?.payload?.runId != null);
+                        const p = scatterEntry?.payload ?? payload[0]?.payload;
+                        if (!p?.runId) return null;
                         return (
                           <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl">
-                            <p className="font-data text-[10px] font-semibold text-cyan-300/90">
-                              {p.runId} · #{p.order}
+                            <p className="font-display text-xs font-bold uppercase tracking-wide text-cyan-200">
+                              {p.runId}
                             </p>
-                            <p className="font-data mt-1 text-[10px] text-slate-500">{p.date}</p>
-                            <p className="font-data mt-2 text-xs text-slate-200">
-                              Duration{' '}
-                              <span className="tabular-nums text-slate-300">
-                                {formatSecondsAsHMS(p.durationSec)}
-                              </span>
+                            <p className="font-data mt-1 text-sm tabular-nums text-white">
+                              {p.durationLabel ?? formatSecondsAsHMS(p.durationSec)}
                             </p>
-                            <p className="font-data text-xs text-cyan-200">
-                              5-run avg{' '}
-                              <span className="tabular-nums font-semibold">
-                                {formatSecondsAsHMS(Math.round(p.movingAverage))}
-                              </span>
+                            <p className="font-data text-[10px] tabular-nums text-slate-500">
+                              {formatSecondsAsHMS(p.durationSec)} · run #{p.order}
                             </p>
+                            {typeof p.movingAverage === 'number' ? (
+                              <p className="font-data mt-2 border-t border-slate-800 pt-2 text-[10px] text-slate-500">
+                                10-run trend{' '}
+                                <span className="tabular-nums text-cyan-400/90">
+                                  {formatSecondsAsHMS(Math.round(p.movingAverage))}
+                                </span>
+                              </p>
+                            ) : null}
                           </div>
                         );
                       }}
                     />
                     <Scatter
-                      name="Runs"
+                      name="Density cloud"
                       dataKey="durationSec"
                       data={scatterData}
                       fill="#22d3ee"
-                      fillOpacity={0.2}
+                      fillOpacity={0.18}
                       shape={CustomScatterShape}
                       isAnimationActive={false}
                     />
                     <Line
                       type="monotone"
                       dataKey="movingAverage"
-                      name="5-run moving avg"
-                      stroke="#22d3ee"
-                      strokeWidth={3}
+                      name="10-run trend"
+                      stroke="#67e8f9"
+                      strokeWidth={3.5}
+                      strokeOpacity={1}
                       dot={false}
-                      activeDot={{ r: 4, fill: '#ecfeff', stroke: '#0891b2', strokeWidth: 2 }}
-                      style={{ filter: 'drop-shadow(0 0 8px rgba(34,211,238,0.65))' }}
+                      activeDot={{ r: 5, fill: '#ecfeff', stroke: '#22d3ee', strokeWidth: 2 }}
+                      style={{ filter: 'drop-shadow(0 0 12px rgba(34,211,238,0.85))' }}
                       isAnimationActive={false}
                     />
                   </ComposedChart>

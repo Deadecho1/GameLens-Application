@@ -1,6 +1,7 @@
 import { durationToSeconds } from './duration';
 
-export const MOVING_AVERAGE_WINDOW = 5;
+/** Trailing window for developer-facing session trend (current + prior runs). */
+export const MOVING_AVERAGE_WINDOW = 10;
 
 /** Resolve run length in seconds (duration_seconds or HH:MM:SS string). */
 export function getRunDurationSeconds(run) {
@@ -33,9 +34,11 @@ export function attachMovingAverage(points, windowSize = MOVING_AVERAGE_WINDOW) 
     const start = Math.max(0, index - size + 1);
     const window = points.slice(start, index + 1);
     const sum = window.reduce((acc, p) => acc + p.durationSec, 0);
+    const trendValue = sum / window.length;
     return {
       ...point,
-      movingAverage: sum / window.length,
+      movingAverage: trendValue,
+      trendValue,
     };
   });
 }
