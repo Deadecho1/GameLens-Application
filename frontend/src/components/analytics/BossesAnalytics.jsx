@@ -12,30 +12,18 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Award,
-  Bomb,
   ChartColumn,
   Crown,
-  Crosshair,
-  FlaskConical,
-  Gem,
   Globe,
-  Hammer,
-  Heart,
-  LayoutGrid,
-  Package,
   Radar,
   RotateCcw,
   Search,
-  Shield,
-  Sword,
   Swords,
-  Target,
   Timer,
-  Wand2,
-  Wrench,
   Zap,
 } from 'lucide-react';
 import { durationToSeconds, formatSecondsAsHMS, secondsToMinutes } from '../../utils/duration';
+import { bossAccentDotStyle, itemAccentDotStyle } from './items/itemUi';
 
 /** Seconds from all analyzed sessions (runsHistory.bossEncounters) plus boss.globalLifespanSamples; fallback: single lifespan. */
 function collectGlobalLifespanSeconds(bossId, dashboard) {
@@ -114,36 +102,6 @@ function survivalRankTopPercent(bossId, dashboard) {
   return { topPct, rank, total: bosses.length, singleCohort: false };
 }
 
-function pickItemIcon(name) {
-  const n = String(name ?? '').toLowerCase();
-  if (n.includes('mallet') || n.includes('hammer')) return Hammer;
-  if (n.includes('dagger') || n.includes('sword')) return Sword;
-  if (n.includes('seed') || n.includes('explosive')) return Bomb;
-  if (n.includes('charm') || n.includes('void')) return Gem;
-  if (n.includes('healing') || n.includes('draught')) return Heart;
-  if (n.includes('focus') || n.includes('arcane')) return Wand2;
-  if (n.includes('venom') || n.includes('flask') || n.includes('potion')) return FlaskConical;
-  if (n.includes('buckler') || n.includes('shield') || n.includes('plate')) return Shield;
-  if (n.includes('power')) return Zap;
-  return Package;
-}
-
-function inferItemCategory(item) {
-  if (item.category) return item.category;
-  const n = String(item.name ?? '').toLowerCase();
-  if (/(shield|plate|buckler)/.test(n)) return 'defensive';
-  if (/(sword|dagger|mallet|venom|explosive|thunder|fire|frost)/.test(n)) return 'offensive';
-  return 'utility';
-}
-
-function itemLogicTag(item) {
-  if (item.logicTag) return item.logicTag;
-  const imp = String(item.impact ?? '').toLowerCase();
-  if (imp === 'high') return 'High impact';
-  if (imp === 'low') return 'Support chip';
-  return 'Balanced kit';
-}
-
 /** Client-side mock: positive total = shorter projected engagement (percent points vs baseline). */
 function mockSynergyTimeReductionPct(itemIds, catalog) {
   let pct = 0;
@@ -151,21 +109,13 @@ function mockSynergyTimeReductionPct(itemIds, catalog) {
     if (id == null) continue;
     const item = catalog.find((i) => i.id === id);
     if (!item) continue;
-    const cat = inferItemCategory(item);
-    if (cat === 'offensive') pct += 15;
-    else if (cat === 'defensive') pct -= 5;
-    else if (cat === 'utility') pct += 8;
-    else pct += 5;
+    const imp = String(item.impact ?? '').toLowerCase();
+    if (imp === 'high') pct += 12;
+    else if (imp === 'low') pct += 4;
+    else pct += 7;
   }
   return pct;
 }
-
-const LIBRARY_CATEGORY_TABS = [
-  { id: 'all', label: 'All', Icon: LayoutGrid },
-  { id: 'offensive', label: 'Offensive', Icon: Swords },
-  { id: 'defensive', label: 'Defensive', Icon: Shield },
-  { id: 'utility', label: 'Utility', Icon: Wrench },
-];
 
 function normalizeLoadoutIds(loadout, validIds) {
   const allowed = new Set(validIds);
@@ -255,7 +205,6 @@ export default function BossesAnalytics({ data }) {
   /** Synergy Lab: up to 3 equipped item ids (inventory slots). */
   const [simSlots, setSimSlots] = useState([null, null, null]);
   const [libraryQuery, setLibraryQuery] = useState('');
-  const [libraryCategory, setLibraryCategory] = useState('all');
   const chartGradId = useId().replace(/:/g, '');
   const simCompareChartId = useId().replace(/:/g, '');
 
@@ -273,7 +222,6 @@ export default function BossesAnalytics({ data }) {
   useEffect(() => {
     setSimSlots([null, null, null]);
     setLibraryQuery('');
-    setLibraryCategory('all');
   }, [selectedBossId]);
 
   const selected = useMemo(
@@ -358,13 +306,9 @@ export default function BossesAnalytics({ data }) {
 
   const filteredLibraryItems = useMemo(() => {
     const q = libraryQuery.trim().toLowerCase();
-    return itemsCatalog.filter((item) => {
-      const cat = inferItemCategory(item);
-      if (libraryCategory !== 'all' && cat !== libraryCategory) return false;
-      if (q && !String(item.name ?? '').toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [itemsCatalog, libraryQuery, libraryCategory]);
+    if (!q) return itemsCatalog;
+    return itemsCatalog.filter((item) => String(item.name ?? '').toLowerCase().includes(q));
+  }, [itemsCatalog, libraryQuery]);
 
   return (
     <div className="space-y-6">
@@ -419,18 +363,10 @@ export default function BossesAnalytics({ data }) {
                       />
                     )}
                     <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${
-                        active
-                          ? 'border-cyan-400/40 bg-cyan-500/15 text-cyan-200'
-                          : 'border-slate-700 bg-slate-950/60 text-slate-500 group-hover:text-slate-300'
-                      }`}
-                    >
-                      {active ? (
-                        <Target className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                      ) : (
-                        <Crosshair className="h-4 w-4 opacity-70" strokeWidth={1.25} aria-hidden />
-                      )}
-                    </span>
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={bossAccentDotStyle(boss.id, active)}
+                      aria-hidden
+                    />
                     <span
                       className={`font-display text-xs font-bold uppercase tracking-[0.14em] ${
                         active ? 'text-cyan-100' : 'text-slate-400 group-hover:text-slate-200'
@@ -671,21 +607,24 @@ export default function BossesAnalytics({ data }) {
                           </p>
                         ) : (
                           <>
-                            <div className="mb-4 flex flex-wrap items-center gap-3">
+                            <div className="mb-4 flex flex-wrap gap-2">
                               {mostLethal.itemIds.map((id) => {
                                 const item = itemsCatalog.find((i) => i.id === id);
                                 if (!item) return null;
-                                const Icon = pickItemIcon(item.name);
                                 return (
-                                  <div
+                                  <span
                                     key={id}
-                                    className="flex flex-col items-center gap-2 rounded-xl border-2 border-amber-300/55 bg-slate-900/90 px-3 py-3 shadow-[0_0_22px_rgba(251,191,36,0.28),inset_0_0_18px_rgba(168,85,247,0.1)]"
+                                    className="inline-flex items-center gap-2 rounded-lg border border-amber-300/45 bg-slate-900/90 px-3 py-2 shadow-[0_0_18px_rgba(251,191,36,0.2)]"
                                   >
-                                    <Icon className="h-9 w-9 text-amber-100" strokeWidth={1.1} aria-hidden />
-                                    <span className="font-data max-w-24 truncate text-center text-[9px] text-amber-100/85">
+                                    <span
+                                      className="h-2 w-2 shrink-0 rounded-full"
+                                      style={itemAccentDotStyle(item.id, true)}
+                                      aria-hidden
+                                    />
+                                    <span className="font-display text-[10px] font-bold uppercase tracking-wide text-amber-100">
                                       {item.name}
                                     </span>
-                                  </div>
+                                  </span>
                                 );
                               })}
                             </div>
@@ -759,7 +698,6 @@ export default function BossesAnalytics({ data }) {
                           <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
                             {simSlots.map((slotId, slotIndex) => {
                               const item = slotId != null ? itemsCatalog.find((i) => i.id === slotId) : null;
-                              const Icon = item ? pickItemIcon(item.name) : Package;
                               return (
                                 <motion.button
                                   key={`slot-${slotIndex}`}
@@ -798,8 +736,12 @@ export default function BossesAnalytics({ data }) {
                                 >
                                   {item ? (
                                     <>
-                                      <Icon className="h-8 w-8 text-cyan-200" strokeWidth={1.15} aria-hidden />
-                                      <span className="font-data mt-2 max-w-22 truncate px-1 text-center text-[9px] text-slate-400">
+                                      <span
+                                        className="h-3 w-3 rounded-full"
+                                        style={itemAccentDotStyle(item.id, true)}
+                                        aria-hidden
+                                      />
+                                      <span className="font-display mt-2 max-w-22 truncate px-1 text-center text-[9px] font-bold uppercase tracking-wide text-slate-200">
                                         {item.name}
                                       </span>
                                     </>
@@ -830,71 +772,47 @@ export default function BossesAnalytics({ data }) {
                                 className="w-full rounded-lg border border-cyan-500/35 bg-slate-950/85 py-2.5 pl-10 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-600 shadow-[0_0_20px_rgba(34,211,238,0.06)] outline-none ring-0 transition focus:border-cyan-400/65 focus:shadow-[0_0_24px_rgba(34,211,238,0.12)]"
                               />
                             </label>
-                            <div className="mt-3 flex flex-wrap gap-1.5" role="tablist" aria-label="Item categories">
-                              {LIBRARY_CATEGORY_TABS.map((tab) => {
-                                const active = libraryCategory === tab.id;
-                                const TabIcon = tab.Icon;
-                                return (
-                                  <button
-                                    key={tab.id}
-                                    type="button"
-                                    role="tab"
-                                    aria-selected={active}
-                                    onClick={() => setLibraryCategory(tab.id)}
-                                    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] transition ${
-                                      active
-                                        ? 'border-cyan-400/50 bg-cyan-500/15 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.2)]'
-                                        : 'border-slate-700/90 bg-slate-900/50 text-slate-500 hover:border-slate-600 hover:text-slate-300'
-                                    } `}
-                                  >
-                                    <TabIcon className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                                    {tab.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
                           </div>
                           <div className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-color:rgba(51,65,85,0.85)_transparent]">
                             <p className="font-display mb-2 px-0.5 text-[8px] font-bold uppercase tracking-[0.2em] text-slate-600">
                               Item library
                             </p>
                             {filteredLibraryItems.length === 0 ? (
-                              <p className="font-data py-8 text-center text-sm text-slate-500">No items match filters.</p>
+                              <p className="font-data py-8 text-center text-sm text-slate-500">No items match.</p>
                             ) : (
-                              <div className="grid grid-cols-4 gap-2 pb-16 sm:grid-cols-5 md:grid-cols-6">
+                              <ul className="space-y-1 pb-4">
                                 {filteredLibraryItems.map((item) => {
                                   const inLoadout = simSlots.includes(item.id);
-                                  const Icon = pickItemIcon(item.name);
                                   return (
-                                    <div key={item.id} className="group relative aspect-square">
+                                    <li key={item.id}>
                                       <button
                                         type="button"
                                         onClick={() => toggleSimItem(item.id)}
-                                        className={`relative flex h-full w-full flex-col items-center justify-center rounded-lg border p-1 transition ${
+                                        className={`flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition ${
                                           inLoadout
-                                            ? 'border-cyan-400/55 bg-cyan-500/15 shadow-[0_0_18px_rgba(34,211,238,0.25)]'
+                                            ? 'border-cyan-400/55 bg-cyan-500/15 shadow-[0_0_14px_rgba(34,211,238,0.15)]'
                                             : 'border-slate-700/90 bg-slate-900/60 hover:border-slate-500 hover:bg-slate-900/85'
-                                        } `}
+                                        }`}
                                         aria-label={`${inLoadout ? 'Remove' : 'Equip'} ${item.name}`}
                                       >
-                                        <Icon className="h-6 w-6 text-cyan-300/95 sm:h-7 sm:w-7" strokeWidth={1.1} aria-hidden />
-                                      </button>
-                                      <div className="pointer-events-none absolute left-1/2 top-full z-80 mt-1 w-max max-w-52 -translate-x-1/2 scale-95 rounded-lg border border-cyan-500/25 bg-slate-950/95 px-2.5 py-2 opacity-0 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-md transition duration-150 group-hover:scale-100 group-hover:opacity-100">
-                                        <p className="font-display text-[10px] font-bold uppercase tracking-wide text-cyan-100">
+                                        <span
+                                          className="h-2 w-2 shrink-0 rounded-full"
+                                          style={itemAccentDotStyle(item.id, inLoadout)}
+                                          aria-hidden
+                                        />
+                                        <span className="font-display min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
                                           {item.name}
-                                        </p>
-                                        <p className="font-data mt-1 text-[10px] tabular-nums text-slate-400">
-                                          Popularity <span className="text-slate-200">{item.popularity}</span>
-                                        </p>
-                                        <p className="font-data mt-1 border-t border-slate-800 pt-1 text-[9px] text-slate-500">
-                                          <span className="text-cyan-500/90">Logic</span>{' '}
-                                          <span className="text-slate-300">{itemLogicTag(item)}</span>
-                                        </p>
-                                      </div>
-                                    </div>
+                                        </span>
+                                        {item.popularity != null ? (
+                                          <span className="font-data shrink-0 text-[10px] tabular-nums text-slate-500">
+                                            {item.popularity}%
+                                          </span>
+                                        ) : null}
+                                      </button>
+                                    </li>
                                   );
                                 })}
-                              </div>
+                              </ul>
                             )}
                           </div>
                         </div>

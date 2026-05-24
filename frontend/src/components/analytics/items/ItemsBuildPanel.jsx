@@ -10,26 +10,11 @@ import {
   Cell,
 } from 'recharts';
 import { motion } from 'framer-motion';
-import {
-  LayoutGrid,
-  Package,
-  RotateCcw,
-  Search,
-  Shield,
-  Sword,
-  Wrench,
-} from 'lucide-react';
+import { Package, RotateCcw, Search } from 'lucide-react';
 import { durationToSeconds } from '../../../utils/duration';
-import { inferCategory, pickItemIcon } from './itemIcons';
+import { itemAccentDotStyle } from './itemUi';
 
 const DRAG_MIME = 'application/gamelens-item-id';
-
-const CATEGORY_TABS = [
-  { id: 'all', label: 'All', Icon: LayoutGrid },
-  { id: 'offensive', label: 'Offense', Icon: Sword },
-  { id: 'defensive', label: 'Defense', Icon: Shield },
-  { id: 'utility', label: 'Utility', Icon: Wrench },
-];
 
 function formatMmSs(totalSeconds) {
   const s = Math.max(0, Math.round(totalSeconds));
@@ -106,7 +91,6 @@ export default function ItemsBuildPanel({ data, compact = false }) {
   const [buildSlots, setBuildSlots] = useState([null, null, null, null, null]);
   const [activeSlot, setActiveSlot] = useState(0);
   const [search, setSearch] = useState('');
-  const [catFilter, setCatFilter] = useState('all');
 
   const { globalAvgSeconds, itemRunStats } = useMemo(
     () => analyzeRunsForItems(runsHistory),
@@ -115,12 +99,9 @@ export default function ItemsBuildPanel({ data, compact = false }) {
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return catalog.filter((item) => {
-      if (catFilter !== 'all' && inferCategory(item) !== catFilter) return false;
-      if (q && !String(item.name).toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [catalog, search, catFilter]);
+    if (!q) return catalog;
+    return catalog.filter((item) => String(item.name).toLowerCase().includes(q));
+  }, [catalog, search]);
 
   const equippedIds = useMemo(() => buildSlots.filter((id) => id != null), [buildSlots]);
 
@@ -199,29 +180,6 @@ export default function ItemsBuildPanel({ data, compact = false }) {
               className="w-full rounded-lg border border-slate-700 bg-slate-950/85 py-2.5 pl-10 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-600 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-600/40"
             />
           </label>
-          <div className="mt-3 flex flex-wrap gap-1.5" role="tablist" aria-label="Filter by category">
-            {CATEGORY_TABS.map((tab) => {
-              const active = catFilter === tab.id;
-              const Icon = tab.Icon;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setCatFilter(tab.id)}
-                  className={`flex items-center gap-1 rounded-md border px-2 py-1 font-display text-[8px] font-bold uppercase tracking-[0.12em] transition ${
-                    active
-                      ? 'border-violet-500/40 bg-violet-500/10 text-violet-200'
-                      : 'border-slate-700 text-slate-500 hover:border-slate-600 hover:text-slate-300'
-                  }`}
-                >
-                  <Icon className="h-3 w-3" strokeWidth={1.5} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
         </div>
         <div className="analytics-split-scroll min-h-0 max-h-[min(40vh,320px)] flex-1 overflow-y-auto p-2 lg:max-h-none">
           {filteredItems.length === 0 ? (
@@ -249,13 +207,18 @@ export default function ItemsBuildPanel({ data, compact = false }) {
                       title={tooltipLines}
                       onDragStart={(e) => onDragStartItem(e, item.id)}
                       onClick={() => onBrowserItemActivate(item)}
-                      className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                      className={`flex w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left transition ${
                         inBuild
                           ? 'border-violet-500/35 bg-violet-500/5'
                           : 'border-slate-800 bg-slate-900/35 hover:border-slate-600 hover:bg-slate-900/60'
                       }`}
                     >
-                      <span className="font-display min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={itemAccentDotStyle(item.id, inBuild)}
+                        aria-hidden
+                      />
+                      <span className="font-display min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
                         {item.name}
                       </span>
                       <span className="font-data shrink-0 text-[11px] tabular-nums text-slate-400">
@@ -301,7 +264,6 @@ export default function ItemsBuildPanel({ data, compact = false }) {
             >
               {buildSlots.map((slotId, i) => {
                 const item = slotId != null ? catalog.find((x) => x.id === slotId) : null;
-                const Icon = item ? pickItemIcon(item.name) : Package;
                 const isActive = activeSlot === i;
                 return (
                   <div
@@ -325,8 +287,12 @@ export default function ItemsBuildPanel({ data, compact = false }) {
                   >
                     {item ? (
                       <>
-                        <Icon className="h-8 w-8 text-slate-200" strokeWidth={1.1} />
-                        <p className="font-data mt-2 max-w-full truncate text-center text-[9px] text-slate-400">
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={itemAccentDotStyle(item.id, true)}
+                          aria-hidden
+                        />
+                        <p className="font-display mt-3 max-w-full truncate px-1 text-center text-[10px] font-bold uppercase tracking-wide text-slate-200">
                           {item.name}
                         </p>
                         <button

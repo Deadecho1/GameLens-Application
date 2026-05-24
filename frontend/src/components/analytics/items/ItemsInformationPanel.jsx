@@ -12,7 +12,7 @@ import {
 import { motion } from 'framer-motion';
 import { Clock, Link2, Search, TrendingUp } from 'lucide-react';
 import { computeItemDetailAnalytics } from '../../../utils/itemAnalytics';
-import { pickItemIcon } from './itemIcons';
+import { itemAccentDotStyle } from './itemUi';
 
 const PHASE_COLORS = ['#22d3ee', '#8b5cf6', '#f59e0b'];
 
@@ -79,7 +79,6 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
             <li className="font-data py-8 text-center text-sm text-slate-500">No items match.</li>
           ) : (
             filteredCatalog.map((item) => {
-              const Icon = pickItemIcon(item.name);
               const active = Number(item.id) === Number(selectedId);
               return (
                 <li key={item.id}>
@@ -93,12 +92,10 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
                     }`}
                   >
                     <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
-                        active ? 'border-cyan-500/30 bg-cyan-500/10' : 'border-slate-700 bg-slate-950/80'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 text-cyan-300/80" strokeWidth={1.25} />
-                    </span>
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={itemAccentDotStyle(item.id, active)}
+                      aria-hidden
+                    />
                     <span className="min-w-0 flex-1">
                       <span className="font-display block truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
                         {item.name}
@@ -132,15 +129,12 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
           >
             <header className="border-b border-slate-800/80 pb-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  {(() => {
-                    const Icon = pickItemIcon(detail.item.name);
-                    return (
-                      <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-500/25 bg-cyan-500/10">
-                        <Icon className="h-5 w-5 text-cyan-300" strokeWidth={1.25} />
-                      </span>
-                    );
-                  })()}
+                <div className="flex items-start gap-3">
+                  <span
+                    className="mt-1.5 h-3 w-3 shrink-0 rounded-full"
+                    style={itemAccentDotStyle(detail.item.id, true)}
+                    aria-hidden
+                  />
                   <div>
                     <h4 className="font-display text-lg font-bold uppercase tracking-wide text-slate-100 md:text-xl">
                       {detail.item.name}
@@ -207,9 +201,7 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
                 </p>
               ) : (
                 <ul className="space-y-2">
-                  {detail.topSynergies.map((syn, idx) => {
-                    const SynIcon = pickItemIcon(syn.name);
-                    return (
+                  {detail.topSynergies.map((syn, idx) => (
                       <li
                         key={syn.id}
                         className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2.5"
@@ -217,7 +209,11 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
                         <span className="font-display w-6 text-center text-[10px] font-bold text-slate-600">
                           #{idx + 1}
                         </span>
-                        <SynIcon className="h-4 w-4 shrink-0 text-slate-400" />
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={itemAccentDotStyle(syn.id)}
+                          aria-hidden
+                        />
                         <span className="font-display min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
                           {syn.name}
                         </span>
@@ -225,8 +221,7 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
                           {syn.count} run{syn.count === 1 ? '' : 's'} · {syn.pct}%
                         </span>
                       </li>
-                    );
-                  })}
+                    ))}
                 </ul>
               )}
             </div>
