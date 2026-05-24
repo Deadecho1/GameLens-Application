@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
@@ -6,6 +6,7 @@ import {
   Clock,
   Crosshair,
   Package,
+  RotateCcw,
   Swords,
   Timer,
 } from 'lucide-react';
@@ -23,11 +24,6 @@ import {
 } from 'recharts';
 import { durationToSeconds, formatSecondsAsHMS } from '../../../utils/duration';
 import { buildRunDurationTrendSeries } from '../../../utils/runMovingAverage';
-import {
-  formatSparseOrderTick,
-  runOrderTickStep,
-  sparseRunOrderTicks,
-} from '../../../utils/chartAxisTicks';
 
 /** Flat-top hexagon corners for SVG polygon */
 function hexPolygonPoints(cx, cy, r) {
@@ -132,46 +128,32 @@ export default function RunSessionAnalytics({ data }) {
     };
   }, [runsHistory]);
 
-  const { scatterData, n, yMin, yMax, yPad } = scatterAxis;
+  /** Full chart series — moving average computed once per runsHistory change. */
+  const { scatterData: chartData, n, yMin, yMax, yPad } = scatterAxis;
 
-  const chartWrapRef = useRef(null);
-  const [chartWidth, setChartWidth] = useState(720);
   const [brushRange, setBrushRange] = useState({ startIndex: 0, endIndex: 0 });
 
-  useEffect(() => {
-    const el = chartWrapRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect?.width;
-      if (w && w > 0) setChartWidth(w);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const chartSeriesKey = useMemo(() => {
+    if (!chartData.length) return '0';
+    const first = chartData[0].runId;
+    const last = chartData[chartData.length - 1].runId;
+    return `${chartData.length}:${first}:${last}`;
+  }, [chartData]);
 
   useEffect(() => {
-    const end = Math.max(0, scatterData.length - 1);
+    const end = Math.max(0, chartData.length - 1);
     setBrushRange({ startIndex: 0, endIndex: end });
-  }, [scatterData.length]);
+  }, [chartSeriesKey, chartData.length]);
 
-  const brushStartOrder = scatterData[brushRange.startIndex]?.order ?? 1;
-  const brushEndOrder = scatterData[brushRange.endIndex]?.order ?? n;
-  const visibleRunCount = Math.max(0, brushRange.endIndex - brushRange.startIndex + 1);
-
-  const xTickStep = useMemo(
-    () => runOrderTickStep(visibleRunCount || n, chartWidth),
-    [visibleRunCount, n, chartWidth],
+  const brushEndIndex = Math.min(
+    Math.max(brushRange.endIndex, brushRange.startIndex),
+    Math.max(0, n - 1),
   );
+  const brushStartIndex = Math.min(brushRange.startIndex, brushEndIndex);
 
-  const xAxisTicks = useMemo(() => {
-    const span = visibleRunCount || n;
-    if (span <= 24) {
-      return Array.from({ length: span }, (_, i) => brushStartOrder + i);
-    }
-    return sparseRunOrderTicks(span, Math.max(6, Math.floor(chartWidth / 52))).map(
-      (t) => brushStartOrder + t - 1,
-    );
-  }, [visibleRunCount, n, chartWidth, brushStartOrder]);
+  const brushViewStart = chartData[brushStartIndex]?.run_index ?? 1;
+  const brushViewEnd = chartData[brushEndIndex]?.run_index ?? n;
+  const isBrushZoomed = n > 1 && (brushStartIndex > 0 || brushEndIndex < n - 1);
 
   const handleBrushChange = useCallback((range) => {
     if (range?.startIndex == null || range?.endIndex == null) return;
@@ -180,6 +162,10 @@ export default function RunSessionAnalytics({ data }) {
       endIndex: range.endIndex,
     });
   }, []);
+
+  const handleResetZoom = useCallback(() => {
+    setBrushRange({ startIndex: 0, endIndex: Math.max(0, n - 1) });
+  }, [n]);
 
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [hoveredRunId, setHoveredRunId] = useState(null);
@@ -343,11 +329,25 @@ export default function RunSessionAnalytics({ data }) {
                   </p>
                 </div>
               </div>
-              {n > 0 && visibleRunCount < n ? (
-                <span className="font-data text-[10px] tabular-nums text-cyan-500/70">
-                  Runs {brushStartOrder}–{brushEndOrder} of {n}
-                </span>
-              ) : null}
+              <div className="flex flex-wrap items-center gap-2">
+                {isBrushZoomed ? (
+                  <span className="font-data text-[10px] tabular-nums text-cyan-500/70">
+                    Runs {brushViewStart}–{brushViewEnd} of {n}
+                  </span>
+                ) : null}
+                {n > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handleResetZoom}
+                    disabled={!isBrushZoomed}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 transition enabled:hover:border-cyan-500/45 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Reset chart zoom to show all runs"
+                  >
+                    <RotateCcw className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+                    Reset zoom
+                  </button>
+                ) : null}
+              </div>
               {selectedRunId ? (
                 <button
                   type="button"
@@ -358,49 +358,37 @@ export default function RunSessionAnalytics({ data }) {
                 </button>
               ) : null}
             </div>
-            {scatterData.length === 0 ? (
+            {chartData.length === 0 ? (
               <div className="flex h-[280px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40 font-data text-sm text-slate-500">
                 No data to plot.
               </div>
             ) : (
               <div
-                ref={chartWrapRef}
                 className={`w-full min-w-0 rounded-xl border border-slate-800 bg-slate-950/70 ${
                   chartIsHero ? 'h-[min(48vh,480px)] md:h-[min(50vh,520px)]' : 'h-[min(220px,32vh)] md:h-[260px]'
                 }`}
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart
-                    data={scatterData}
-                    margin={{ top: 16, right: 20, bottom: n > 1 ? 56 : 24, left: 12 }}
+                    data={chartData}
+                    margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
                     <XAxis
                       type="number"
-                      dataKey="order"
-                      domain={n <= 1 ? [0.5, 1.5] : [0.5, n + 0.5]}
-                      allowDataOverflow
-                      minTickGap={32}
-                      ticks={n > 24 ? xAxisTicks : undefined}
+                      dataKey="run_index"
+                      domain={['dataMin', 'dataMax']}
+                      scale="linear"
+                      minTickGap={36}
                       tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
                       axisLine={{ stroke: '#475569' }}
                       tickLine={{ stroke: '#475569' }}
                       allowDecimals={false}
-                      padding={{ left: 0, right: 0 }}
-                      tickFormatter={(value) => {
-                        const v = Math.round(Number(value));
-                        if (n > 24) return Number.isFinite(v) ? String(v) : '';
-                        return formatSparseOrderTick(
-                          value,
-                          xTickStep,
-                          brushStartOrder,
-                          brushEndOrder,
-                        );
-                      }}
+                      tickFormatter={(v) => (Number.isFinite(v) ? String(Math.round(v)) : '')}
                       label={{
-                        value: 'Run # (chronological)',
+                        value: 'Run index (chronological)',
                         position: 'insideBottom',
-                        offset: n > 1 ? -40 : -6,
+                        offset: n > 1 ? -36 : -6,
                         fill: '#64748b',
                         fontSize: 10,
                       }}
@@ -461,7 +449,7 @@ export default function RunSessionAnalytics({ data }) {
                               {p.durationLabel ?? formatSecondsAsHMS(p.durationSec)}
                             </p>
                             <p className="font-data text-[10px] tabular-nums text-slate-500">
-                              {formatSecondsAsHMS(p.durationSec)} · run #{p.order}
+                              {formatSecondsAsHMS(p.durationSec)} · run #{p.run_index ?? p.order}
                             </p>
                             {typeof p.movingAverage === 'number' ? (
                               <p className="font-data mt-2 border-t border-slate-800 pt-2 text-[10px] text-slate-500">
@@ -478,7 +466,6 @@ export default function RunSessionAnalytics({ data }) {
                     <Scatter
                       name="Density cloud"
                       dataKey="durationSec"
-                      data={scatterData}
                       fill="#22d3ee"
                       fillOpacity={0.18}
                       shape={CustomScatterShape}
@@ -498,26 +485,17 @@ export default function RunSessionAnalytics({ data }) {
                     />
                     {n > 1 ? (
                       <Brush
-                        dataKey="order"
-                        height={32}
-                        travellerWidth={12}
-                        stroke="rgba(34, 211, 238, 0.55)"
-                        fill="rgba(15, 23, 42, 0.92)"
-                        startIndex={brushRange.startIndex}
-                        endIndex={brushRange.endIndex}
+                        dataKey="run_index"
+                        height={28}
+                        travellerWidth={10}
+                        stroke="rgba(34, 211, 238, 0.65)"
+                        fill="rgba(15, 23, 42, 0.94)"
+                        startIndex={brushStartIndex}
+                        endIndex={brushEndIndex}
                         onChange={handleBrushChange}
                         tickFormatter={(v) => `#${Math.round(v)}`}
                         alwaysShowText={false}
-                      >
-                        <Line
-                          type="monotone"
-                          dataKey="movingAverage"
-                          stroke="rgba(34, 211, 238, 0.45)"
-                          strokeWidth={1}
-                          dot={false}
-                          isAnimationActive={false}
-                        />
-                      </Brush>
+                      />
                     ) : null}
                   </ComposedChart>
                 </ResponsiveContainer>

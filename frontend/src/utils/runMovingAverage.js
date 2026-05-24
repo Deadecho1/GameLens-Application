@@ -49,6 +49,7 @@ export function attachMovingAverage(points, windowSize = MOVING_AVERAGE_WINDOW) 
 export function buildRunDurationTrendSeries(runs = [], windowSize = MOVING_AVERAGE_WINDOW) {
   const ordered = sortRunsChronologically(runs);
   const base = ordered.map((run, index) => ({
+    run_index: index + 1,
     order: index + 1,
     durationSec: getRunDurationSeconds(run),
     runId: run.id,
