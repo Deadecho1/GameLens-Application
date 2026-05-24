@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -16,13 +16,9 @@ import { formatSecondsAsHMS } from '../../../utils/duration';
 
 const DEFAULT_PLOT_HEIGHT = 400;
 
-/** Brush startIndex/endIndex are array positions, not chartIndex or DB run_id. */
-function clampBrushIndices(start, end, dataLength) {
-  if (!dataLength || dataLength <= 0) return { start: 0, end: 0 };
-  const last = dataLength - 1;
-  const safeStart = Math.min(Math.max(0, Math.floor(Number(start) || 0)), last);
-  const safeEnd = Math.min(Math.max(safeStart, Math.floor(Number(end) || 0)), last);
-  return { start: safeStart, end: safeEnd };
+function runLabelFromRow(row) {
+  if (!row) return '…';
+  return row.run_index || row.run_id || row.id || '…';
 }
 
 function safeYDomain(yMin, yMax, yPad) {
@@ -111,40 +107,48 @@ function TacticalRadarChart({
   plotHeight = DEFAULT_PLOT_HEIGHT,
 }) {
   const dataLength = data?.length ?? 0;
-  const lastIndex = Math.max(0, dataLength - 1);
   const plotHeightPx = Math.max(280, Number(plotHeight) || DEFAULT_PLOT_HEIGHT);
 
-  const [brushRange, setBrushRange] = useState(() => ({
-    start: 0,
-    end: Math.max(0, dataLength - 1),
-  }));
+  const headerRef = useRef(null);
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
-  /** Reset zoom only when the underlying run series identity changes — not on brush drag. */
-  useEffect(() => {
-    setBrushRange({ start: 0, end: Math.max(0, dataLength - 1) });
-  }, [chartKey]);
-
-  const { start: safeStart, end: safeEnd } = useMemo(
-    () => clampBrushIndices(brushRange.start, brushRange.end, dataLength),
-    [brushRange.start, brushRange.end, dataLength],
-  );
+  /** Remounts chart+brush on reset only — never tracks brush position in React state. */
+  const [brushResetKey, setBrushResetKey] = useState(0);
 
   const yDomain = useMemo(() => safeYDomain(yMin, yMax, yPad), [yMin, yMax, yPad]);
 
-  const rangeLabel = useMemo(() => {
-    if (!dataLength || n <= 1) return null;
-    if (safeStart === 0 && safeEnd >= lastIndex) return null;
-    if (!data[safeStart] || !data[safeEnd]) return null;
-    const startRunId =
-      data[safeStart]?.run_index || data[safeStart]?.run_id || data[safeStart]?.id;
-    const endRunId = data[safeEnd]?.run_index || data[safeEnd]?.run_id || data[safeEnd]?.id;
-    if (startRunId == null || endRunId == null) return null;
-    return `Runs ${startRunId}–${endRunId} of ${n}`;
-  }, [data, dataLength, safeStart, safeEnd, lastIndex, n]);
+  useEffect(() => {
+    if (!headerRef.current) return;
+    headerRef.current.textContent = '';
+    headerRef.current.classList.add('invisible');
+  }, [chartKey]);
+
+  const updateBrushHeader = useCallback((e) => {
+    const el = headerRef.current;
+    const rows = dataRef.current;
+    if (!e || !el || !rows?.length) return;
+
+    const last = rows.length - 1;
+    if (e.startIndex === 0 && e.endIndex >= last) {
+      el.textContent = '';
+      el.classList.add('invisible');
+      return;
+    }
+
+    const startRun = runLabelFromRow(rows[e.startIndex]);
+    const endRun = runLabelFromRow(rows[e.endIndex]);
+    el.textContent = `Runs ${startRun}–${endRun} of ${rows.length}`;
+    el.classList.remove('invisible');
+  }, []);
 
   const handleResetZoom = useCallback(() => {
-    setBrushRange({ start: 0, end: lastIndex });
-  }, [lastIndex]);
+    if (headerRef.current) {
+      headerRef.current.textContent = '';
+      headerRef.current.classList.add('invisible');
+    }
+    setBrushResetKey((k) => k + 1);
+  }, []);
 
   const renderScatterShape = useCallback(
     (props) => (
@@ -165,14 +169,15 @@ function TacticalRadarChart({
     <div className={`flex w-full min-w-0 flex-col ${className ?? ''}`}>
       {n > 1 ? (
         <div className="mb-2 flex shrink-0 flex-wrap items-center justify-end gap-2 px-1">
-          {rangeLabel ? (
-            <span className="font-data text-[10px] tabular-nums text-cyan-500/80">{rangeLabel}</span>
-          ) : null}
+          <span
+            ref={headerRef}
+            className="invisible min-h-[1em] font-data text-[10px] tabular-nums text-cyan-500/80 empty:invisible"
+            aria-live="polite"
+          />
           <button
             type="button"
             onClick={handleResetZoom}
-            disabled={!rangeLabel}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 transition enabled:hover:border-cyan-500/45 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900/80 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 transition hover:border-cyan-500/45 hover:text-cyan-200"
             aria-label="Reset chart zoom to show all runs"
           >
             <RotateCcw className="h-3 w-3" strokeWidth={1.5} aria-hidden />
@@ -188,6 +193,7 @@ function TacticalRadarChart({
         {canRenderChart ? (
           <ResponsiveContainer width="100%" height={plotHeightPx} minHeight={plotHeightPx}>
             <ComposedChart
+              key={`${chartKey}-${brushResetKey}`}
               data={data}
               margin={{ top: 16, right: 20, bottom: n > 1 ? 52 : 24, left: 12 }}
             >
@@ -195,6 +201,7 @@ function TacticalRadarChart({
             <XAxis
               dataKey="chartIndex"
               type="number"
+              domain={['dataMin', 'dataMax']}
               allowDecimals={false}
               minTickGap={32}
               interval="preserveStartEnd"
@@ -322,11 +329,7 @@ function TacticalRadarChart({
                 travellerWidth={10}
                 stroke="rgba(34, 211, 238, 0.65)"
                 fill="rgba(15, 23, 42, 0.94)"
-                startIndex={brushRange.start}
-                endIndex={brushRange.end}
-                onChange={(e) => {
-                  if (e) setBrushRange({ start: e.startIndex, end: e.endIndex });
-                }}
+                onChange={updateBrushHeader}
                 tickFormatter={(v) => (v != null && Number.isFinite(v) ? String(v + 1) : '')}
                 alwaysShowText={false}
               />
