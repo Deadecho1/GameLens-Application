@@ -9,8 +9,15 @@ import {
   Trash2,
   Cpu,
   X,
+  HelpCircle,
 } from 'lucide-react';
+import Joyride, { STATUS } from 'react-joyride';
 import { TUNING_MODEL_CONFIGS, TUNING_MODEL_CONFIG_BY_ID, toLocalUrl } from '../tuning/tuningConfig';
+import {
+  TUNING_JOYRIDE_LOCALE,
+  TUNING_JOYRIDE_STYLES,
+  TUNING_TOUR_STEPS,
+} from '../tuning/tuningJoyride';
 
 const MIN_CLIPS = 6;
 const MIN_SEGMENT_COUNT = 5;
@@ -35,6 +42,7 @@ export default function TuningTab({ data, ipcRequest }) {
   const [showNameModal, setShowNameModal] = useState(false);
   const [modelNameDraft, setModelNameDraft] = useState('');
   const [error, setError] = useState('');
+  const [tourRun, setTourRun] = useState(false);
 
   // Segment drag state
   const [segPreview, setSegPreview] = useState(null); // {start, end} while dragging
@@ -338,6 +346,13 @@ export default function TuningTab({ data, ipcRequest }) {
     }
   }, [ipcRequest]);
 
+  const handleJoyrideCallback = useCallback((joyrideData) => {
+    const { status } = joyrideData;
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setTourRun(false);
+    }
+  }, []);
+
   // ── Render ────────────────────────────────────────────────────────────────
   const duration = activeVideo?.duration || 0;
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -356,6 +371,21 @@ export default function TuningTab({ data, ipcRequest }) {
       transition={{ duration: 0.3 }}
       className="mx-auto max-w-[1800px] px-4 py-8"
     >
+      <Joyride
+        steps={TUNING_TOUR_STEPS}
+        run={tourRun}
+        continuous
+        showProgress
+        showSkipButton
+        scrollToFirstStep
+        disableOverlayClose
+        disableCloseOnEsc={false}
+        callback={handleJoyrideCallback}
+        styles={TUNING_JOYRIDE_STYLES}
+        locale={TUNING_JOYRIDE_LOCALE}
+        floaterProps={{ disableAnimation: false }}
+      />
+
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -374,9 +404,18 @@ export default function TuningTab({ data, ipcRequest }) {
           )}
           <button
             type="button"
+            onClick={() => setTourRun(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-3.5 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-200"
+            aria-label="Start interactive tour"
+          >
+            <HelpCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+            How it works
+          </button>
+          <button
+            type="button"
             disabled={isTraining || !canStartTraining}
             onClick={() => setShowNameModal(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-800 px-5 py-2.5 font-display text-xs font-bold uppercase tracking-[0.15em] text-white shadow-[0_0_24px_rgba(16,185,129,0.25)] transition hover:shadow-[0_0_32px_rgba(16,185,129,0.4)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="tuning-tour-start-training inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-800 px-5 py-2.5 font-display text-xs font-bold uppercase tracking-[0.15em] text-white shadow-[0_0_24px_rgba(16,185,129,0.25)] transition hover:shadow-[0_0_32px_rgba(16,185,129,0.4)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Cpu className="h-4 w-4" />
             Start Fine-Tuning
@@ -441,7 +480,7 @@ export default function TuningTab({ data, ipcRequest }) {
           <button
             type="button"
             onClick={handleAddVideo}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-blue-500/35 bg-slate-950/40 py-3 font-display text-[10px] font-bold uppercase tracking-wider text-slate-500 transition hover:border-cyan-400/45 hover:text-cyan-400"
+            className="tuning-tour-add-video flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-blue-500/35 bg-slate-950/40 py-3 font-display text-[10px] font-bold uppercase tracking-wider text-slate-500 transition hover:border-cyan-400/45 hover:text-cyan-400"
           >
             <Plus className="h-3.5 w-3.5" />
             Add Video
@@ -449,7 +488,7 @@ export default function TuningTab({ data, ipcRequest }) {
         </aside>
 
         {/* ── Center: Video player + timeline ─────────────────────────────── */}
-        <div className="flex min-w-0 flex-col gap-3">
+        <div className="tuning-tour-annotate flex min-w-0 flex-col gap-3">
           {activeVideo ? (
             <>
               {/* Video element */}
@@ -683,7 +722,7 @@ export default function TuningTab({ data, ipcRequest }) {
           </p>
 
           {/* Model type tabs */}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="tuning-tour-model-tabs flex flex-wrap gap-1.5">
             {TUNING_MODEL_CONFIGS.map((cfg) => (
               <button
                 key={cfg.id}
@@ -707,7 +746,7 @@ export default function TuningTab({ data, ipcRequest }) {
 
           {/* Enable checkbox */}
           {activeModelConfig && (
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2.5 transition hover:border-slate-700">
+            <label className="tuning-tour-train-checkbox flex cursor-pointer items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2.5 transition hover:border-slate-700">
               <input
                 type="checkbox"
                 checked={enabledModelIds.includes(activeModelId)}
