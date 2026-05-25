@@ -20,6 +20,12 @@ import WorkflowTab from "./components/tabs/WorkflowTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
 import RunSessionAnalytics from "./components/analytics/runSession/RunSessionAnalytics";
 import TuningTab from "./components/tabs/TuningTab";
+import WelcomeScreen from "./components/WelcomeScreen";
+import {
+  clearGuestModeContinued,
+  persistGuestModeContinued,
+  readGuestModeContinued,
+} from "./utils/guestMode";
 
 /**
  * GameLens frontend orchestrator.
@@ -30,6 +36,7 @@ function App() {
   const [error, setError] = useState("");
   const [modalError, setModalError] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [guestContinued, setGuestContinued] = useState(readGuestModeContinued);
   const pollRef = useRef(null);
   const runsSnapshotRef = useRef([]);
   const reviewOpenRef = useRef(false);
@@ -440,19 +447,59 @@ function App() {
 
   const handleLogin = useCallback(
     async (email) => {
-      try {
-        const state = await ipcRequest("auth:login", { email });
-        setData(state);
-      } catch (e) {
-        setModalError(String(e?.message || e));
-      }
+      const state = await ipcRequest("auth:login", { email });
+      clearGuestModeContinued();
+      setGuestContinued(false);
+      setData((prev) => ({
+        ...state,
+        ui: {
+          ...state.ui,
+          activeMainTab: "analytics",
+          postProcessingReviewOpen: false,
+        },
+      }));
+      ipcRequest("ui:patch", {
+        activeMainTab: "analytics",
+        postProcessingReviewOpen: false,
+      }).catch(() => {});
     },
     [ipcRequest],
   );
 
+  const handleHeaderLogin = useCallback(
+    async (email) => {
+      try {
+        await handleLogin(email);
+      } catch (e) {
+        setModalError(String(e?.message || e));
+        throw e;
+      }
+    },
+    [handleLogin],
+  );
+
+  const handleGuestContinue = useCallback(() => {
+    persistGuestModeContinued();
+    setGuestContinued(true);
+    setData((prev) => ({
+      ...prev,
+      ui: {
+        ...prev.ui,
+        activeMainTab: "analytics",
+        postProcessingReviewOpen: false,
+      },
+    }));
+    ipcRequest("ui:patch", {
+      activeMainTab: "analytics",
+      postProcessingReviewOpen: false,
+    }).catch(() => {});
+  }, [ipcRequest]);
+
   const handleLogout = useCallback(async () => {
     try {
       const state = await ipcRequest("auth:logout");
+      clearGuestModeContinued();
+      setGuestContinued(false);
       setData(state);
     } catch (e) {
       setModalError(String(e?.message || e));
@@ -600,6 +647,17 @@ function App() {
     ? resolveReviewRun(data)
     : null;
 
+  const showWelcome = !data.auth?.loggedIn && !guestContinued;
+
+  if (showWelcome) {
+    return (
+      <WelcomeScreen
+        onLogin={handleLogin}
+        onGuestContinue={handleGuestContinue}
+      />
+    );
+  }
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
       <div
@@ -627,7 +685,7 @@ function App() {
       <div className="relative z-10">
         <Header
           data={data}
-          onLogin={handleLogin}
+          onLogin={handleHeaderLogin}
           onLogout={handleLogout}
           onSyncNow={handleSyncNow}
           onOpenSettings={() => setSettingsOpen(true)}
