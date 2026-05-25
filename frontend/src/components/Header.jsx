@@ -8,6 +8,8 @@ import {
   RefreshCw,
   Settings,
 } from "lucide-react";
+import { resolveUserProfileDisplay } from "../utils/userProfileDisplay";
+import UserDataSourceBadge from "./UserDataSourceBadge";
 
 export default function Header({
   data,
@@ -23,6 +25,7 @@ export default function Header({
     syncStatus: "idle",
     syncMessage: "",
   };
+  const profile = resolveUserProfileDisplay(auth);
   const [loginOpen, setLoginOpen] = useState(false);
   const [emailDraft, setEmailDraft] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -102,51 +105,60 @@ export default function Header({
             </div>
           )}
 
-          {/* Auth */}
-          {auth.loggedIn ? (
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-800/90 bg-slate-900/50 px-4 py-2.5 backdrop-blur-md">
-              <div className="text-right">
-                <p className="font-data text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                  Signed in
-                </p>
-                <p className="font-data text-xs font-semibold text-cyan-100/80 truncate max-w-[160px]">
-                  {auth.email}
-                </p>
+          {/* Account — guest (local) or signed-in */}
+          <div
+            className={`flex items-center gap-2 rounded-2xl border px-4 py-2.5 backdrop-blur-md ${
+              profile.isGuest
+                ? "border-slate-700/90 bg-slate-900/50"
+                : "border-slate-800/90 bg-slate-900/50"
+            }`}
+          >
+            <div className="text-right min-w-0 max-w-[200px]">
+              <p className="font-data text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                {profile.isGuest ? "Account" : "Signed in"}
+              </p>
+              <p className="font-data text-xs font-semibold text-cyan-100/90 truncate">
+                {profile.displayName}
+              </p>
+              <div className="mt-1 flex justify-end">
+                <UserDataSourceBadge badge={profile.badge} />
               </div>
-              <button
-                onClick={onSyncNow}
-                disabled={auth.syncStatus === "syncing"}
-                className="ml-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                title={
-                  auth.syncStatus === "syncing"
-                    ? "Sync in progress"
-                    : "Sync DB now"
-                }
-              >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 ${auth.syncStatus === "syncing" ? "animate-spin" : ""}`}
-                  aria-hidden
-                />
-              </button>
-              <button
-                onClick={onLogout}
-                className="rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-red-400 hover:border-red-500/40 transition-colors"
-                title="Sign out"
-              >
-                <LogOut className="h-3.5 w-3.5" aria-hidden />
-              </button>
             </div>
-          ) : (
-            <button
-              onClick={() => setLoginOpen(true)}
-              className="flex items-center gap-2 rounded-2xl border border-slate-700/80 bg-slate-900/50 px-4 py-2.5 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 backdrop-blur-md transition-colors"
-            >
-              <LogIn className="h-4 w-4" aria-hidden />
-              <span className="font-data text-sm font-semibold tracking-wide">
-                Sign in
-              </span>
-            </button>
-          )}
+            {auth.loggedIn ? (
+              <>
+                <button
+                  onClick={onSyncNow}
+                  disabled={auth.syncStatus === "syncing"}
+                  className="ml-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title={
+                    auth.syncStatus === "syncing"
+                      ? "Sync in progress"
+                      : "Sync DB now"
+                  }
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${auth.syncStatus === "syncing" ? "animate-spin" : ""}`}
+                    aria-hidden
+                  />
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-red-400 hover:border-red-500/40 transition-colors"
+                  title="Sign out"
+                >
+                  <LogOut className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setLoginOpen(true)}
+                className="rounded-lg border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-300"
+                title="Sign in for Cloud Sync"
+              >
+                <LogIn className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            )}
+          </div>
 
           {/* Pipeline status */}
           <div className="flex items-center gap-3 rounded-2xl border border-slate-800/90 bg-slate-900/50 px-4 py-2.5 backdrop-blur-md">

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, Eye, EyeOff, KeyRound, Settings, UserRound, X } from 'lucide-react';
+import { resolveUserProfileDisplay } from '../utils/userProfileDisplay';
+import UserDataSourceBadge from './UserDataSourceBadge';
 
 function SecureField({
   id,
@@ -92,12 +94,8 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
   const games = Array.isArray(setup.games) ? setup.games : [];
   const versions = Array.isArray(setup.versions) ? setup.versions : [];
   const user = setup.user ?? {};
-  const initials = useMemo(() => {
-    const f = String(user.firstName ?? '').trim().charAt(0);
-    const l = String(user.lastName ?? '').trim().charAt(0);
-    return `${f}${l}`.trim() || 'A';
-  }, [user.firstName, user.lastName]);
-  const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || 'Admin';
+  const auth = data?.auth ?? {};
+  const profile = useMemo(() => resolveUserProfileDisplay(auth), [auth]);
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [keyModalOpen, setKeyModalOpen] = useState(false);
@@ -198,21 +196,41 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
               <div className="flex-1 overflow-y-auto px-5 py-5">
                 <section className="rounded-2xl border border-cyan-500/20 bg-slate-900/35 p-4 ring-1 ring-cyan-500/10">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-cyan-500/35 bg-slate-950/75 font-display text-sm font-bold uppercase tracking-[0.14em] text-cyan-200">
-                      {initials}
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-xl border bg-slate-950/75 font-display text-sm font-bold uppercase tracking-[0.14em] ${
+                        profile.isGuest
+                          ? 'border-slate-600 text-slate-300'
+                          : 'border-cyan-500/35 text-cyan-200'
+                      }`}
+                    >
+                      {profile.initials}
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-data text-sm font-semibold text-slate-100">{displayName}</p>
-                      <p className="truncate font-data text-[11px] text-slate-500">{user.email ?? ''}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-data text-sm font-semibold text-slate-100">
+                        {profile.displayName}
+                      </p>
+                      <div className="mt-1">
+                        <UserDataSourceBadge badge={profile.badge} />
+                      </div>
+                      <p className="mt-1.5 truncate font-data text-[11px] text-slate-500">
+                        {profile.subtitle}
+                      </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditModalOpen(true)}
-                    className="mt-4 w-full rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-100 transition hover:border-cyan-400/60 hover:bg-cyan-500/15"
-                  >
-                    Edit
-                  </button>
+                  {!profile.isGuest ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditModalOpen(true)}
+                      className="mt-4 w-full rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-100 transition hover:border-cyan-400/60 hover:bg-cyan-500/15"
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <p className="mt-4 rounded-xl border border-slate-700/80 bg-slate-950/50 px-3 py-2 font-data text-[10px] leading-relaxed text-slate-500">
+                      Sign in from the header to enable Cloud Sync and replace local-only
+                      storage.
+                    </p>
+                  )}
                 </section>
 
                 <section className="mt-5 space-y-4 rounded-2xl border border-slate-800 bg-slate-900/30 p-4">
