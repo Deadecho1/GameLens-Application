@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, Columns2, GitCompare } from "lucide-react";
+import { BarChart3, ChevronDown, Columns2, Gamepad2, GitCompare } from "lucide-react";
 import GeneralMissionStats from "../analytics/GeneralMissionStats";
 import BossesAnalytics from "../analytics/BossesAnalytics";
 import ItemsPowerLab from "../analytics/ItemsPowerLab";
@@ -149,6 +149,11 @@ function VersionDropdown({
  */
 export default function AnalyticsTab({ data, onPatch }) {
   const sub = data.ui.analyticsSubTab;
+  const games = useMemo(() => {
+    const list = data?.setup?.games;
+    return Array.isArray(list) ? list.filter(Boolean) : [];
+  }, [data?.setup?.games]);
+  const selectedGame = (data?.setup?.selectedGame ?? "").trim();
 
   const versions = useMemo(() => {
     const list = data?.setup?.versions;
@@ -190,8 +195,7 @@ export default function AnalyticsTab({ data, onPatch }) {
     const source = splitView
       ? sliceAnalyticsDataByVersion(data, versionA)
       : data;
-    const activeGame =
-      source?.setup?.selectedGame ?? initialData.setup.selectedGame;
+    const activeGame = (source?.setup?.selectedGame ?? "").trim();
     const activeVersion = splitView ? versionA : source?.setup?.selectedVersion;
     return applyGameLibrarySlice(source, activeGame, activeVersion);
   }, [data, splitView, versionA]);
@@ -200,8 +204,7 @@ export default function AnalyticsTab({ data, onPatch }) {
     const source = splitView
       ? sliceAnalyticsDataByVersion(data, versionB)
       : data;
-    const activeGame =
-      source?.setup?.selectedGame ?? initialData.setup.selectedGame;
+    const activeGame = (source?.setup?.selectedGame ?? "").trim();
     const activeVersion = splitView ? versionB : source?.setup?.selectedVersion;
     return applyGameLibrarySlice(source, activeGame, activeVersion);
   }, [data, splitView, versionB]);
@@ -229,6 +232,92 @@ export default function AnalyticsTab({ data, onPatch }) {
       syncLock.current = false;
     });
   }, []);
+
+  const handleSelectGame = useCallback(
+    (gameName) => {
+      const next = (gameName ?? "").trim();
+      if (!next) return;
+      onPatch({ setup: { selectedGame: next } });
+    },
+    [onPatch],
+  );
+
+  const goToMissionSetup = useCallback(() => {
+    onPatch({
+      ui: {
+        ...data.ui,
+        activeMainTab: "workflow",
+        workflowStep: 1,
+      },
+    });
+  }, [data.ui, onPatch]);
+
+  if (!selectedGame) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.28 }}
+        className="mx-auto max-w-[1800px] px-4 py-8 md:py-10"
+      >
+        <header className="mb-8">
+          <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
+            Intelligence
+          </p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
+            Analytics deck
+          </h2>
+        </header>
+
+        <div className="flex min-h-[min(420px,55vh)] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 px-6 py-16 text-center">
+          <BarChart3
+            className="h-14 w-14 text-slate-700"
+            strokeWidth={1.25}
+            aria-hidden
+          />
+          <p className="mt-5 font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-400">
+            No game selected
+          </p>
+          <p className="mt-2 max-w-md font-data text-sm leading-relaxed text-slate-500">
+            Please select a game to view analytics. Choose an existing game below
+            or configure one under Mission Start.
+          </p>
+
+          {games.length > 0 ? (
+            <label className="mt-8 flex w-full max-w-xs flex-col items-start gap-2 text-left">
+              <span className="font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                Select game
+              </span>
+              <select
+                value=""
+                onChange={(e) => handleSelectGame(e.target.value)}
+                className="font-data w-full cursor-pointer rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm text-slate-200 outline-none transition focus:border-cyan-500/50"
+              >
+                <option value="" disabled>
+                  Choose a game…
+                </option>
+                {games.map((game) => (
+                  <option key={game} value={game}>
+                    {game}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <button
+              type="button"
+              onClick={goToMissionSetup}
+              className="mt-8 inline-flex items-center gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-5 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-200 transition hover:border-cyan-400/55 hover:bg-cyan-500/15"
+            >
+              <Gamepad2 className="h-4 w-4 shrink-0" aria-hidden />
+              Go to Mission Start
+            </button>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

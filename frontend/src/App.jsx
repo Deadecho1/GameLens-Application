@@ -168,8 +168,10 @@ function App() {
 
   useEffect(() => {
     if (data.ui.activeMainTab !== "analytics") return;
-    const gameName = data.setup.selectedGame;
+    const gameName = (data.setup.selectedGame ?? "").trim();
     const versionName = data.setup.selectedVersion;
+    if (!gameName) return;
+
     let cancelled = false;
 
     (async () => {
