@@ -26,6 +26,7 @@ import {
   persistGuestModeContinued,
   readGuestModeContinued,
 } from "./utils/guestMode";
+import { EXIT_UI_PATCH, mergeExitSessionState } from "./utils/sessionExit";
 
 /**
  * GameLens frontend orchestrator.
@@ -496,15 +497,48 @@ function App() {
   }, [ipcRequest]);
 
   const handleLogout = useCallback(async () => {
+    const wasLoggedIn = Boolean(data.auth?.loggedIn);
+    const wasRunning = data.processing?.status === "running";
+
+    reviewOpenRef.current = false;
+    completionReviewDismissedRef.current = true;
+    clearGuestModeContinued();
+    setGuestContinued(false);
+    setSettingsOpen(false);
+    setModalError("");
+
+    setData((prev) => mergeExitSessionState(prev));
+
     try {
-      const state = await ipcRequest("auth:logout");
-      clearGuestModeContinued();
-      setGuestContinued(false);
-      setData(state);
+      if (wasRunning) {
+        try {
+          await ipcRequest("processing:stop");
+        } catch {
+          /* still exit session */
+        }
+      }
+
+      if (wasLoggedIn) {
+        await ipcRequest("auth:logout");
+      }
+
+      await ipcRequest("ui:patch", EXIT_UI_PATCH);
+
+      const state = await ipcRequest("state:get");
+      setData((prev) =>
+        mergeExitSessionState(prev, {
+          ...state,
+          processing: {
+            ...state.processing,
+            lastProcessedRun: prev.processing?.lastProcessedRun ?? null,
+          },
+        }),
+      );
     } catch (e) {
       setModalError(String(e?.message || e));
+      setData((prev) => mergeExitSessionState(prev));
     }
-  }, [ipcRequest]);
+  }, [data.auth?.loggedIn, data.processing?.status, ipcRequest]);
 
   const handleSyncNow = useCallback(async () => {
     try {

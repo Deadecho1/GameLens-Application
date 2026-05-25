@@ -125,32 +125,24 @@ export default function Header({
               </div>
             </div>
             {auth.loggedIn ? (
-              <>
-                <button
-                  onClick={onSyncNow}
-                  disabled={auth.syncStatus === "syncing"}
-                  className="ml-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title={
-                    auth.syncStatus === "syncing"
-                      ? "Sync in progress"
-                      : "Sync DB now"
-                  }
-                >
-                  <RefreshCw
-                    className={`h-3.5 w-3.5 ${auth.syncStatus === "syncing" ? "animate-spin" : ""}`}
-                    aria-hidden
-                  />
-                </button>
-                <button
-                  onClick={onLogout}
-                  className="rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-red-400 hover:border-red-500/40 transition-colors"
-                  title="Sign out"
-                >
-                  <LogOut className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              </>
+              <button
+                onClick={onSyncNow}
+                disabled={auth.syncStatus === "syncing"}
+                className="ml-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title={
+                  auth.syncStatus === "syncing"
+                    ? "Sync in progress"
+                    : "Sync DB now"
+                }
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${auth.syncStatus === "syncing" ? "animate-spin" : ""}`}
+                  aria-hidden
+                />
+              </button>
             ) : (
               <button
+                type="button"
                 onClick={() => setLoginOpen(true)}
                 className="rounded-lg border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-300"
                 title="Sign in for Cloud Sync"
@@ -158,6 +150,21 @@ export default function Header({
                 <LogIn className="h-3.5 w-3.5" aria-hidden />
               </button>
             )}
+            <button
+              type="button"
+              onClick={onLogout}
+              className="rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 transition hover:border-red-500/40 hover:bg-red-950/30 hover:text-red-400"
+              title={
+                profile.isGuest
+                  ? "Exit to welcome screen"
+                  : "Sign out and return to welcome"
+              }
+              aria-label={
+                profile.isGuest ? "Exit local session" : "Sign out"
+              }
+            >
+              <LogOut className="h-3.5 w-3.5" aria-hidden />
+            </button>
           </div>
 
           {/* Pipeline status */}
