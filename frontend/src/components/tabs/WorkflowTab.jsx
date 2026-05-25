@@ -55,6 +55,7 @@ export default function WorkflowTab({
   onRun,
   onStop,
   onClearLogs,
+  onReviewLastRun: onReviewLastRunExternal,
 }) {
   const { setup, processing, ui } = data;
   const step = ui.workflowStep;
@@ -136,6 +137,28 @@ export default function WorkflowTab({
   const selectedTraceOption = processing.selectedOption || "verbose";
   const hasLastProcessedRun = Boolean(processing?.lastProcessedRun);
 
+  const handleReviewLastRun = useCallback(() => {
+    const run = processing?.lastProcessedRun;
+    if (!run) return;
+
+    if (typeof onReviewLastRunExternal === "function") {
+      onReviewLastRunExternal();
+      return;
+    }
+
+    onPatch({
+      ui: {
+        ...ui,
+        activeMainTab: "workflow",
+        postProcessingReviewOpen: true,
+      },
+      processing: {
+        pendingRun: run,
+        status: "completed",
+      },
+    });
+  }, [onReviewLastRunExternal, onPatch, ui, processing?.lastProcessedRun]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -160,7 +183,7 @@ export default function WorkflowTab({
           type="button"
           title="Re-open the last completed analysis without re-running the pipeline"
           disabled={!hasLastProcessedRun}
-          onClick={onReviewLastRun}
+          onClick={handleReviewLastRun}
           className="inline-flex items-center justify-center gap-2 self-center rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400 transition enabled:hover:border-cyan-500/40 enabled:hover:bg-slate-900 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40 md:self-auto"
         >
           <ClipboardList className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.5} aria-hidden />
