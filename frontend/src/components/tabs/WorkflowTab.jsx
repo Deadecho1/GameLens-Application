@@ -16,6 +16,7 @@ import {
   Film,
   ChevronRight,
   Cpu,
+  ClipboardList,
 } from "lucide-react";
 
 const OPTIONS = [
@@ -133,6 +134,7 @@ export default function WorkflowTab({
     Boolean(setup.selectedGame?.trim()) &&
     Boolean(setup.selectedVersion?.trim());
   const selectedTraceOption = processing.selectedOption || "verbose";
+  const hasLastProcessedRun = Boolean(processing?.lastProcessedRun);
 
   return (
     <motion.div
@@ -142,16 +144,28 @@ export default function WorkflowTab({
       transition={{ duration: 0.3 }}
       className="mx-auto max-w-6xl px-4 py-8 md:py-10"
     >
-      <header className="mb-8 text-center md:text-left">
-        <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
-          Mission start
-        </p>
-        <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
-          Workflow sequence
-        </h2>
-        <p className="font-data mt-2 text-sm text-slate-500">
-          Step <span className="text-cyan-400">{step}</span> of 3{" "}
-        </p>
+      <header className="mb-8 flex flex-col gap-4 text-center md:flex-row md:items-end md:justify-between md:text-left">
+        <div>
+          <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
+            Mission start
+          </p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
+            Workflow sequence
+          </h2>
+          <p className="font-data mt-2 text-sm text-slate-500">
+            Step <span className="text-cyan-400">{step}</span> of 3{" "}
+          </p>
+        </div>
+        <button
+          type="button"
+          title="Re-open the last completed analysis without re-running the pipeline"
+          disabled={!hasLastProcessedRun}
+          onClick={onReviewLastRun}
+          className="inline-flex items-center justify-center gap-2 self-center rounded-lg border border-slate-700 bg-slate-900/60 px-4 py-2.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-slate-400 transition enabled:hover:border-cyan-500/40 enabled:hover:bg-slate-900 enabled:hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-40 md:self-auto"
+        >
+          <ClipboardList className="h-4 w-4 shrink-0 opacity-80" strokeWidth={1.5} aria-hidden />
+          Review last run
+        </button>
       </header>
 
       {/* Top timeline */}

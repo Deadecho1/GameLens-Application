@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, Check, Settings, Trash2 } from 'lucide-react';
+import { AlertCircle, Check, Settings, Trash2, X } from 'lucide-react';
 import RunSessionAnalytics from './analytics/runSession/RunSessionAnalytics';
 
 /**
@@ -14,6 +14,7 @@ export default function PostProcessingReviewModal({
   onDiscard,
   onConfirm,
   onGoToTuning,
+  onClose,
 }) {
   const reviewData = useMemo(() => {
     const history = pendingRun ? [pendingRun] : [];
@@ -42,7 +43,15 @@ export default function PostProcessingReviewModal({
           transition={{ duration: 0.22 }}
           className="fixed inset-0 z-[9999] flex flex-col bg-slate-950/90 backdrop-blur-md"
         >
-          <header className="shrink-0 border-b border-slate-800/90 bg-slate-950/80 px-4 py-4 md:px-8">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 z-10 rounded-lg border border-slate-800 bg-slate-900/90 p-2 text-slate-400 transition hover:border-slate-600 hover:text-slate-200 md:right-6 md:top-6"
+            aria-label="Close review without syncing"
+          >
+            <X className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+          </button>
+          <header className="relative shrink-0 border-b border-slate-800/90 bg-slate-950/80 px-4 py-4 pr-14 md:px-8 md:pr-16">
             <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-cyan-500/70">
               Mission complete
             </p>

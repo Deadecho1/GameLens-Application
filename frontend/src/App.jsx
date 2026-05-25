@@ -14,6 +14,7 @@ import {
   extractPendingRunFromState,
   confirmPendingRunToLibrary,
   discardPendingRun,
+  closeReviewWithoutSync,
 } from "./utils/postProcessingRun";
 import WorkflowTab from "./components/tabs/WorkflowTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
@@ -33,6 +34,7 @@ function App() {
   const prevStatusRef = useRef("idle");
   const runsSnapshotRef = useRef([]);
   const reviewOpenRef = useRef(false);
+  const completionReviewDismissedRef = useRef(false);
 
   const ipcRequest = useCallback(async (method, params = {}) => {
     if (!window.gamelens?.request) {
@@ -47,24 +49,47 @@ function App() {
     try {
       const state = await ipcRequest("state:get");
       setData((prev) => {
-        if (!prev.ui.postProcessingReviewOpen && !reviewOpenRef.current) {
-          return state;
+        const reviewOpen =
+          prev.ui.postProcessingReviewOpen || reviewOpenRef.current;
+        const lastProcessedRun =
+          prev.processing?.lastProcessedRun ??
+          state.processing?.lastProcessedRun ??
+          null;
+        if (!reviewOpen) {
+          return {
+            ...state,
+            processing: {
+              ...state.processing,
+              lastProcessedRun,
+              pendingRun: null,
+              status:
+                completionReviewDismissedRef.current &&
+                state.processing?.status === "completed"
+                  ? "idle"
+                  : state.processing?.status,
+            },
+          };
         }
         const pendingRun =
           prev.processing?.pendingRun ??
+          prev.processing?.lastProcessedRun ??
           extractPendingRunFromState(state, runsSnapshotRef.current);
         return {
           ...state,
           ui: {
             ...state.ui,
             postProcessingReviewOpen: true,
-            activeMainTab: prev.ui.activeMainTab === "analytics" ? "workflow" : prev.ui.activeMainTab,
+            activeMainTab:
+              prev.ui.activeMainTab === "analytics"
+                ? "workflow"
+                : prev.ui.activeMainTab,
             completionCelebrationActive: false,
           },
           processing: {
             ...state.processing,
-            status: state.processing?.status === "completed" ? "completed" : state.processing?.status,
+            status: "completed",
             pendingRun,
+            lastProcessedRun: pendingRun ?? lastProcessedRun,
           },
         };
       });
@@ -87,6 +112,9 @@ function App() {
   }, [data.ui.postProcessingReviewOpen]);
 
   useEffect(() => {
+    if (data.processing.status === "running") {
+      completionReviewDismissedRef.current = false;
+    }
     if (data.processing.status !== "completed") {
       runsSnapshotRef.current = data.dashboard?.runsHistory ?? [];
     }
@@ -108,6 +136,8 @@ function App() {
         ...base.processing,
         status: "completed",
         pendingRun: run ?? base.processing?.pendingRun ?? null,
+        lastProcessedRun:
+          run ?? base.processing?.lastProcessedRun ?? null,
       },
     });
 
@@ -159,7 +189,11 @@ function App() {
   useEffect(() => {
     const prev = prevStatusRef.current;
     const next = data.processing.status;
-    if (prev !== "completed" && next === "completed") {
+    if (
+      prev !== "completed" &&
+      next === "completed" &&
+      !completionReviewDismissedRef.current
+    ) {
       runsSnapshotRef.current = data.dashboard?.runsHistory ?? [];
       openPostProcessingReview();
     }
@@ -306,18 +340,37 @@ function App() {
           latestState = await ipcRequest("ui:patch", patch.ui);
         }
 
-        if (patch.processing?.pendingRun !== undefined) {
+        if (patch.processing) {
           setData((prev) => ({
             ...prev,
             processing: {
               ...prev.processing,
-              pendingRun: patch.processing.pendingRun,
+              ...patch.processing,
+              lastProcessedRun:
+                patch.processing.lastProcessedRun !== undefined
+                  ? patch.processing.lastProcessedRun
+                  : prev.processing?.lastProcessedRun,
             },
           }));
         }
 
         if (latestState) {
-          setData(latestState);
+          setData((prev) => ({
+            ...latestState,
+            processing: {
+              ...latestState.processing,
+              lastProcessedRun:
+                prev.processing?.lastProcessedRun ??
+                latestState.processing?.lastProcessedRun ??
+                null,
+              pendingRun: prev.processing?.pendingRun ?? null,
+              status:
+                completionReviewDismissedRef.current &&
+                latestState.processing?.status === "completed"
+                  ? "idle"
+                  : latestState.processing?.status,
+            },
+          }));
           return;
         }
 
@@ -326,7 +379,16 @@ function App() {
           ...(patch.ui ? { ui: { ...prev.ui, ...patch.ui } } : {}),
           ...(patch.setup ? { setup: { ...prev.setup, ...patch.setup } } : {}),
           ...(patch.processing
-            ? { processing: { ...prev.processing, ...patch.processing } }
+            ? {
+                processing: {
+                  ...prev.processing,
+                  ...patch.processing,
+                  lastProcessedRun:
+                    patch.processing.lastProcessedRun !== undefined
+                      ? patch.processing.lastProcessedRun
+                      : prev.processing?.lastProcessedRun,
+                },
+              }
             : {}),
           ...(patch.dashboard
             ? { dashboard: { ...prev.dashboard, ...patch.dashboard } }
@@ -495,112 +557,94 @@ function App() {
     ipcRequest,
   ]);
 
-  const closeReviewOptimistic = useCallback(() => {
-    reviewOpenRef.current = false;
-    setData((prev) => ({
-      ...prev,
-      ui: { ...prev.ui, postProcessingReviewOpen: false },
-      processing: {
-        ...prev.processing,
-        status: "idle",
-        pendingRun: null,
-      },
-    }));
-  }, []);
+  const resolveReviewRun = useCallback(
+    (sourceData) => {
+      const baseline = runsSnapshotRef.current ?? [];
+      return (
+        sourceData.processing?.pendingRun ??
+        sourceData.processing?.lastProcessedRun ??
+        extractPendingRunFromState(sourceData, baseline)
+      );
+    },
+    [],
+  );
 
-  const handleReviewDiscard = useCallback(async () => {
+  const finishReviewLocally = useCallback((nextData) => {
+    reviewOpenRef.current = false;
+    completionReviewDismissedRef.current = true;
+    setData(nextData);
+    ipcRequest("ui:patch", { postProcessingReviewOpen: false }).catch(() => {});
+  }, [ipcRequest]);
+
+  const handleReviewClose = useCallback(() => {
+    const pending = resolveReviewRun(data);
     const baseline = runsSnapshotRef.current ?? [];
-    const pending =
-      data.processing?.pendingRun ??
-      extractPendingRunFromState(data, baseline);
-    closeReviewOptimistic();
-    try {
-      const next = discardPendingRun(data, pending, baseline);
-      setData(next);
-      await ipcRequest("processing:acknowledge", { save: false });
-      await ipcRequest("ui:patch", { postProcessingReviewOpen: false });
-    } catch (e) {
-      setModalError(String(e?.message || e));
-      try {
-        const state = await ipcRequest("state:get");
-        setData({
-          ...discardPendingRun(state, pending, baseline),
-          ui: {
-            ...state.ui,
-            postProcessingReviewOpen: false,
-          },
-        });
-        await ipcRequest("processing:acknowledge", { save: false }).catch(
-          () => {},
-        );
-      } catch {
-        /* modal already closed */
-      }
-    }
-  }, [closeReviewOptimistic, data, ipcRequest]);
+    finishReviewLocally(closeReviewWithoutSync(data, pending, baseline));
+  }, [data, finishReviewLocally, resolveReviewRun]);
+
+  const handleReviewDiscard = useCallback(() => {
+    const pending = resolveReviewRun(data);
+    const baseline = runsSnapshotRef.current ?? [];
+    finishReviewLocally(discardPendingRun(data, pending, baseline));
+  }, [data, finishReviewLocally, resolveReviewRun]);
 
   const handleReviewConfirm = useCallback(async () => {
+    const pending = resolveReviewRun(data);
     const baseline = runsSnapshotRef.current ?? [];
-    const pending =
-      data.processing?.pendingRun ??
-      extractPendingRunFromState(data, baseline);
-    closeReviewOptimistic();
+    reviewOpenRef.current = false;
+    completionReviewDismissedRef.current = true;
+    setData(confirmPendingRunToLibrary(data, pending, baseline));
+    ipcRequest("ui:patch", { postProcessingReviewOpen: false }).catch(() => {});
     try {
-      const next = confirmPendingRunToLibrary(data, pending, baseline);
-      setData(next);
-      await ipcRequest("processing:acknowledge", { save: true });
-      await ipcRequest("ui:patch", { postProcessingReviewOpen: false });
       await refreshDashboard();
     } catch (e) {
       setModalError(String(e?.message || e));
-      try {
-        setData(confirmPendingRunToLibrary(data, pending, baseline));
-        await ipcRequest("processing:acknowledge", { save: true }).catch(
-          () => {},
-        );
-        await refreshDashboard();
-      } catch {
-        /* modal already closed */
-      }
     }
-  }, [closeReviewOptimistic, data, ipcRequest, refreshDashboard]);
+  }, [data, ipcRequest, refreshDashboard, resolveReviewRun]);
 
-  const handleReviewTuning = useCallback(async () => {
+  const handleReviewTuning = useCallback(() => {
+    const pending = resolveReviewRun(data);
     const baseline = runsSnapshotRef.current ?? [];
-    const pending =
-      data.processing?.pendingRun ??
-      extractPendingRunFromState(data, baseline);
+    const next = discardPendingRun(data, pending, baseline);
     reviewOpenRef.current = false;
+    completionReviewDismissedRef.current = true;
+    setData({
+      ...next,
+      ui: { ...next.ui, activeMainTab: "tuning" },
+    });
+    ipcRequest("ui:patch", {
+      postProcessingReviewOpen: false,
+      activeMainTab: "tuning",
+    }).catch(() => {});
+  }, [data, ipcRequest, resolveReviewRun]);
+
+  const handleReviewLastRun = useCallback(() => {
+    const run = data.processing?.lastProcessedRun;
+    if (!run) return;
+    reviewOpenRef.current = true;
     setData((prev) => ({
-      ...discardPendingRun(prev, pending, baseline),
+      ...prev,
       ui: {
         ...prev.ui,
-        postProcessingReviewOpen: false,
-        activeMainTab: "tuning",
+        activeMainTab: "workflow",
+        postProcessingReviewOpen: true,
       },
       processing: {
         ...prev.processing,
-        status: "idle",
-        pendingRun: null,
+        status: "completed",
+        pendingRun: run,
       },
     }));
-    try {
-      await ipcRequest("processing:acknowledge", { save: false });
-      await ipcRequest("ui:patch", {
-        postProcessingReviewOpen: false,
-        activeMainTab: "tuning",
-      });
-    } catch (e) {
-      setModalError(String(e?.message || e));
-    }
-  }, [data, ipcRequest]);
+    ipcRequest("ui:patch", {
+      activeMainTab: "workflow",
+      postProcessingReviewOpen: true,
+    }).catch(() => {});
+  }, [data.processing?.lastProcessedRun, ipcRequest]);
 
   const tab = data.ui.activeMainTab;
-  const pendingRun =
-    data.processing?.pendingRun ??
-    (data.ui.postProcessingReviewOpen
-      ? extractPendingRunFromState(data, runsSnapshotRef.current)
-      : null);
+  const pendingRun = data.ui.postProcessingReviewOpen
+    ? resolveReviewRun(data)
+    : null;
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
@@ -620,6 +664,7 @@ function App() {
         open={Boolean(data.ui.postProcessingReviewOpen)}
         data={data}
         pendingRun={pendingRun}
+        onClose={handleReviewClose}
         onDiscard={handleReviewDiscard}
         onConfirm={handleReviewConfirm}
         onGoToTuning={handleReviewTuning}
@@ -664,6 +709,7 @@ function App() {
                 onRun={handleRun}
                 onStop={handleStop}
                 onClearLogs={handleClearLogs}
+                onReviewLastRun={handleReviewLastRun}
               />
             )}
             {tab === "analytics" && (

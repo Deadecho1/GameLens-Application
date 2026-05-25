@@ -34,10 +34,36 @@ function synthesizePendingRun(data) {
   };
 }
 
+function runIdKey(run) {
+  if (run?.id == null) return null;
+  return String(run.id);
+}
+
+/** Persist run payload for "Review Last Run" without keeping it as active pending. */
+export function withLastProcessedRun(data, run) {
+  const saved = run ?? data?.processing?.lastProcessedRun ?? null;
+  return {
+    ...data,
+    processing: {
+      ...data.processing,
+      lastProcessedRun: saved,
+      pendingRun: null,
+      status: 'idle',
+    },
+    ui: {
+      ...data.ui,
+      postProcessingReviewOpen: false,
+    },
+  };
+}
+
 /**
  * Prefer a run that appeared after the pre-completion snapshot; else newest; else synthesize.
  */
 export function extractPendingRunFromState(data, baselineRuns = []) {
+  const fromProcessing = data?.processing?.pendingRun ?? data?.processing?.lastProcessedRun;
+  if (fromProcessing) return fromProcessing;
+
   const runs = Array.isArray(data?.dashboard?.runsHistory)
     ? data.dashboard.runsHistory
     : [];
@@ -55,24 +81,24 @@ export function extractPendingRunFromState(data, baselineRuns = []) {
   return synthesizePendingRun(data);
 }
 
+export function isRunInHistory(runsHistory, run) {
+  const key = runIdKey(run);
+  if (!key) return false;
+  return (runsHistory ?? []).some((r) => runIdKey(r) === key);
+}
+
 export function confirmPendingRunToLibrary(data, pendingRun, baselineRuns = []) {
   if (!pendingRun) {
-    return {
-      ...data,
-      ui: { ...data.ui, postProcessingReviewOpen: false },
-      processing: {
-        ...data.processing,
-        status: 'idle',
-        pendingRun: null,
-      },
-    };
+    return withLastProcessedRun(data, data?.processing?.lastProcessedRun);
   }
 
   const existing = Array.isArray(data?.dashboard?.runsHistory)
     ? data.dashboard.runsHistory
     : [];
-  const hasId = existing.some((r) => String(r?.id) === String(pendingRun.id));
-  const runsHistory = hasId ? existing : [...existing, pendingRun];
+  const key = runIdKey(pendingRun);
+  const runsHistory = isRunInHistory(existing, pendingRun)
+    ? existing
+    : [...existing, pendingRun];
 
   return {
     ...data,
@@ -81,6 +107,7 @@ export function confirmPendingRunToLibrary(data, pendingRun, baselineRuns = []) 
       ...data.processing,
       status: 'idle',
       pendingRun: null,
+      lastProcessedRun: pendingRun,
     },
     dashboard: {
       ...data.dashboard,
@@ -93,11 +120,10 @@ export function discardPendingRun(data, pendingRun, baselineRuns = []) {
   const existing = Array.isArray(data?.dashboard?.runsHistory)
     ? data.dashboard.runsHistory
     : [];
-  const baselineIds = new Set((baselineRuns ?? []).map((r) => String(r?.id)));
-  const pendingId = pendingRun?.id != null ? String(pendingRun.id) : null;
+  const pendingId = runIdKey(pendingRun);
 
   const runsHistory = existing.filter((r) => {
-    if (pendingId && String(r?.id) === pendingId) return false;
+    if (pendingId && runIdKey(r) === pendingId) return false;
     return true;
   });
 
@@ -106,6 +132,8 @@ export function discardPendingRun(data, pendingRun, baselineRuns = []) {
       ? runsHistory
       : [...baselineRuns];
 
+  const stash = pendingRun ?? data?.processing?.lastProcessedRun ?? null;
+
   return {
     ...data,
     ui: { ...data.ui, postProcessingReviewOpen: false },
@@ -113,10 +141,16 @@ export function discardPendingRun(data, pendingRun, baselineRuns = []) {
       ...data.processing,
       status: 'idle',
       pendingRun: null,
+      lastProcessedRun: stash,
     },
     dashboard: {
       ...data.dashboard,
       runsHistory: restored,
     },
   };
+}
+
+/** Close modal without syncing — keeps lastProcessedRun for later review. */
+export function closeReviewWithoutSync(data, pendingRun, baselineRuns = []) {
+  return discardPendingRun(data, pendingRun, baselineRuns);
 }

@@ -56,6 +56,10 @@ export const initialData = {
     selectedModel: 'base',
     status: 'idle',
     logs: ['[INFO] System ready...'],
+    /** Last completed run kept for "Review Last Run" (frontend-only; not in IPC state). */
+    lastProcessedRun: null,
+    /** Active run under review in PostProcessingReviewModal (frontend-only). */
+    pendingRun: null,
   },
 
   tuning: {
