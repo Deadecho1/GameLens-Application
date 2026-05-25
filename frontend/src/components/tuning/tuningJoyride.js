@@ -3,41 +3,41 @@
 export const TUNING_TOUR_STEPS = [
   {
     target: '.tuning-tour-add-video',
-    title: 'Step 1: Load your Gameplay',
+    title: 'Step 1: Load Footage',
     content:
-      'Start by adding MP4 videos. You can load multiple videos here. Note: Refreshing the app will clear your loaded videos, so try to finish your session!',
+      'Add one or more gameplay videos. Note: If you refresh the app, your un-trained progress will be lost, so complete your tagging in one session!',
     disableBeacon: true,
     placement: 'right',
   },
   {
     target: '.tuning-tour-model-tabs',
-    title: 'Step 2: Choose What to Teach',
+    title: 'Step 2: Pick a Model',
     content:
-      'Select which AI model you want to improve. Each model requires a different type of annotation (Points vs. Time Segments).',
+      "Choose what to train. 'Event Detector' requires marking specific frames. 'Boss Detector' requires dragging to highlight time segments.",
     disableBeacon: true,
     placement: 'left',
   },
   {
-    target: '.tuning-tour-annotate',
-    title: 'Step 3: Annotate the Footage',
+    target: '.tuning-tour-timeline',
+    title: 'Step 3: Navigate & Drag',
     content:
-      'For Events: Scrub the video and mark exact frames (Start, End, Choice).\nFor Bosses: Click and drag on the timeline to mark segments of fighting.',
+      'Scrub to find the right moment. If you are training the BOSS DETECTOR: Click and drag across this timeline to highlight a fight segment (must be at least 3 seconds long).',
     disableBeacon: true,
-    placement: 'bottom',
+    placement: 'top',
   },
   {
-    target: '.tuning-tour-train-checkbox',
-    title: 'Step 4: Enable for Training',
+    target: '.tuning-tour-annotation-controls',
+    title: 'Step 4: Mark specific Frames',
     content:
-      'Once you have enough marks (e.g., 6 points or 5 segments), check this box to queue this model for the training run.',
+      "If you are training the EVENT DETECTOR: Pause at the exact moment an event happens, select the category (Start/End/Choice), and click 'MARK FRAME' (or press M). You need at least 6 marks per category.",
     disableBeacon: true,
-    placement: 'left',
+    placement: 'top',
   },
   {
     target: '.tuning-tour-start-training',
-    title: 'Step 5: Launch the Training',
+    title: 'Step 5: Train!',
     content:
-      "When you're ready, click here! You'll be asked to name your model, and then a terminal will appear showing the real-time AI training process.",
+      "Once you've gathered enough marks (watch the progress bars!), check the 'Train' box and click here to start the AI fine-tuning process.",
     disableBeacon: true,
     placement: 'bottom',
   },

@@ -488,7 +488,7 @@ export default function TuningTab({ data, ipcRequest }) {
         </aside>
 
         {/* ── Center: Video player + timeline ─────────────────────────────── */}
-        <div className="tuning-tour-annotate flex min-w-0 flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           {activeVideo ? (
             <>
               {/* Video element */}
@@ -547,8 +547,8 @@ export default function TuningTab({ data, ipcRequest }) {
                 )}
               </div>
 
-              {/* Timeline */}
-              <div className="rounded-2xl border border-slate-800/90 bg-slate-900/50 p-4 backdrop-blur-sm">
+              {/* Timeline — click/drag to scrub; boss segments via drag */}
+              <div className="tuning-tour-timeline rounded-2xl border border-slate-800/90 bg-slate-900/50 p-4 backdrop-blur-sm">
                 <div
                   ref={timelineRef}
                   className={`relative h-8 select-none rounded-full bg-slate-800/80 ${
@@ -642,8 +642,8 @@ export default function TuningTab({ data, ipcRequest }) {
                   />
                 </div>
 
-                {/* Controls row */}
-                <div className="mt-3 flex items-center gap-3">
+                {/* Controls row — event: category + Mark frame; boss: drag hints on timeline */}
+                <div className="tuning-tour-annotation-controls mt-3 flex min-h-[2.25rem] flex-wrap items-center gap-3">
                   {isSegmentModel ? (
                     <p className="font-data text-xs text-slate-500">
                       <span className="text-slate-400">Drag</span> on timeline to mark boss fight segment ·{' '}
@@ -655,7 +655,7 @@ export default function TuningTab({ data, ipcRequest }) {
                       <button
                         type="button"
                         onClick={() => markCurrentFrame()}
-                        className="flex items-center gap-1.5 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/60 hover:text-cyan-100"
+                        className="tuning-tour-mark-frame flex items-center gap-1.5 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/60 hover:text-cyan-100"
                       >
                         Mark frame
                         <span className="rounded border border-cyan-500/30 px-1 font-data text-[10px]">
@@ -696,22 +696,53 @@ export default function TuningTab({ data, ipcRequest }) {
               </div>
             </>
           ) : (
-            <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-800 py-24">
-              <div className="text-center">
-                <Film className="mx-auto h-12 w-12 text-slate-700" strokeWidth={1} />
-                <p className="mt-3 font-display text-sm font-bold uppercase tracking-wider text-slate-600">
-                  Add a video to begin
-                </p>
-                <button
-                  type="button"
-                  onClick={handleAddVideo}
-                  className="mt-4 inline-flex items-center gap-2 rounded-xl border border-blue-500/35 bg-slate-900/60 px-4 py-2 font-display text-xs font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/50"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Video
-                </button>
+            <>
+              <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-800 py-16">
+                <div className="text-center">
+                  <Film className="mx-auto h-12 w-12 text-slate-700" strokeWidth={1} />
+                  <p className="mt-3 font-display text-sm font-bold uppercase tracking-wider text-slate-600">
+                    Add a video to begin
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAddVideo}
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-blue-500/35 bg-slate-900/60 px-4 py-2 font-display text-xs font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/50"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Video
+                  </button>
+                </div>
               </div>
-            </div>
+              {/* Tour anchors when no video — same selectors as the live player UI */}
+              <div className="tuning-tour-timeline rounded-2xl border border-slate-800/90 bg-slate-900/40 p-4 opacity-70">
+                <div className="relative h-8 rounded-full bg-slate-800/80">
+                  <div
+                    className="pointer-events-none absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/40 bg-white/20"
+                    style={{ left: '35%' }}
+                  />
+                </div>
+                <p className="mt-2 font-data text-[10px] text-slate-500">
+                  Click or drag here to scrub — boss fights are marked by dragging spans
+                </p>
+              </div>
+              <div className="tuning-tour-annotation-controls flex flex-wrap items-center gap-3 rounded-xl border border-slate-800/90 bg-slate-900/40 px-4 py-3 opacity-70">
+                <span className="tuning-tour-mark-frame flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/5 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-cyan-400/80">
+                  Mark frame
+                  <span className="rounded border border-cyan-500/20 px-1 font-data text-[10px]">M</span>
+                </span>
+                <span className="font-data text-xs text-slate-600">as</span>
+                <div className="flex gap-1.5">
+                  {TUNING_MODEL_CONFIGS[0]?.categories.map((cat) => (
+                    <span
+                      key={cat.id}
+                      className="rounded-lg border border-slate-700 px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wider text-slate-500"
+                    >
+                      {cat.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
         </div>
 
@@ -746,7 +777,7 @@ export default function TuningTab({ data, ipcRequest }) {
 
           {/* Enable checkbox */}
           {activeModelConfig && (
-            <label className="tuning-tour-train-checkbox flex cursor-pointer items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2.5 transition hover:border-slate-700">
+            <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2.5 transition hover:border-slate-700">
               <input
                 type="checkbox"
                 checked={enabledModelIds.includes(activeModelId)}
