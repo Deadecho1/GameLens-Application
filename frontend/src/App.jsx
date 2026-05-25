@@ -31,10 +31,10 @@ function App() {
   const [modalError, setModalError] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const pollRef = useRef(null);
-  const prevStatusRef = useRef("idle");
   const runsSnapshotRef = useRef([]);
   const reviewOpenRef = useRef(false);
-  const completionReviewDismissedRef = useRef(false);
+  /** True on launch so stale `completed` from a prior session does not auto-open review. */
+  const completionReviewDismissedRef = useRef(true);
 
   const ipcRequest = useCallback(async (method, params = {}) => {
     if (!window.gamelens?.request) {
@@ -58,6 +58,10 @@ function App() {
         if (!reviewOpen) {
           return {
             ...state,
+            ui: {
+              ...state.ui,
+              postProcessingReviewOpen: false,
+            },
             processing: {
               ...state.processing,
               lastProcessedRun,
@@ -119,86 +123,6 @@ function App() {
       runsSnapshotRef.current = data.dashboard?.runsHistory ?? [];
     }
   }, [data.processing.status, data.dashboard?.runsHistory]);
-
-  const openPostProcessingReview = useCallback(async () => {
-    const baseline = runsSnapshotRef.current ?? [];
-    reviewOpenRef.current = true;
-
-    const mergeReviewOpen = (base, run) => ({
-      ...base,
-      ui: {
-        ...base.ui,
-        activeMainTab: "workflow",
-        postProcessingReviewOpen: true,
-        completionCelebrationActive: false,
-      },
-      processing: {
-        ...base.processing,
-        status: "completed",
-        pendingRun: run ?? base.processing?.pendingRun ?? null,
-        lastProcessedRun:
-          run ?? base.processing?.lastProcessedRun ?? null,
-      },
-    });
-
-    let pendingRun = extractPendingRunFromState(data, baseline);
-    setData((prev) => mergeReviewOpen(prev, pendingRun));
-
-    try {
-      const fresh = await ipcRequest("state:get");
-      pendingRun =
-        pendingRun ?? extractPendingRunFromState(fresh, baseline);
-      setData(mergeReviewOpen(fresh, pendingRun));
-    } catch {
-      /* local optimistic state already shown */
-    }
-
-    try {
-      await ipcRequest("ui:patch", {
-        activeMainTab: "workflow",
-        postProcessingReviewOpen: true,
-        completionCelebrationActive: false,
-      });
-    } catch {
-      /* optimistic UI already open */
-    }
-
-    for (const delay of [450, 1200]) {
-      window.setTimeout(async () => {
-        if (!reviewOpenRef.current) return;
-        try {
-          const retryState = await ipcRequest("state:get");
-          const retryRun = extractPendingRunFromState(
-            retryState,
-            runsSnapshotRef.current,
-          );
-          if (!retryRun) return;
-          setData((prev) => {
-            if (!prev.ui.postProcessingReviewOpen) return prev;
-            if (prev.processing?.pendingRun) return prev;
-            return mergeReviewOpen(retryState, retryRun);
-          });
-        } catch {
-          /* keep modal open */
-        }
-      }, delay);
-    }
-  }, [data, ipcRequest]);
-
-  /** On completed edge, open post-processing review on Workflow (reliable fallbacks for pendingRun). */
-  useEffect(() => {
-    const prev = prevStatusRef.current;
-    const next = data.processing.status;
-    if (
-      prev !== "completed" &&
-      next === "completed" &&
-      !completionReviewDismissedRef.current
-    ) {
-      runsSnapshotRef.current = data.dashboard?.runsHistory ?? [];
-      openPostProcessingReview();
-    }
-    prevStatusRef.current = next;
-  }, [data.processing.status, openPostProcessingReview]);
 
   useEffect(() => {
     if (!data.ui.completionCelebrationActive) return undefined;

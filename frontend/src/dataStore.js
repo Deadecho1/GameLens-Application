@@ -11,7 +11,7 @@
 export const initialData = {
   ui: {
     /** Main nav: unified mission flow vs analytics deck */
-    activeMainTab: 'workflow',
+    activeMainTab: 'analytics',
     /**
      * Workflow stepper position (MISSION START tab).
      * 1 = Configure (game/version) · 2 = Initialize (upload/options) · 3 = Execute (run + terminal)

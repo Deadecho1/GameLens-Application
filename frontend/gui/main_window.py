@@ -69,7 +69,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._versions: list[VersionInfo] = []
         self._current_runs: list[RunSummary] = []
         self._ipc_ui_state: dict = {
-            "activeMainTab": "workflow",
+            "activeMainTab": "analytics",
             "workflowStep": 1,
             "completionCelebrationActive": False,
             "postProcessingReviewOpen": False,
