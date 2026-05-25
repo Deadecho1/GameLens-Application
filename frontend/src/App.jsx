@@ -35,6 +35,8 @@ function App() {
   const reviewOpenRef = useRef(false);
   /** True on launch so stale `completed` from a prior session does not auto-open review. */
   const completionReviewDismissedRef = useRef(true);
+  /** First IPC sync forces Analytics so stale backend `workflow` tab cannot win on startup. */
+  const startupAnalyticsAppliedRef = useRef(false);
 
   const ipcRequest = useCallback(async (method, params = {}) => {
     if (!window.gamelens?.request) {
@@ -48,6 +50,7 @@ function App() {
   const refreshState = useCallback(async () => {
     try {
       const state = await ipcRequest("state:get");
+      const forceStartupAnalytics = !startupAnalyticsAppliedRef.current;
       setData((prev) => {
         const reviewOpen =
           prev.ui.postProcessingReviewOpen || reviewOpenRef.current;
@@ -56,10 +59,17 @@ function App() {
           state.processing?.lastProcessedRun ??
           null;
         if (!reviewOpen) {
+          const activeMainTab = forceStartupAnalytics
+            ? "analytics"
+            : state.ui?.activeMainTab ?? "analytics";
+          if (forceStartupAnalytics) {
+            startupAnalyticsAppliedRef.current = true;
+          }
           return {
             ...state,
             ui: {
               ...state.ui,
+              activeMainTab,
               postProcessingReviewOpen: false,
             },
             processing: {
@@ -97,11 +107,29 @@ function App() {
           },
         };
       });
+      if (forceStartupAnalytics && !reviewOpenRef.current) {
+        ipcRequest("ui:patch", {
+          activeMainTab: "analytics",
+          postProcessingReviewOpen: false,
+        }).catch(() => {});
+      }
       setError("");
     } catch (e) {
       setError(String(e?.message || e));
     }
   }, [ipcRequest]);
+
+  /** Keep Analytics visible before the first state:get returns (IPC may still say workflow). */
+  useEffect(() => {
+    setData((prev) => ({
+      ...prev,
+      ui: {
+        ...prev.ui,
+        activeMainTab: "analytics",
+        postProcessingReviewOpen: false,
+      },
+    }));
+  }, []);
 
   useEffect(() => {
     refreshState();
