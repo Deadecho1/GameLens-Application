@@ -19,6 +19,8 @@ export const initialData = {
     workflowStep: 1,
     /** Brief full-screen success pulse + banner when run completes (Framer-driven in App) */
     completionCelebrationActive: false,
+    /** Post-processing review overlay after pipeline completes (Workflow tab) */
+    postProcessingReviewOpen: false,
     changePicker: null,
     addGameModalOpen: false,
     addVersionModalOpen: false,

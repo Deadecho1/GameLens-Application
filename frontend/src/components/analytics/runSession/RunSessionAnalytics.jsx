@@ -53,8 +53,14 @@ const glitchInjectVariants = {
 
 /**
  * Run Session Analytics — data from `dataStore.js` (`initialData` + live `data`).
+ * @param {boolean} [embedded] — compact layout inside PostProcessingReviewModal (no page header).
+ * @param {string|null} [initialSelectedRunId] — pre-select a run when embedded.
  */
-export default function RunSessionAnalytics({ data }) {
+export default function RunSessionAnalytics({
+  data,
+  embedded = false,
+  initialSelectedRunId = null,
+}) {
   const runsHistory = useMemo(() => {
     const runs = data?.dashboard?.runsHistory;
     return Array.isArray(runs) ? runs : [];
@@ -113,8 +119,12 @@ export default function RunSessionAnalytics({ data }) {
   }, []);
 
   useEffect(() => {
+    if (initialSelectedRunId != null) {
+      setSelectedRunId(initialSelectedRunId);
+      return;
+    }
     if (runsHistory.length === 0) setSelectedRunId(null);
-  }, [runsHistory]);
+  }, [runsHistory, initialSelectedRunId]);
 
   const selectedRun = useMemo(
     () => runsHistory.find((r) => r.id === selectedRunId) ?? null,
@@ -144,71 +154,85 @@ export default function RunSessionAnalytics({ data }) {
     backgroundPosition: '0 0, 0 0, -1px -1px, -1px -1px',
   };
 
+  const shellClass = embedded
+    ? 'relative mx-auto max-w-[1800px] px-2 py-4 md:px-6 md:py-6'
+    : 'relative mx-auto max-w-[1800px] px-4 py-8 md:py-10';
+
+  const layoutClass = embedded
+    ? 'relative z-1 flex min-h-[min(480px,60vh)] flex-col bg-slate-950/30 lg:rounded-xl lg:border lg:border-slate-800'
+    : 'relative z-1 flex min-h-[min(640px,72vh)] flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-950/45 lg:shadow-[inset_0_1px_0_rgba(148,163,184,0.05)]';
+
+  const runSidebar = !embedded ? (
+    <aside className="flex w-full flex-col border-slate-800/80 lg:w-[min(100%,280px)] lg:shrink-0 lg:border-r lg:border-slate-800/90 lg:bg-slate-950/55">
+      <div className="border-b border-slate-800/80 px-4 py-3">
+        <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+          Run selection
+        </p>
+        <p className="font-data mt-1 text-[10px] text-slate-600">
+          {runsHistory.length} session{runsHistory.length === 1 ? '' : 's'} (dataStore)
+        </p>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-color:rgba(71,85,105,0.45)_transparent]">
+        {runsHistory.length === 0 ? (
+          <p className="font-data px-2 py-8 text-center text-sm text-slate-500">No runs in history.</p>
+        ) : (
+          <ul className="space-y-1">
+            {runsHistory.map((run) => {
+              const active = run.id === selectedRunId;
+              return (
+                <li key={run.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleListSelect(run.id)}
+                    className={`flex w-full flex-col gap-1 rounded-lg border px-3 py-2.5 text-left transition ${
+                      active
+                        ? 'border-cyan-500/50 bg-cyan-500/5'
+                        : 'border-slate-800 bg-slate-900/40 hover:border-slate-600 hover:bg-slate-900/65'
+                    }`}
+                  >
+                    <span className="font-display text-[11px] font-bold uppercase tracking-wide text-slate-200">
+                      {run.id}
+                    </span>
+                    <span className="font-data flex items-center gap-1.5 text-[10px] text-slate-500">
+                      <Calendar className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                      {run.date}
+                    </span>
+                    <span className="font-data flex items-center gap-1.5 text-[11px] tabular-nums text-cyan-300/80">
+                      <Clock className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+                      {run.duration}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </aside>
+  ) : null;
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
+      initial={embedded ? false : { opacity: 0, y: 14 }}
+      animate={embedded ? false : { opacity: 1, y: 0 }}
+      exit={embedded ? false : { opacity: 0, y: -10 }}
       transition={{ duration: 0.28 }}
-      className="relative mx-auto max-w-[1800px] px-4 py-8 md:py-10"
-      style={circuitBgStyle}
+      className={shellClass}
+      style={embedded ? undefined : circuitBgStyle}
     >
-      <header className="relative z-1 mb-6">
-        <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-cyan-500/70">
-          Session intel
-        </p>
-        <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
-          Run session analytics
-        </h2>
-      </header>
+      {!embedded ? (
+        <header className="relative z-1 mb-6">
+          <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-cyan-500/70">
+            Session intel
+          </p>
+          <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
+            Run session analytics
+          </h2>
+        </header>
+      ) : null}
 
-      <div className="relative z-1 flex min-h-[min(640px,72vh)] flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-800 lg:bg-slate-950/45 lg:shadow-[inset_0_1px_0_rgba(148,163,184,0.05)]">
-        <aside className="flex w-full flex-col border-slate-800/80 lg:w-[min(100%,280px)] lg:shrink-0 lg:border-r lg:border-slate-800/90 lg:bg-slate-950/55">
-          <div className="border-b border-slate-800/80 px-4 py-3">
-            <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-              Run selection
-            </p>
-            <p className="font-data mt-1 text-[10px] text-slate-600">
-              {runsHistory.length} session{runsHistory.length === 1 ? '' : 's'} (dataStore)
-            </p>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-color:rgba(71,85,105,0.45)_transparent]">
-            {runsHistory.length === 0 ? (
-              <p className="font-data px-2 py-8 text-center text-sm text-slate-500">No runs in history.</p>
-            ) : (
-              <ul className="space-y-1">
-                {runsHistory.map((run) => {
-                  const active = run.id === selectedRunId;
-                  return (
-                    <li key={run.id}>
-                      <button
-                        type="button"
-                        onClick={() => handleListSelect(run.id)}
-                        className={`flex w-full flex-col gap-1 rounded-lg border px-3 py-2.5 text-left transition ${
-                          active
-                            ? 'border-cyan-500/50 bg-cyan-500/5'
-                            : 'border-slate-800 bg-slate-900/40 hover:border-slate-600 hover:bg-slate-900/65'
-                        }`}
-                      >
-                        <span className="font-display text-[11px] font-bold uppercase tracking-wide text-slate-200">
-                          {run.id}
-                        </span>
-                        <span className="font-data flex items-center gap-1.5 text-[10px] text-slate-500">
-                          <Calendar className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-                          {run.date}
-                        </span>
-                        <span className="font-data flex items-center gap-1.5 text-[11px] tabular-nums text-cyan-300/80">
-                          <Clock className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-                          {run.duration}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </aside>
+      <div className={layoutClass}>
+        {runSidebar}
 
         <motion.div layout className="flex min-w-0 flex-1 flex-col bg-slate-950/30">
           <motion.section
