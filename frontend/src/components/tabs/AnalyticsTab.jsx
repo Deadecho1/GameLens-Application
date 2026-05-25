@@ -13,10 +13,21 @@ const SUB_TABS = [
   { id: "items", label: "ITEMS" },
 ];
 
-function renderActiveSubView(sub, data, compact = false) {
-  if (sub === "general") return <GeneralMissionStats data={data} />;
-  if (sub === "bosses") return <BossesAnalytics data={data} />;
-  if (sub === "items") return <ItemsPowerLab data={data} compact={compact} />;
+function renderActiveSubView(sub, data, { compact = false, compareBaseline = null } = {}) {
+  if (sub === "general")
+    return (
+      <GeneralMissionStats data={data} compareBaseline={compareBaseline} />
+    );
+  if (sub === "bosses")
+    return <BossesAnalytics data={data} compareBaseline={compareBaseline} />;
+  if (sub === "items")
+    return (
+      <ItemsPowerLab
+        data={data}
+        compact={compact}
+        compareBaseline={compareBaseline}
+      />
+    );
   return null;
 }
 
@@ -464,7 +475,7 @@ export default function AnalyticsTab({ data, onPatch }) {
                   {versionA || "Version A"}
                 </p>
               </div>
-              <div className="min-w-0">{renderActiveSubView(sub, dataA, true)}</div>
+              <div className="min-w-0">{renderActiveSubView(sub, dataA, { compact: true })}</div>
             </div>
 
             <div className="relative flex shrink-0 items-center justify-center py-2 lg:hidden">
@@ -484,7 +495,12 @@ export default function AnalyticsTab({ data, onPatch }) {
                   {versionB || "Version B"}
                 </p>
               </div>
-              <div className="min-w-0">{renderActiveSubView(sub, dataB, true)}</div>
+              <div className="min-w-0">
+                {renderActiveSubView(sub, dataB, {
+                  compact: true,
+                  compareBaseline: dataA,
+                })}
+              </div>
             </div>
 
             <div

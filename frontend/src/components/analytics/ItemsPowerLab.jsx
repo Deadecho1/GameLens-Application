@@ -7,7 +7,7 @@ import ItemsInformationPanel from './items/ItemsInformationPanel';
 /**
  * ITEMS analytics — BUILD (survival simulator) + INFORMATION (master-detail intel).
  */
-export default function ItemsPowerLab({ data, compact = false }) {
+export default function ItemsPowerLab({ data, compact = false, compareBaseline = null }) {
   const [itemsSubTab, setItemsSubTab] = useState('build');
   const catalog = data?.dashboard?.items ?? [];
   const runsHistory = data?.dashboard?.runsHistory ?? [];
@@ -39,12 +39,17 @@ export default function ItemsPowerLab({ data, compact = false }) {
       </div>
 
       {itemsSubTab === 'build' ? (
-        <ItemsBuildPanel data={data} compact={compact} />
+        <ItemsBuildPanel
+          data={data}
+          compact={compact}
+          compareBaseline={compareBaseline}
+        />
       ) : (
         <ItemsInformationPanel
           catalog={catalog}
           runsHistory={runsHistory}
           compact={compact}
+          compareBaseline={compareBaseline}
         />
       )}
     </div>

@@ -12,16 +12,11 @@ import {
 import { motion } from 'framer-motion';
 import { Package, RotateCcw, Search } from 'lucide-react';
 import { durationToSeconds } from '../../../utils/duration';
+import { analyzeRunsForItems, formatMmSs } from '../../../utils/itemBuildAnalytics';
+import DeltaIndicator from '../DeltaIndicator';
 import { itemAccentDotStyle } from './itemUi';
 
 const DRAG_MIME = 'application/gamelens-item-id';
-
-function formatMmSs(totalSeconds) {
-  const s = Math.max(0, Math.round(totalSeconds));
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-}
 
 function formatSignedDeltaMmSs(deltaSeconds) {
   const sign = deltaSeconds >= 0 ? '+' : '−';
@@ -29,39 +24,6 @@ function formatSignedDeltaMmSs(deltaSeconds) {
   const m = Math.floor(abs / 60);
   const sec = abs % 60;
   return `${sign}${m}:${String(sec).padStart(2, '0')}`;
-}
-
-function analyzeRunsForItems(runsHistory) {
-  const runs = runsHistory ?? [];
-  const globalAvgSeconds =
-    runs.length > 0
-      ? runs.reduce((acc, r) => acc + durationToSeconds(r.duration), 0) / runs.length
-      : 0;
-
-  const byItem = new Map();
-  for (const run of runs) {
-    const runSec = durationToSeconds(run.duration);
-    const ids = new Set();
-    for (const enc of run.bossEncounters ?? []) {
-      for (const id of enc.loadout ?? []) ids.add(id);
-    }
-    for (const id of ids) {
-      if (!byItem.has(id)) byItem.set(id, { totalSec: 0, runCount: 0 });
-      const agg = byItem.get(id);
-      agg.totalSec += runSec;
-      agg.runCount += 1;
-    }
-  }
-
-  const itemRunStats = new Map();
-  for (const [id, agg] of byItem) {
-    itemRunStats.set(id, {
-      runCount: agg.runCount,
-      avgEquippedRunSeconds: agg.runCount > 0 ? agg.totalSec / agg.runCount : globalAvgSeconds,
-    });
-  }
-
-  return { globalAvgSeconds, itemRunStats };
 }
 
 function estimateBuildAvgRunSeconds(equippedIds, itemRunStats, globalAvgSeconds) {
@@ -84,7 +46,7 @@ function placeItemInSlots(slots, slotIndex, itemId) {
 }
 
 /** Existing survival simulator / build lab UI. */
-export default function ItemsBuildPanel({ data, compact = false }) {
+export default function ItemsBuildPanel({ data, compact = false, compareBaseline = null }) {
   const catalog = data.dashboard.items ?? [];
   const runsHistory = data.dashboard.runsHistory ?? [];
 
@@ -96,6 +58,12 @@ export default function ItemsBuildPanel({ data, compact = false }) {
     () => analyzeRunsForItems(runsHistory),
     [runsHistory],
   );
+
+  const baselineGlobalAvgSeconds = useMemo(() => {
+    if (!compareBaseline) return null;
+    const baselineRuns = compareBaseline.dashboard?.runsHistory ?? [];
+    return analyzeRunsForItems(baselineRuns).globalAvgSeconds;
+  }, [compareBaseline]);
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -329,6 +297,21 @@ export default function ItemsBuildPanel({ data, compact = false }) {
               Session length (HH:MM:SS from history), compared to a build estimate from item-conditioned
               averages.
             </p>
+            <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <p className="font-data text-sm text-slate-400">
+                Global avg{' '}
+                <span className="font-semibold tabular-nums text-slate-200">
+                  {formatMmSs(globalAvgSeconds)}
+                </span>
+              </p>
+              {baselineGlobalAvgSeconds != null ? (
+                <DeltaIndicator
+                  kind="duration"
+                  baseline={baselineGlobalAvgSeconds}
+                  current={globalAvgSeconds}
+                />
+              ) : null}
+            </div>
             <div className="mt-4 h-[220px] w-full min-w-0 md:h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barChartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }} barGap={12}>

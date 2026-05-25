@@ -14,6 +14,8 @@ import { Activity, Clock, Hourglass, Package, Crosshair, Sparkles, Swords } from
 import { useCountUp } from '../../hooks/useCountUp';
 import { durationToSeconds, formatSecondsAsHMS } from '../../utils/duration';
 import { buildRunDurationDistribution } from '../../utils/runDurationDistribution';
+import { computeGeneralMetrics } from '../../utils/analyticsGeneralMetrics';
+import DeltaIndicator from './DeltaIndicator';
 
 /**
  * GENERAL — Run analytics from dashboard.runsHistory, dashboard.bosses, dashboard.items.
@@ -21,23 +23,25 @@ import { buildRunDurationDistribution } from '../../utils/runDurationDistributio
  */
 const HISTOGRAM_BAR_FILL = '#22d3ee';
 
-export default function GeneralMissionStats({ data }) {
+export default function GeneralMissionStats({ data, compareBaseline = null }) {
   const runsHistory = data.dashboard.runsHistory ?? [];
   const bosses = data.dashboard.bosses ?? [];
   const items = data.dashboard.items ?? [];
 
-  const runMetrics = useMemo(() => {
-    const n = runsHistory.length;
-    if (n === 0) return { totalRuns: 0, avgSec: 0, longestSec: 0 };
-    let sum = 0;
-    let longestSec = 0;
-    for (const run of runsHistory) {
-      const sec = durationToSeconds(run.duration);
-      sum += sec;
-      if (sec > longestSec) longestSec = sec;
-    }
-    return { totalRuns: n, avgSec: sum / n, longestSec };
-  }, [runsHistory]);
+  const metrics = useMemo(() => computeGeneralMetrics(data), [data]);
+  const baselineMetrics = useMemo(
+    () => (compareBaseline ? computeGeneralMetrics(compareBaseline) : null),
+    [compareBaseline],
+  );
+
+  const runMetrics = useMemo(
+    () => ({
+      totalRuns: metrics.totalRuns,
+      avgSec: metrics.avgSec,
+      longestSec: metrics.longestSec,
+    }),
+    [metrics],
+  );
 
   const totalRunsAnimated = useCountUp(runMetrics.totalRuns, 1400);
   const totalItemsAnimated = useCountUp(items.length, 1400);
@@ -68,18 +72,16 @@ export default function GeneralMissionStats({ data }) {
     );
   }, [items]);
 
-  const bossKill = useMemo(() => {
-    const total = bosses.length;
-    if (!total) return { percent: 0, defeated: 0, total: 0 };
-    const defeated = bosses.filter(
-      (b) => String(b.status ?? '').toLowerCase() === 'defeated'
-    ).length;
-    return {
-      percent: Math.round((defeated / total) * 100),
-      defeated,
-      total,
-    };
-  }, [bosses]);
+  const bossKill = useMemo(
+    () => ({
+      percent: metrics.bossKillPercent,
+      defeated: bosses.filter(
+        (b) => String(b.status ?? '').toLowerCase() === 'defeated',
+      ).length,
+      total: bosses.length,
+    }),
+    [bosses, metrics.bossKillPercent],
+  );
 
   const killRateAnimated = useCountUp(bossKill.percent, 1600);
 
@@ -113,14 +115,35 @@ export default function GeneralMissionStats({ data }) {
           >
             {totalRunsAnimated}
           </motion.p>
+          {baselineMetrics ? (
+            <DeltaIndicator
+              kind="count"
+              baseline={baselineMetrics.totalRuns}
+              current={metrics.totalRuns}
+            />
+          ) : null}
         </BriefMetricCard>
 
         <BriefMetricCard title="Avg. run time" subtitle="Mean session duration" icon={Clock} accent="blue">
           <p className="font-data text-2xl font-bold tabular-nums text-slate-100 md:text-3xl">{avgLabel}</p>
+          {baselineMetrics ? (
+            <DeltaIndicator
+              kind="duration"
+              baseline={baselineMetrics.avgSec}
+              current={metrics.avgSec}
+            />
+          ) : null}
         </BriefMetricCard>
 
         <BriefMetricCard title="Longest session" subtitle="Max duration from history" icon={Hourglass} accent="blue">
           <p className="font-data text-2xl font-bold tabular-nums text-slate-100 md:text-3xl">{longestLabel}</p>
+          {baselineMetrics ? (
+            <DeltaIndicator
+              kind="duration"
+              baseline={baselineMetrics.longestSec}
+              current={metrics.longestSec}
+            />
+          ) : null}
         </BriefMetricCard>
 
         <BriefMetricCard
@@ -132,6 +155,13 @@ export default function GeneralMissionStats({ data }) {
           <p className="font-data text-3xl font-bold tabular-nums text-slate-100 md:text-4xl">
             {totalItemsAnimated}
           </p>
+          {baselineMetrics ? (
+            <DeltaIndicator
+              kind="count"
+              baseline={baselineMetrics.totalItems}
+              current={metrics.totalItems}
+            />
+          ) : null}
         </BriefMetricCard>
       </div>
 
@@ -238,8 +268,20 @@ export default function GeneralMissionStats({ data }) {
                 </p>
                 <p className="font-data mt-2 text-lg font-bold text-slate-100">{mostPopularItem.name}</p>
                 <p className="font-data mt-1 text-sm tabular-nums text-cyan-300/90">
-                  Popularity <span className="text-cyan-200">{mostPopularItem.popularity}</span>
+                  Popularity{' '}
+                  <span className="text-cyan-200">
+                    {Math.round(Number(mostPopularItem.popularity))}%
+                  </span>
                 </p>
+                {baselineMetrics &&
+                metrics.mostPopularPopularity != null &&
+                baselineMetrics.mostPopularPopularity != null ? (
+                  <DeltaIndicator
+                    kind="percent"
+                    baseline={baselineMetrics.mostPopularPopularity}
+                    current={metrics.mostPopularPopularity}
+                  />
+                ) : null}
               </>
             ) : (
               <p className="font-data text-sm text-slate-500">No item catalog data.</p>
@@ -261,6 +303,13 @@ export default function GeneralMissionStats({ data }) {
                   <span className="font-data text-4xl font-bold tabular-nums text-cyan-200">{killRateAnimated}</span>
                   <span className="font-data text-xl font-semibold text-blue-400/80">%</span>
                 </div>
+                {baselineMetrics ? (
+                  <DeltaIndicator
+                    kind="percent"
+                    baseline={baselineMetrics.bossKillPercent}
+                    current={metrics.bossKillPercent}
+                  />
+                ) : null}
                 <p className="font-data mt-2 text-[11px] text-slate-500">
                   <span className="tabular-nums text-slate-400">{bossKill.defeated}</span> defeated ·{' '}
                   <span className="tabular-nums text-slate-400">{bossKill.total}</span> encountered

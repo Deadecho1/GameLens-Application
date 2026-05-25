@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { durationToSeconds, formatSecondsAsHMS, secondsToMinutes } from '../../utils/duration';
 import { bossAccentDotStyle, itemAccentDotStyle } from './items/itemUi';
+import { computeBossGlobalMetrics } from '../../utils/analyticsBossMetrics';
+import DeltaIndicator from './DeltaIndicator';
 
 /** Seconds from all analyzed sessions (runsHistory.bossEncounters) plus boss.globalLifespanSamples; fallback: single lifespan. */
 function collectGlobalLifespanSeconds(bossId, dashboard) {
@@ -197,8 +199,9 @@ function computeMostLethalSynergy(bossId, dashboard) {
 /**
  * BOSSES — Master-detail tactical intel. dashboard.bosses + runsHistory + dashboard.items (gear).
  */
-export default function BossesAnalytics({ data }) {
+export default function BossesAnalytics({ data, compareBaseline = null }) {
   const dashboard = data.dashboard;
+  const baselineDashboard = compareBaseline?.dashboard;
   const bosses = dashboard.bosses ?? [];
   const itemsCatalog = dashboard.items ?? [];
   const [selectedBossId, setSelectedBossId] = useState(null);
@@ -252,6 +255,18 @@ export default function BossesAnalytics({ data }) {
     () => (selected ? computeMostLethalSynergy(selected.id, dashboard) : null),
     [selected, dashboard]
   );
+
+  const baselineBossMetrics = useMemo(() => {
+    if (!baselineDashboard || !selected) return null;
+    const exists = (baselineDashboard.bosses ?? []).some((b) => b.id === selected.id);
+    if (!exists) return null;
+    return computeBossGlobalMetrics(selected.id, baselineDashboard);
+  }, [baselineDashboard, selected]);
+
+  const baselineMostLethal = useMemo(() => {
+    if (!baselineDashboard || !selected) return null;
+    return computeMostLethalSynergy(selected.id, baselineDashboard);
+  }, [baselineDashboard, selected]);
 
   const equippedIds = useMemo(() => simSlots.filter((id) => id != null), [simSlots]);
   const synergyReductionPct = useMemo(
@@ -458,6 +473,13 @@ export default function BossesAnalytics({ data }) {
                       >
                         {globalAvgLabel}
                       </p>
+                      {baselineBossMetrics ? (
+                        <DeltaIndicator
+                          kind="duration"
+                          baseline={baselineBossMetrics.globalAvgSec}
+                          current={globalAvgSec}
+                        />
+                      ) : null}
                       <p className="font-data mt-2 text-xs tabular-nums text-slate-500">
                         {globalAvgSec > 0 ? `${secondsToMinutes(globalAvgSec)} min mean` : '—'}
                       </p>
@@ -473,6 +495,13 @@ export default function BossesAnalytics({ data }) {
                       <p className="font-data text-2xl font-bold tabular-nums text-white md:text-3xl">
                         {globalEncounterCount}
                       </p>
+                      {baselineBossMetrics ? (
+                        <DeltaIndicator
+                          kind="count"
+                          baseline={baselineBossMetrics.encounterCount}
+                          current={globalEncounterCount}
+                        />
+                      ) : null}
                       <p className="font-data text-[10px] uppercase tracking-wider text-slate-600">
                         Encounter count
                       </p>
@@ -643,6 +672,13 @@ export default function BossesAnalytics({ data }) {
                                 faster kill rate
                               </span>
                             </p>
+                            {baselineMostLethal ? (
+                              <DeltaIndicator
+                                kind="percent"
+                                baseline={baselineMostLethal.impactEfficiencyPct}
+                                current={mostLethal.impactEfficiencyPct}
+                              />
+                            ) : null}
                             <p className="font-data mt-2 text-[10px] text-slate-500">
                               Mean fight when this loadout appears:{' '}
                               <span className="tabular-nums text-slate-300">

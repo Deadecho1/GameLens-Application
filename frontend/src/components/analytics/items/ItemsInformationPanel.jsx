@@ -12,11 +12,17 @@ import {
 import { motion } from 'framer-motion';
 import { Clock, Link2, Search, TrendingUp } from 'lucide-react';
 import { computeItemDetailAnalytics } from '../../../utils/itemAnalytics';
+import DeltaIndicator from '../DeltaIndicator';
 import { itemAccentDotStyle } from './itemUi';
 
 const PHASE_COLORS = ['#22d3ee', '#8b5cf6', '#f59e0b'];
 
-export default function ItemsInformationPanel({ catalog = [], runsHistory = [], compact = false }) {
+export default function ItemsInformationPanel({
+  catalog = [],
+  runsHistory = [],
+  compact = false,
+  compareBaseline = null,
+}) {
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState(null);
 
@@ -47,6 +53,17 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
         : null,
     [catalog, runsHistory, selectedId],
   );
+
+  const baselineDetail = useMemo(() => {
+    if (!compareBaseline || selectedId == null) return null;
+    const baseCatalog = compareBaseline.dashboard?.items ?? [];
+    const baseRuns = compareBaseline.dashboard?.runsHistory ?? [];
+    const inBaseline = baseCatalog.some(
+      (i) => Number(i.id) === Number(selectedId),
+    );
+    if (!inBaseline) return null;
+    return computeItemDetailAnalytics(baseCatalog, baseRuns, selectedId);
+  }, [compareBaseline, selectedId]);
 
   const masterWidth = compact ? 'w-full lg:w-[min(100%,220px)]' : 'w-full lg:w-[min(100%,280px)]';
 
@@ -152,6 +169,13 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
                     <p className="font-data text-2xl font-bold tabular-nums text-violet-200">
                       {Math.round(detail.popularity)}%
                     </p>
+                    {baselineDetail?.popularity != null ? (
+                      <DeltaIndicator
+                        kind="percent"
+                        baseline={Math.round(Number(baselineDetail.popularity))}
+                        current={Math.round(Number(detail.popularity))}
+                      />
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -168,6 +192,14 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
                 <p className="font-data text-3xl font-bold tabular-nums text-cyan-200">
                   {detail.avgRunDurationLabel}
                 </p>
+                {baselineDetail?.avgRunDurationSec != null &&
+                detail.avgRunDurationSec != null ? (
+                  <DeltaIndicator
+                    kind="duration"
+                    baseline={baselineDetail.avgRunDurationSec}
+                    current={detail.avgRunDurationSec}
+                  />
+                ) : null}
                 <p className="font-data mt-1 text-[11px] text-slate-600">
                   Mean session length for runs containing this item
                 </p>
@@ -182,6 +214,13 @@ export default function ItemsInformationPanel({ catalog = [], runsHistory = [], 
                 <p className="font-data text-3xl font-bold tabular-nums text-slate-200">
                   {detail.totalPicks}
                 </p>
+                {baselineDetail ? (
+                  <DeltaIndicator
+                    kind="count"
+                    baseline={baselineDetail.totalPicks}
+                    current={detail.totalPicks}
+                  />
+                ) : null}
                 <p className="font-data mt-1 text-[11px] text-slate-600">
                   First appearance per run (loadout or pickup record)
                 </p>
