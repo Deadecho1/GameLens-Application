@@ -11,12 +11,14 @@ import {
   X,
   HelpCircle,
 } from 'lucide-react';
-import Joyride, { STATUS } from 'react-joyride';
+import Joyride, { EVENTS, STATUS } from 'react-joyride';
 import { TUNING_MODEL_CONFIGS, TUNING_MODEL_CONFIG_BY_ID, toLocalUrl } from '../tuning/tuningConfig';
 import {
   TUNING_JOYRIDE_LOCALE,
   TUNING_JOYRIDE_STYLES,
   TUNING_TOUR_STEPS,
+  snapshotTuningTourScrollParents,
+  unlockTuningTourScroll,
 } from '../tuning/tuningJoyride';
 
 const MIN_CLIPS = 6;
@@ -346,12 +348,39 @@ export default function TuningTab({ data, ipcRequest }) {
     }
   }, [ipcRequest]);
 
-  const handleJoyrideCallback = useCallback((joyrideData) => {
-    const { status } = joyrideData;
-    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
-      setTourRun(false);
-    }
+  const endTour = useCallback(() => {
+    setTourRun(false);
+    unlockTuningTourScroll();
   }, []);
+
+  const handleJoyrideCallback = useCallback(
+    (joyrideData) => {
+      const { status, type } = joyrideData;
+      const tourEnded =
+        status === STATUS.FINISHED ||
+        status === STATUS.SKIPPED ||
+        type === EVENTS.TOUR_END;
+
+      if (tourEnded) {
+        endTour();
+      }
+    },
+    [endTour],
+  );
+
+  const startTour = useCallback(() => {
+    snapshotTuningTourScrollParents();
+    setTourRun(true);
+  }, []);
+
+  useEffect(() => {
+    if (!tourRun) return undefined;
+    return () => {
+      unlockTuningTourScroll();
+    };
+  }, [tourRun]);
+
+  useEffect(() => () => unlockTuningTourScroll(), []);
 
   // ── Render ────────────────────────────────────────────────────────────────
   const duration = activeVideo?.duration || 0;
@@ -377,7 +406,9 @@ export default function TuningTab({ data, ipcRequest }) {
         continuous
         showProgress
         showSkipButton
-        scrollToFirstStep
+        scrollToFirstStep={false}
+        disableScrolling
+        disableScrollParentFix
         disableOverlayClose
         disableCloseOnEsc={false}
         callback={handleJoyrideCallback}
@@ -404,7 +435,7 @@ export default function TuningTab({ data, ipcRequest }) {
           )}
           <button
             type="button"
-            onClick={() => setTourRun(true)}
+            onClick={startTour}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-3.5 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-200"
             aria-label="Start interactive tour"
           >

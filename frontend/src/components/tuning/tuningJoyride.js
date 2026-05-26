@@ -1,5 +1,68 @@
 /** Interactive onboarding tour for Game Tuning tab (react-joyride). */
 
+const SCROLL_SNAPSHOT_ATTR = 'data-gamelens-joyride-overflow';
+
+/** Restore scroll after react-joyride (may leave overflow: initial on scroll parents). */
+export function unlockTuningTourScroll() {
+  const html = document.documentElement;
+  const body = document.body;
+
+  html.style.removeProperty('overflow');
+  html.style.removeProperty('overflow-y');
+  html.style.removeProperty('padding-right');
+  body.style.removeProperty('overflow');
+  body.style.removeProperty('padding-right');
+
+  document.querySelectorAll(`[${SCROLL_SNAPSHOT_ATTR}]`).forEach((node) => {
+    if (!(node instanceof HTMLElement)) return;
+    const previous = node.getAttribute(SCROLL_SNAPSHOT_ATTR);
+    if (previous) {
+      node.style.overflow = previous;
+    } else {
+      node.style.removeProperty('overflow');
+    }
+    node.removeAttribute(SCROLL_SNAPSHOT_ATTR);
+  });
+
+  for (const selector of TUNING_TOUR_STEPS.map((s) => s.target)) {
+    const target = document.querySelector(selector);
+    if (!target) continue;
+    let parent = target.parentElement;
+    while (parent && parent !== document.documentElement) {
+      if (parent instanceof HTMLElement && parent.style.overflow === 'initial') {
+        parent.style.removeProperty('overflow');
+      }
+      parent = parent.parentElement;
+    }
+  }
+
+  document
+    .querySelectorAll('.overflow-y-auto, .overflow-auto, .overflow-x-hidden.overflow-y-auto')
+    .forEach((node) => {
+      if (!(node instanceof HTMLElement)) return;
+      const { overflow, overflowY } = node.style;
+      if (overflow === 'initial' || overflowY === 'initial') {
+        node.style.removeProperty('overflow');
+        node.style.removeProperty('overflow-y');
+      }
+    });
+}
+
+/** Snapshot inline overflow before the tour mutates scroll parents. */
+export function snapshotTuningTourScrollParents() {
+  for (const selector of TUNING_TOUR_STEPS.map((s) => s.target)) {
+    const target = document.querySelector(selector);
+    if (!target) continue;
+    let parent = target.parentElement;
+    while (parent && parent !== document.documentElement) {
+      if (parent instanceof HTMLElement && !parent.hasAttribute(SCROLL_SNAPSHOT_ATTR)) {
+        parent.setAttribute(SCROLL_SNAPSHOT_ATTR, parent.style.overflow || '');
+      }
+      parent = parent.parentElement;
+    }
+  }
+}
+
 export const TUNING_TOUR_STEPS = [
   {
     target: '.tuning-tour-add-video',
@@ -7,6 +70,7 @@ export const TUNING_TOUR_STEPS = [
     content:
       'Add one or more gameplay videos. Note: If you refresh the app, your un-trained progress will be lost, so complete your tagging in one session!',
     disableBeacon: true,
+    disableScrolling: true,
     placement: 'right',
   },
   {
@@ -15,6 +79,7 @@ export const TUNING_TOUR_STEPS = [
     content:
       "Choose what to train. 'Event Detector' requires marking specific frames. 'Boss Detector' requires dragging to highlight time segments.",
     disableBeacon: true,
+    disableScrolling: true,
     placement: 'left',
   },
   {
@@ -23,6 +88,7 @@ export const TUNING_TOUR_STEPS = [
     content:
       'Scrub to find the right moment. If you are training the BOSS DETECTOR: Click and drag across this timeline to highlight a fight segment (must be at least 3 seconds long).',
     disableBeacon: true,
+    disableScrolling: true,
     placement: 'top',
   },
   {
@@ -31,6 +97,7 @@ export const TUNING_TOUR_STEPS = [
     content:
       "If you are training the EVENT DETECTOR: Pause at the exact moment an event happens, select the category (Start/End/Choice), and click 'MARK FRAME' (or press M). You need at least 6 marks per category.",
     disableBeacon: true,
+    disableScrolling: true,
     placement: 'top',
   },
   {
@@ -39,6 +106,7 @@ export const TUNING_TOUR_STEPS = [
     content:
       "Once you've gathered enough marks (watch the progress bars!), check the 'Train' box and click here to start the AI fine-tuning process.",
     disableBeacon: true,
+    disableScrolling: true,
     placement: 'bottom',
   },
 ];

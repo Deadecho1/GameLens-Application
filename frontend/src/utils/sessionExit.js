@@ -20,8 +20,6 @@ export function mergeExitSessionState(prev, ipcState = null) {
     },
     ui: {
       ...(base.ui ?? {}),
-      postProcessingReviewOpen: false,
-      completionCelebrationActive: false,
       addGameModalOpen: false,
       addVersionModalOpen: false,
       changePicker: null,
@@ -29,14 +27,11 @@ export function mergeExitSessionState(prev, ipcState = null) {
     processing: {
       ...(base.processing ?? {}),
       status: nextStatus ?? 'idle',
-      pendingRun: null,
     },
   };
 }
 
 export const EXIT_UI_PATCH = {
-  postProcessingReviewOpen: false,
-  completionCelebrationActive: false,
   addGameModalOpen: false,
   addVersionModalOpen: false,
   changePicker: null,

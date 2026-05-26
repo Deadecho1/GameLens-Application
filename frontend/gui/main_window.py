@@ -71,8 +71,6 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._ipc_ui_state: dict = {
             "activeMainTab": "analytics",
             "workflowStep": 1,
-            "completionCelebrationActive": False,
-            "postProcessingReviewOpen": False,
             "changePicker": None,
             "addGameModalOpen": False,
             "addVersionModalOpen": False,
@@ -772,10 +770,8 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._processing_state["logs"] = []
 
     def acknowledge_processing_from_ipc(self, save: bool = True) -> None:
-        """Reset pipeline UI after post-processing review confirm/discard."""
+        """Reset pipeline UI after a completed run (optional legacy IPC hook)."""
         self._processing_state["status"] = "idle"
-        self._processing_state.pop("pendingRun", None)
-        self._ipc_ui_state["postProcessingReviewOpen"] = False
 
     def set_processing_option_from_ipc(self, option: str) -> None:
         normalized = option.strip().lower()

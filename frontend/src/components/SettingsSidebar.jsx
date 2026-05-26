@@ -87,7 +87,7 @@ function ModalShell({ open, title, icon: Icon, onClose, children }) {
   );
 }
 
-export default function SettingsSidebar({ data, onPatch, open, onClose }) {
+export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, onClose }) {
   const setup = data?.setup ?? {};
   const selectedGame = setup.selectedGame ?? '';
   const selectedVersion = setup.selectedVersion ?? '';
@@ -99,26 +99,17 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [keyModalOpen, setKeyModalOpen] = useState(false);
-  const [profileDraft, setProfileDraft] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-  });
+  const [emailDraft, setEmailDraft] = useState('');
   const [keyDraft, setKeyDraft] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [showKey, setShowKey] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  const authenticatedEmail = (auth.email ?? user.email ?? '').trim();
 
   useEffect(() => {
     if (!editModalOpen) return;
-    setProfileDraft({
-      firstName: user.firstName ?? '',
-      lastName: user.lastName ?? '',
-      email: user.email ?? '',
-      password: user.password ?? '',
-    });
-    setShowPassword(false);
-  }, [editModalOpen, user.email, user.firstName, user.lastName, user.password]);
+    setEmailDraft(authenticatedEmail);
+  }, [editModalOpen, authenticatedEmail]);
 
   useEffect(() => {
     if (!keyModalOpen) return;
@@ -126,20 +117,32 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
     setShowKey(false);
   }, [keyModalOpen, user.openAiKey]);
 
-  const saveProfile = () => {
-    onPatch({
-      setup: {
-        ...setup,
-        user: {
-          ...user,
-          firstName: profileDraft.firstName,
-          lastName: profileDraft.lastName,
-          email: profileDraft.email,
-          password: profileDraft.password,
-        },
-      },
-    });
-    setEditModalOpen(false);
+  const saveProfile = async () => {
+    const email = emailDraft.trim();
+    if (!email) return;
+
+    if (email === authenticatedEmail) {
+      setEditModalOpen(false);
+      return;
+    }
+
+    setProfileSaving(true);
+    try {
+      if (typeof onUpdateEmail === 'function') {
+        await onUpdateEmail(email);
+      } else {
+        onPatch({
+          auth: { ...auth, email },
+          setup: {
+            ...setup,
+            user: { ...user, email },
+          },
+        });
+      }
+      setEditModalOpen(false);
+    } finally {
+      setProfileSaving(false);
+    }
   };
 
   const saveKey = () => {
@@ -307,28 +310,6 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
         onClose={() => setEditModalOpen(false)}
       >
         <div className="space-y-4 px-5 py-5">
-          <label htmlFor="settings-first-name" className="block space-y-1.5">
-            <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-              First name
-            </span>
-            <input
-              id="settings-first-name"
-              value={profileDraft.firstName}
-              onChange={(e) => setProfileDraft((p) => ({ ...p, firstName: e.target.value }))}
-              className="w-full rounded-xl border border-slate-700/90 bg-slate-950/80 px-3 py-2.5 font-data text-sm text-slate-100 outline-none transition focus:border-cyan-500/55 focus:ring-1 focus:ring-cyan-500/35"
-            />
-          </label>
-          <label htmlFor="settings-last-name" className="block space-y-1.5">
-            <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-              Last name
-            </span>
-            <input
-              id="settings-last-name"
-              value={profileDraft.lastName}
-              onChange={(e) => setProfileDraft((p) => ({ ...p, lastName: e.target.value }))}
-              className="w-full rounded-xl border border-slate-700/90 bg-slate-950/80 px-3 py-2.5 font-data text-sm text-slate-100 outline-none transition focus:border-cyan-500/55 focus:ring-1 focus:ring-cyan-500/35"
-            />
-          </label>
           <label htmlFor="settings-email" className="block space-y-1.5">
             <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
               Email
@@ -336,35 +317,29 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
             <input
               id="settings-email"
               type="email"
-              value={profileDraft.email}
-              onChange={(e) => setProfileDraft((p) => ({ ...p, email: e.target.value }))}
+              autoComplete="email"
+              value={emailDraft}
+              onChange={(e) => setEmailDraft(e.target.value)}
               className="w-full rounded-xl border border-slate-700/90 bg-slate-950/80 px-3 py-2.5 font-data text-sm text-slate-100 outline-none transition focus:border-cyan-500/55 focus:ring-1 focus:ring-cyan-500/35"
             />
           </label>
-
-          <SecureField
-            id="settings-password"
-            label="Password"
-            value={profileDraft.password}
-            onChange={(value) => setProfileDraft((p) => ({ ...p, password: value }))}
-            visible={showPassword}
-            onToggleVisible={() => setShowPassword((s) => !s)}
-          />
 
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
               onClick={() => setEditModalOpen(false)}
-              className="rounded-xl border border-slate-700 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.16em] text-slate-300 transition hover:border-slate-500 hover:text-slate-100"
+              disabled={profileSaving}
+              className="rounded-xl border border-slate-700 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.16em] text-slate-300 transition hover:border-slate-500 hover:text-slate-100 disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="button"
-              onClick={saveProfile}
-              className="rounded-xl border border-cyan-500/45 bg-cyan-500/12 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.16em] text-cyan-100 transition hover:border-cyan-400/65 hover:bg-cyan-500/18"
+              onClick={() => void saveProfile()}
+              disabled={profileSaving || !emailDraft.trim()}
+              className="rounded-xl border border-cyan-500/45 bg-cyan-500/12 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.16em] text-cyan-100 transition hover:border-cyan-400/65 hover:bg-cyan-500/18 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Save
+              {profileSaving ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>

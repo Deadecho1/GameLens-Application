@@ -7,15 +7,7 @@ import Header from "./components/Header";
 import MainTabNav from "./components/MainTabNav";
 import ChangePickerModal from "./components/ChangePickerModal";
 import AddItemModal from "./components/AddItemModal";
-import MissionSuccessOverlay from "./components/MissionSuccessOverlay";
-import PostProcessingReviewModal from "./components/PostProcessingReviewModal";
 import SettingsSidebar from "./components/SettingsSidebar";
-import {
-  extractPendingRunFromState,
-  confirmPendingRunToLibrary,
-  discardPendingRun,
-  closeReviewWithoutSync,
-} from "./utils/postProcessingRun";
 import WorkflowTab from "./components/tabs/WorkflowTab";
 import AnalyticsTab from "./components/tabs/AnalyticsTab";
 import RunSessionAnalytics from "./components/analytics/runSession/RunSessionAnalytics";
@@ -40,10 +32,6 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guestContinued, setGuestContinued] = useState(readGuestModeContinued);
   const pollRef = useRef(null);
-  const runsSnapshotRef = useRef([]);
-  const reviewOpenRef = useRef(false);
-  /** True on launch so stale `completed` from a prior session does not auto-open review. */
-  const completionReviewDismissedRef = useRef(true);
   /** First IPC sync forces Analytics so stale backend `workflow` tab cannot win on startup. */
   const startupAnalyticsAppliedRef = useRef(false);
 
@@ -61,65 +49,31 @@ function App() {
       const state = await ipcRequest("state:get");
       const forceStartupAnalytics = !startupAnalyticsAppliedRef.current;
       setData((prev) => {
-        const reviewOpen =
-          prev.ui.postProcessingReviewOpen || reviewOpenRef.current;
-        const lastProcessedRun =
-          prev.processing?.lastProcessedRun ??
-          state.processing?.lastProcessedRun ??
-          null;
-        if (!reviewOpen) {
-          const activeMainTab = forceStartupAnalytics
-            ? "analytics"
-            : state.ui?.activeMainTab ?? "analytics";
-          if (forceStartupAnalytics) {
-            startupAnalyticsAppliedRef.current = true;
-          }
-          return {
-            ...state,
-            ui: {
-              ...state.ui,
-              activeMainTab,
-              postProcessingReviewOpen: false,
-            },
-            processing: {
-              ...state.processing,
-              lastProcessedRun,
-              pendingRun: null,
-              status:
-                completionReviewDismissedRef.current &&
-                state.processing?.status === "completed"
-                  ? "idle"
-                  : state.processing?.status,
-            },
-          };
+        const activeMainTab = forceStartupAnalytics
+          ? "analytics"
+          : state.ui?.activeMainTab ?? "analytics";
+        if (forceStartupAnalytics) {
+          startupAnalyticsAppliedRef.current = true;
         }
-        const pendingRun =
-          prev.processing?.pendingRun ??
-          prev.processing?.lastProcessedRun ??
-          extractPendingRunFromState(state, runsSnapshotRef.current);
         return {
           ...state,
           ui: {
             ...state.ui,
-            postProcessingReviewOpen: true,
-            activeMainTab:
-              prev.ui.activeMainTab === "analytics"
-                ? "workflow"
-                : prev.ui.activeMainTab,
-            completionCelebrationActive: false,
+            activeMainTab,
           },
           processing: {
             ...state.processing,
-            status: "completed",
-            pendingRun,
-            lastProcessedRun: pendingRun ?? lastProcessedRun,
+            status:
+              forceStartupAnalytics &&
+              state.processing?.status === "completed"
+                ? "idle"
+                : state.processing?.status,
           },
         };
       });
-      if (forceStartupAnalytics && !reviewOpenRef.current) {
+      if (forceStartupAnalytics) {
         ipcRequest("ui:patch", {
           activeMainTab: "analytics",
-          postProcessingReviewOpen: false,
         }).catch(() => {});
       }
       setError("");
@@ -135,7 +89,6 @@ function App() {
       ui: {
         ...prev.ui,
         activeMainTab: "analytics",
-        postProcessingReviewOpen: false,
       },
     }));
   }, []);
@@ -147,33 +100,6 @@ function App() {
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
   }, [refreshState]);
-
-  useEffect(() => {
-    reviewOpenRef.current = Boolean(data.ui.postProcessingReviewOpen);
-  }, [data.ui.postProcessingReviewOpen]);
-
-  useEffect(() => {
-    if (data.processing.status === "running") {
-      completionReviewDismissedRef.current = false;
-    }
-    if (data.processing.status !== "completed") {
-      runsSnapshotRef.current = data.dashboard?.runsHistory ?? [];
-    }
-  }, [data.processing.status, data.dashboard?.runsHistory]);
-
-  useEffect(() => {
-    if (!data.ui.completionCelebrationActive) return undefined;
-    const t = window.setTimeout(() => {
-      setData((p) => ({
-        ...p,
-        ui: { ...p.ui, completionCelebrationActive: false },
-      }));
-      ipcRequest("ui:patch", { completionCelebrationActive: false }).catch(
-        () => {},
-      );
-    }, 3200);
-    return () => window.clearTimeout(t);
-  }, [data.ui.completionCelebrationActive, ipcRequest]);
 
   useEffect(() => {
     if (data.ui.activeMainTab !== "analytics") return;
@@ -297,43 +223,11 @@ function App() {
         }
 
         if (patch.ui) {
-          if (patch.ui.postProcessingReviewOpen === false) {
-            reviewOpenRef.current = false;
-          }
           latestState = await ipcRequest("ui:patch", patch.ui);
         }
 
-        if (patch.processing) {
-          setData((prev) => ({
-            ...prev,
-            processing: {
-              ...prev.processing,
-              ...patch.processing,
-              lastProcessedRun:
-                patch.processing.lastProcessedRun !== undefined
-                  ? patch.processing.lastProcessedRun
-                  : prev.processing?.lastProcessedRun,
-            },
-          }));
-        }
-
         if (latestState) {
-          setData((prev) => ({
-            ...latestState,
-            processing: {
-              ...latestState.processing,
-              lastProcessedRun:
-                prev.processing?.lastProcessedRun ??
-                latestState.processing?.lastProcessedRun ??
-                null,
-              pendingRun: prev.processing?.pendingRun ?? null,
-              status:
-                completionReviewDismissedRef.current &&
-                latestState.processing?.status === "completed"
-                  ? "idle"
-                  : latestState.processing?.status,
-            },
-          }));
+          setData(latestState);
           return;
         }
 
@@ -341,17 +235,9 @@ function App() {
           ...prev,
           ...(patch.ui ? { ui: { ...prev.ui, ...patch.ui } } : {}),
           ...(patch.setup ? { setup: { ...prev.setup, ...patch.setup } } : {}),
+          ...(patch.auth ? { auth: { ...prev.auth, ...patch.auth } } : {}),
           ...(patch.processing
-            ? {
-                processing: {
-                  ...prev.processing,
-                  ...patch.processing,
-                  lastProcessedRun:
-                    patch.processing.lastProcessedRun !== undefined
-                      ? patch.processing.lastProcessedRun
-                      : prev.processing?.lastProcessedRun,
-                },
-              }
+            ? { processing: { ...prev.processing, ...patch.processing } }
             : {}),
           ...(patch.dashboard
             ? { dashboard: { ...prev.dashboard, ...patch.dashboard } }
@@ -457,12 +343,10 @@ function App() {
         ui: {
           ...state.ui,
           activeMainTab: "analytics",
-          postProcessingReviewOpen: false,
         },
       }));
       ipcRequest("ui:patch", {
         activeMainTab: "analytics",
-        postProcessingReviewOpen: false,
       }).catch(() => {});
     },
     [ipcRequest],
@@ -488,12 +372,10 @@ function App() {
       ui: {
         ...prev.ui,
         activeMainTab: "analytics",
-        postProcessingReviewOpen: false,
       },
     }));
     ipcRequest("ui:patch", {
       activeMainTab: "analytics",
-      postProcessingReviewOpen: false,
     }).catch(() => {});
   }, [ipcRequest]);
 
@@ -501,8 +383,6 @@ function App() {
     const wasLoggedIn = Boolean(data.auth?.loggedIn);
     const wasRunning = data.processing?.status === "running";
 
-    reviewOpenRef.current = false;
-    completionReviewDismissedRef.current = true;
     clearGuestModeContinued();
     setGuestContinued(false);
     setSettingsOpen(false);
@@ -526,20 +406,27 @@ function App() {
       await ipcRequest("ui:patch", EXIT_UI_PATCH);
 
       const state = await ipcRequest("state:get");
-      setData((prev) =>
-        mergeExitSessionState(prev, {
-          ...state,
-          processing: {
-            ...state.processing,
-            lastProcessedRun: prev.processing?.lastProcessedRun ?? null,
-          },
-        }),
-      );
+      setData((prev) => mergeExitSessionState(prev, state));
     } catch (e) {
       setModalError(String(e?.message || e));
       setData((prev) => mergeExitSessionState(prev));
     }
   }, [data.auth?.loggedIn, data.processing?.status, ipcRequest]);
+
+  const handleUpdateEmail = useCallback(
+    async (email) => {
+      const trimmed = (email ?? "").trim();
+      if (!trimmed) return;
+      try {
+        const state = await ipcRequest("auth:login", { email: trimmed });
+        setData(state);
+      } catch (e) {
+        setModalError(String(e?.message || e));
+        throw e;
+      }
+    },
+    [ipcRequest],
+  );
 
   const handleSyncNow = useCallback(async () => {
     try {
@@ -550,137 +437,7 @@ function App() {
     }
   }, [ipcRequest]);
 
-  const refreshDashboard = useCallback(async () => {
-    const gameName = data.setup.selectedGame;
-    const versionName = data.setup.selectedVersion;
-    if (!gameName) return;
-    try {
-      let items;
-      let bosses;
-      let runsHistory;
-      if (IS_MOCK) {
-        [items, bosses, runsHistory] = await Promise.all([
-          getItems(null, gameName, versionName),
-          getBosses(null, gameName, versionName),
-          getRuns(null, gameName, versionName),
-        ]);
-      } else {
-        [items, bosses, runsHistory] = await Promise.all([
-          ipcRequest("dashboard:items", {
-            game_name: gameName,
-            version_name: versionName,
-          }),
-          ipcRequest("dashboard:bosses", {
-            game_name: gameName,
-            version_name: versionName,
-          }),
-          ipcRequest("dashboard:runs", {
-            game_name: gameName,
-            version_name: versionName,
-          }),
-        ]);
-      }
-      setData((prev) => ({
-        ...prev,
-        dashboard: { ...prev.dashboard, items, bosses, runsHistory },
-      }));
-    } catch (e) {
-      setModalError(String(e?.message || e));
-    }
-  }, [
-    data.setup.selectedGame,
-    data.setup.selectedVersion,
-    ipcRequest,
-  ]);
-
-  const resolveReviewRun = useCallback(
-    (sourceData) => {
-      const baseline = runsSnapshotRef.current ?? [];
-      return (
-        sourceData.processing?.pendingRun ??
-        sourceData.processing?.lastProcessedRun ??
-        extractPendingRunFromState(sourceData, baseline)
-      );
-    },
-    [],
-  );
-
-  const finishReviewLocally = useCallback((nextData) => {
-    reviewOpenRef.current = false;
-    completionReviewDismissedRef.current = true;
-    setData(nextData);
-    ipcRequest("ui:patch", { postProcessingReviewOpen: false }).catch(() => {});
-  }, [ipcRequest]);
-
-  const handleReviewClose = useCallback(() => {
-    const pending = resolveReviewRun(data);
-    const baseline = runsSnapshotRef.current ?? [];
-    finishReviewLocally(closeReviewWithoutSync(data, pending, baseline));
-  }, [data, finishReviewLocally, resolveReviewRun]);
-
-  const handleReviewDiscard = useCallback(() => {
-    const pending = resolveReviewRun(data);
-    const baseline = runsSnapshotRef.current ?? [];
-    finishReviewLocally(discardPendingRun(data, pending, baseline));
-  }, [data, finishReviewLocally, resolveReviewRun]);
-
-  const handleReviewConfirm = useCallback(async () => {
-    const pending = resolveReviewRun(data);
-    const baseline = runsSnapshotRef.current ?? [];
-    reviewOpenRef.current = false;
-    completionReviewDismissedRef.current = true;
-    setData(confirmPendingRunToLibrary(data, pending, baseline));
-    ipcRequest("ui:patch", { postProcessingReviewOpen: false }).catch(() => {});
-    try {
-      await refreshDashboard();
-    } catch (e) {
-      setModalError(String(e?.message || e));
-    }
-  }, [data, ipcRequest, refreshDashboard, resolveReviewRun]);
-
-  const handleReviewTuning = useCallback(() => {
-    const pending = resolveReviewRun(data);
-    const baseline = runsSnapshotRef.current ?? [];
-    const next = discardPendingRun(data, pending, baseline);
-    reviewOpenRef.current = false;
-    completionReviewDismissedRef.current = true;
-    setData({
-      ...next,
-      ui: { ...next.ui, activeMainTab: "tuning" },
-    });
-    ipcRequest("ui:patch", {
-      postProcessingReviewOpen: false,
-      activeMainTab: "tuning",
-    }).catch(() => {});
-  }, [data, ipcRequest, resolveReviewRun]);
-
-  const handleReviewLastRun = useCallback(() => {
-    const run = data.processing?.lastProcessedRun;
-    if (!run) return;
-    reviewOpenRef.current = true;
-    setData((prev) => ({
-      ...prev,
-      ui: {
-        ...prev.ui,
-        activeMainTab: "workflow",
-        postProcessingReviewOpen: true,
-      },
-      processing: {
-        ...prev.processing,
-        status: "completed",
-        pendingRun: run,
-      },
-    }));
-    ipcRequest("ui:patch", {
-      activeMainTab: "workflow",
-      postProcessingReviewOpen: true,
-    }).catch(() => {});
-  }, [data.processing?.lastProcessedRun, ipcRequest]);
-
   const tab = data.ui.activeMainTab;
-  const pendingRun = data.ui.postProcessingReviewOpen
-    ? resolveReviewRun(data)
-    : null;
 
   const showWelcome = !data.auth?.loggedIn && !guestContinued;
 
@@ -714,18 +471,6 @@ function App() {
             aria-hidden
           />
           <div className="gl-app-scanlines pointer-events-none absolute inset-0" aria-hidden />
-
-          <MissionSuccessOverlay active={data.ui.completionCelebrationActive} />
-
-          <PostProcessingReviewModal
-            open={Boolean(data.ui.postProcessingReviewOpen)}
-            data={data}
-            pendingRun={pendingRun}
-            onClose={handleReviewClose}
-            onDiscard={handleReviewDiscard}
-            onConfirm={handleReviewConfirm}
-            onGoToTuning={handleReviewTuning}
-          />
 
           <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
             <Header
@@ -766,7 +511,6 @@ function App() {
                 onRun={handleRun}
                 onStop={handleStop}
                 onClearLogs={handleClearLogs}
-                onReviewLastRun={handleReviewLastRun}
               />
             )}
             {tab === "analytics" && (
@@ -820,6 +564,7 @@ function App() {
             <SettingsSidebar
               data={data}
               onPatch={mergePatch}
+              onUpdateEmail={handleUpdateEmail}
               open={settingsOpen}
               onClose={() => setSettingsOpen(false)}
             />

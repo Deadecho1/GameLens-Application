@@ -54,7 +54,7 @@ const glitchInjectVariants = {
 
 /**
  * Run Session Analytics — data from `dataStore.js` (`initialData` + live `data`).
- * @param {boolean} [embedded] — compact layout inside PostProcessingReviewModal (no page header).
+ * @param {boolean} [embedded] — compact layout without page header (e.g. nested panels).
  * @param {string|null} [initialSelectedRunId] — pre-select a run when embedded.
  */
 export default function RunSessionAnalytics({

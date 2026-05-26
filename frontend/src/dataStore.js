@@ -5,7 +5,6 @@
  *
  * - ui.activeMainTab     → 'workflow' | 'analytics'
  * - ui.workflowStep      → 1 Configure | 2 Initialize | 3 Execute (MISSION START tab only)
- * - ui.completionCelebrationActive → brief success HUD after processing.status → completed
  */
 
 export const initialData = {
@@ -17,10 +16,6 @@ export const initialData = {
      * 1 = Configure (game/version) · 2 = Initialize (upload/options) · 3 = Execute (run + terminal)
      */
     workflowStep: 1,
-    /** Brief full-screen success pulse + banner when run completes (Framer-driven in App) */
-    completionCelebrationActive: false,
-    /** Post-processing review overlay after pipeline completes (Workflow tab) */
-    postProcessingReviewOpen: false,
     changePicker: null,
     addGameModalOpen: false,
     addVersionModalOpen: false,
@@ -39,10 +34,7 @@ export const initialData = {
     selectedGame: '',
     selectedVersion: '',
     user: {
-      firstName: '',
-      lastName: '',
       email: '',
-      password: '',
       openAiKey: '',
     },
     fineTunedModels: [],   // [{name, modelId, dirName}] — populated from models/finetuned/
@@ -56,10 +48,6 @@ export const initialData = {
     selectedModel: 'base',
     status: 'idle',
     logs: ['[INFO] System ready...'],
-    /** Last completed run kept for "Review Last Run" (frontend-only; not in IPC state). */
-    lastProcessedRun: null,
-    /** Active run under review in PostProcessingReviewModal (frontend-only). */
-    pendingRun: null,
   },
 
   tuning: {
