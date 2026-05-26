@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, protocol, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
@@ -14,6 +14,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 let qtProcess = null;
+let mainWindow = null;
 
 function resolveUv() {
   // Prefer uv on PATH; fall back to common install locations
@@ -121,9 +122,13 @@ function ipcRequest(method, params = {}) {
 }
 
 function createWindow() {
-  const win = new BrowserWindow({
+  Menu.setApplicationMenu(null);
+
+  mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    frame: false,
+    backgroundColor: "#0f172a",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -131,18 +136,28 @@ function createWindow() {
     },
   });
 
+  const notifyMaximize = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send(
+      "window:maximized-changed",
+      mainWindow.isMaximized(),
+    );
+  };
+  mainWindow.on("maximize", notifyMaximize);
+  mainWindow.on("unmaximize", notifyMaximize);
+
   const devUrl = "http://localhost:5173";
   const distIndex = path.join(__dirname, "..", "dist", "index.html");
 
   if (!app.isPackaged) {
-    win.loadURL(devUrl);
+    mainWindow.loadURL(devUrl);
     return;
   }
 
   if (fs.existsSync(distIndex)) {
-    win.loadFile(distIndex);
+    mainWindow.loadFile(distIndex);
   } else {
-    win.loadURL(devUrl);
+    mainWindow.loadURL(devUrl);
   }
 }
 
@@ -215,6 +230,25 @@ ipcMain.handle("gamelens:choose-file", async (_evt, opts = {}) => {
   });
   if (res.canceled || !res.filePaths.length) return null;
   return res.filePaths[0];
+});
+
+ipcMain.on("window:minimize", () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize();
+});
+
+ipcMain.on("window:maximize", () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else mainWindow.maximize();
+});
+
+ipcMain.on("window:close", () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close();
+});
+
+ipcMain.handle("window:isMaximized", () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  return mainWindow.isMaximized();
 });
 
 app.on("window-all-closed", () => {

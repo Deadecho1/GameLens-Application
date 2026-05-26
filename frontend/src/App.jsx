@@ -21,6 +21,7 @@ import AnalyticsTab from "./components/tabs/AnalyticsTab";
 import RunSessionAnalytics from "./components/analytics/runSession/RunSessionAnalytics";
 import TuningTab from "./components/tabs/TuningTab";
 import WelcomeScreen from "./components/WelcomeScreen";
+import TitleBar from "./components/TitleBar";
 import {
   clearGuestModeContinued,
   persistGuestModeContinued,
@@ -685,48 +686,56 @@ function App() {
 
   if (showWelcome) {
     return (
-      <WelcomeScreen
-        onLogin={handleLogin}
-        onGuestContinue={handleGuestContinue}
-      />
+      <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+        <TitleBar />
+        <div className="min-h-0 flex-1 overflow-auto">
+          <WelcomeScreen
+            onLogin={handleLogin}
+            onGuestContinue={handleGuestContinue}
+          />
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-slate-950 text-slate-100">
-      <div
-        className="pointer-events-none fixed inset-0 gl-cyber-grid"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(30,58,138,0.14),transparent)]"
-        aria-hidden
-      />
-      <div className="gl-app-scanlines" aria-hidden />
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <TitleBar />
+      <div className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+        <div className="relative min-h-full overflow-x-hidden bg-slate-950 text-slate-100">
+          <div
+            className="pointer-events-none absolute inset-0 gl-cyber-grid"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(30,58,138,0.14),transparent)]"
+            aria-hidden
+          />
+          <div className="gl-app-scanlines pointer-events-none absolute inset-0" aria-hidden />
 
-      <MissionSuccessOverlay active={data.ui.completionCelebrationActive} />
+          <MissionSuccessOverlay active={data.ui.completionCelebrationActive} />
 
-      <PostProcessingReviewModal
-        open={Boolean(data.ui.postProcessingReviewOpen)}
-        data={data}
-        pendingRun={pendingRun}
-        onClose={handleReviewClose}
-        onDiscard={handleReviewDiscard}
-        onConfirm={handleReviewConfirm}
-        onGoToTuning={handleReviewTuning}
-      />
+          <PostProcessingReviewModal
+            open={Boolean(data.ui.postProcessingReviewOpen)}
+            data={data}
+            pendingRun={pendingRun}
+            onClose={handleReviewClose}
+            onDiscard={handleReviewDiscard}
+            onConfirm={handleReviewConfirm}
+            onGoToTuning={handleReviewTuning}
+          />
 
-      <div className="relative z-10">
-        <Header
-          data={data}
-          onLogin={handleHeaderLogin}
-          onLogout={handleLogout}
-          onSyncNow={handleSyncNow}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
-        <MainTabNav data={data} onPatch={mergePatch} />
+          <div className="relative z-10">
+            <Header
+              data={data}
+              onLogin={handleHeaderLogin}
+              onLogout={handleLogout}
+              onSyncNow={handleSyncNow}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
+            <MainTabNav data={data} onPatch={mergePatch} />
 
-        <div className="relative min-h-[calc(100vh-8rem)]">
+            <div className="relative min-h-0 flex-1 pb-8">
           <AnimatePresence mode="wait">
             {tab === "workflow" && (
               <WorkflowTab
@@ -767,12 +776,12 @@ function App() {
             {tab === "tuning" && (
               <TuningTab key="tuning" data={data} ipcRequest={ipcRequest} />
             )}
-          </AnimatePresence>
-        </div>
+            </AnimatePresence>
+            </div>
 
-        <ChangePickerModal data={data} onPatch={mergePatch} />
+            <ChangePickerModal data={data} onPatch={mergePatch} />
 
-        <AddItemModal
+            <AddItemModal
           open={data.ui.addGameModalOpen}
           title="Register game"
           draftValue={data.ui.newGameNameDraft}
@@ -806,17 +815,17 @@ function App() {
           onConfirm={confirmAddVersion}
           inputId="add-version"
         />
-        <SettingsSidebar
-          data={data}
-          onPatch={mergePatch}
-          open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-        />
+            <SettingsSidebar
+              data={data}
+              onPatch={mergePatch}
+              open={settingsOpen}
+              onClose={() => setSettingsOpen(false)}
+            />
 
-        <AnimatePresence>
-          {modalError && (
-            <>
-              <motion.div
+            <AnimatePresence>
+              {modalError && (
+                <>
+                  <motion.div
                 key="err-backdrop"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -859,9 +868,11 @@ function App() {
                   </div>
                 </div>
               </motion.div>
-            </>
-          )}
-        </AnimatePresence>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
     </div>
   );
