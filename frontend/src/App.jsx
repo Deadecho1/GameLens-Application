@@ -688,11 +688,13 @@ function App() {
     return (
       <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
         <TitleBar />
-        <div className="min-h-0 flex-1 overflow-auto">
-          <WelcomeScreen
-            onLogin={handleLogin}
-            onGuestContinue={handleGuestContinue}
-          />
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-auto">
+            <WelcomeScreen
+              onLogin={handleLogin}
+              onGuestContinue={handleGuestContinue}
+            />
+          </div>
         </div>
       </div>
     );
@@ -701,8 +703,8 @@ function App() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
       <TitleBar />
-      <div className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-        <div className="relative min-h-full overflow-x-hidden bg-slate-950 text-slate-100">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-950 text-slate-100">
           <div
             className="pointer-events-none absolute inset-0 gl-cyber-grid"
             aria-hidden
@@ -725,7 +727,7 @@ function App() {
             onGoToTuning={handleReviewTuning}
           />
 
-          <div className="relative z-10">
+          <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
             <Header
               data={data}
               onLogin={handleHeaderLogin}
@@ -735,8 +737,8 @@ function App() {
             />
             <MainTabNav data={data} onPatch={mergePatch} />
 
-            <div className="relative min-h-0 flex-1 pb-8">
-          <AnimatePresence mode="wait">
+            <div className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto pb-8">
+              <AnimatePresence mode="wait">
             {tab === "workflow" && (
               <WorkflowTab
                 key="workflow"
@@ -796,10 +798,10 @@ function App() {
             mergePatch({ ui: { ...data.ui, addGameModalOpen: false } })
           }
           onConfirm={confirmAddGame}
-          inputId="add-game"
-        />
-        <AddItemModal
-          open={data.ui.addVersionModalOpen}
+              inputId="add-game"
+            />
+            <AddItemModal
+              open={data.ui.addVersionModalOpen}
           title="Register Version"
           draftValue={data.ui.newVersionNameDraft}
           onDraftChange={(v) => {
@@ -813,8 +815,8 @@ function App() {
             mergePatch({ ui: { ...data.ui, addVersionModalOpen: false } })
           }
           onConfirm={confirmAddVersion}
-          inputId="add-version"
-        />
+              inputId="add-version"
+            />
             <SettingsSidebar
               data={data}
               onPatch={mergePatch}

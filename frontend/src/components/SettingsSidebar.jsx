@@ -165,7 +165,7 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-75 bg-slate-950/70 backdrop-blur-sm"
+              className="fixed inset-x-0 top-8 bottom-0 z-75 bg-slate-950/70 backdrop-blur-sm"
               onClick={onClose}
               aria-label="Close settings sidebar backdrop"
             />
@@ -174,7 +174,7 @@ export default function SettingsSidebar({ data, onPatch, open, onClose }) {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: '100%', opacity: 0.98 }}
               transition={{ type: 'spring', stiffness: 340, damping: 36 }}
-              className="fixed right-0 top-0 z-76 flex h-screen w-full max-w-md flex-col border-l border-cyan-500/20 bg-slate-950/90 shadow-[-22px_0_90px_rgba(34,211,238,0.14)] backdrop-blur-2xl"
+              className="fixed right-0 top-8 bottom-0 z-76 flex w-full max-w-md flex-col border-l border-cyan-500/20 bg-slate-950/90 shadow-[-22px_0_90px_rgba(34,211,238,0.14)] backdrop-blur-2xl"
             >
               <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
                 <div className="flex items-center gap-2">
