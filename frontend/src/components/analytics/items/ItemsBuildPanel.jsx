@@ -189,9 +189,6 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                       <span className="font-display min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
                         {item.name}
                       </span>
-                      <span className="font-data shrink-0 text-[11px] tabular-nums text-slate-400">
-                        {item.popularity != null ? `${item.popularity}%` : '—'}
-                      </span>
                     </button>
                   </li>
                 );
