@@ -401,6 +401,7 @@ export default function RunSessionAnalytics({
                                             key={`${selectedRun.id}-enc-${idx}-syn-${itemId}`}
                                             item={row}
                                             itemId={itemId}
+                                            run={selectedRun}
                                             synergyBonusSeconds={bonus}
                                           />
                                         );

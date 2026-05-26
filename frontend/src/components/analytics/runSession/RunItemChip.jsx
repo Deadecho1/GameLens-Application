@@ -1,27 +1,43 @@
+import { formatSecondsAsHMS } from '../../../utils/duration';
+import { getItemFirstAppearanceSeconds } from '../../../utils/itemAnalytics';
+
+const NO_DESCRIPTION = 'No description available.';
+
+function itemDescription(item) {
+  for (const key of ['description', 'lore']) {
+    const value = item?.[key];
+    if (value != null && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+  return NO_DESCRIPTION;
+}
+
+function resolveAcquiredLabel(item, run, itemId) {
+  for (const key of ['acquiredAt', 'acquired_at']) {
+    const value = item?.[key];
+    if (value != null && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+  const seconds = run ? getItemFirstAppearanceSeconds(run, itemId) : null;
+  if (seconds == null) return null;
+  return formatSecondsAsHMS(seconds);
+}
+
 /**
  * Tactical item chip with hover tooltip for Run Session analytics.
  */
-function itemDescription(item) {
-  if (item?.description && String(item.description).trim()) {
-    return String(item.description).trim();
-  }
-  if (item?.logicTag && String(item.logicTag).trim()) {
-    return String(item.logicTag).trim();
-  }
-  return 'Item effect and lore description goes here...';
-}
-
 export default function RunItemChip({
   item,
   itemId,
+  run = null,
   synergyBonusSeconds = null,
-  acquiredLabel = '12:05',
-  levelLabel = 'Max',
 }) {
   const name =
     item?.name ?? (itemId != null ? `Item ${itemId}` : 'Unknown Item');
   const description = itemDescription(item);
-  const rarity = item?.rarity ? String(item.rarity) : null;
+  const acquiredLabel = resolveAcquiredLabel(item, run, itemId);
 
   return (
     <div className="group relative">
@@ -47,13 +63,12 @@ export default function RunItemChip({
           <p className="font-display text-xs font-bold uppercase tracking-wide text-emerald-400">
             {name}
           </p>
-          <p className="mt-1 font-data text-xs leading-relaxed text-slate-300">
-            {description}
-          </p>
-          <p className="mt-2 font-data text-[10px] leading-snug text-slate-500">
-            Acquired: {acquiredLabel}
-            {rarity ? ` · ${rarity}` : ` · Level: ${levelLabel}`}
-          </p>
+         
+          {acquiredLabel ? (
+            <p className="mt-2 font-data text-[10px] leading-snug text-slate-500">
+              Acquired: {acquiredLabel}
+            </p>
+          ) : null}
         </div>
         <div
           className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-x-[6px] border-t-[6px] border-x-transparent border-t-slate-700"

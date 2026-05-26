@@ -58,6 +58,15 @@ export function collectItemPickEvents(runsHistory) {
   return byItem;
 }
 
+/** First in-run pickup time (seconds) from itemPickups or earliest loadout appearance. */
+export function getItemFirstAppearanceSeconds(run, itemId) {
+  const id = Number(itemId);
+  if (!Number.isFinite(id) || !run) return null;
+  const events = collectItemPickEvents([run]).get(id);
+  if (!events?.length) return null;
+  return events[0].pickedAtSec;
+}
+
 export function getRunsContainingItem(runsHistory, itemId) {
   const events = collectItemPickEvents(runsHistory).get(Number(itemId)) ?? [];
   const runIds = new Set(events.map((e) => e.runId));
