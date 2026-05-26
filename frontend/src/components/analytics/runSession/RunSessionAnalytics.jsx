@@ -15,6 +15,7 @@ import {
   resolveRunTimestamp,
 } from '../../../utils/runMovingAverage';
 import { MemoizedRadarChart } from './TacticalRadarChart';
+import RunItemChip from './RunItemChip';
 
 /** Synergy bonus label from catalog popularity (dataStore) — scaled to seconds proxy. */
 function itemSynergySeconds(item) {
@@ -293,7 +294,7 @@ export default function RunSessionAnalytics({
           <motion.section
             layout
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="relative flex-1 overflow-hidden p-4 md:p-6"
+            className="relative flex-1 min-h-0 overflow-x-hidden overflow-y-auto p-4 md:p-6"
           >
             <AnimatePresence mode="wait">
               {!selectedRun ? (
@@ -381,7 +382,7 @@ export default function RunSessionAnalytics({
                               </p>
 
                               <div className="space-y-4">
-                                <div>
+                                <div className="overflow-visible pt-2">
                                   <div className="mb-2 flex items-center gap-2">
                                     <Package className="h-3.5 w-3.5 text-cyan-500/70" aria-hidden />
                                     <span className="font-display text-[9px] font-bold uppercase tracking-wider text-cyan-200/80">
@@ -391,32 +392,17 @@ export default function RunSessionAnalytics({
                                   {loadoutIds.length === 0 ? (
                                     <p className="font-data text-xs text-slate-600">No loadout recorded.</p>
                                   ) : (
-                                    <div className="flex flex-wrap gap-3">
+                                    <div className="flex flex-wrap gap-3 overflow-visible pb-2">
                                       {loadoutIds.map((itemId) => {
-                                        const itemName = itemsCatalog.find(i => i.id === itemId)?.name || 'Unknown Item';
                                         const row = itemById(itemsCatalog, itemId);
-                                        const nm = row?.name ?? null;
                                         const bonus = itemSynergySeconds(row);
                                         return (
-                                          <div key={`${selectedRun.id}-enc-${idx}-syn-${itemId}`} className="group relative">
-                                            <div
-                                              className="flex h-20 w-20 cursor-default items-center justify-center transition duration-200 group-hover:scale-110 group-hover:shadow-[0_0_14px_rgba(34,211,238,0.35)]"
-                                              title={nm ?? `Item ${itemId}`}
-                                            >
-                                        
-                                              <div className="relative flex items-center justify-center px-3 py-1 border border-cyan-500/30 bg-cyan-500/5 rounded-sm backdrop-blur-md shadow-[0_0_10px_rgba(34,211,238,0.1)] transition-all hover:border-cyan-400 hover:bg-cyan-500/10 group">
-                                              {/* Tactical corner accent */}
-                                              <div className="absolute -left-[1px] -top-[1px] h-1.5 w-1.5 border-l border-t border-cyan-400" />
-                                              
-                                              <span className="font-data text-[10px] font-bold uppercase tracking-widest tabular-nums text-cyan-200/90 group-hover:text-cyan-100">
-                                                {itemName}
-                                              </span>
-                                            </div>
-                                            </div>
-                                            <span className="pointer-events-none absolute -right-1 -top-1 rounded border border-cyan-500/40 bg-slate-950 px-1 font-data text-[9px] font-bold text-cyan-300 opacity-0 shadow-sm transition group-hover:opacity-100">
-                                              +{bonus}s
-                                            </span>
-                                          </div>
+                                          <RunItemChip
+                                            key={`${selectedRun.id}-enc-${idx}-syn-${itemId}`}
+                                            item={row}
+                                            itemId={itemId}
+                                            synergyBonusSeconds={bonus}
+                                          />
                                         );
                                       })}
                                     </div>
