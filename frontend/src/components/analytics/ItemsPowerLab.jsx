@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Timer } from 'lucide-react';
 import ItemsSubTabToggle from './items/ItemsSubTabToggle';
 import ItemsBuildPanel from './items/ItemsBuildPanel';
@@ -6,9 +5,15 @@ import ItemsInformationPanel from './items/ItemsInformationPanel';
 
 /**
  * ITEMS analytics — BUILD (survival simulator) + INFORMATION (master-detail intel).
+ * Sub-tab state is controlled by AnalyticsTab so split view stays in sync.
  */
-export default function ItemsPowerLab({ data, compact = false, compareBaseline = null }) {
-  const [itemsSubTab, setItemsSubTab] = useState('build');
+export default function ItemsPowerLab({
+  data,
+  compact = false,
+  compareBaseline = null,
+  itemsSubTab,
+  onItemsSubTabChange,
+}) {
   const catalog = data?.dashboard?.items ?? [];
   const runsHistory = data?.dashboard?.runsHistory ?? [];
 
@@ -35,7 +40,7 @@ export default function ItemsPowerLab({ data, compact = false, compareBaseline =
               : 'Metrics derived from runs history and loadouts in application state'}
           </p>
         </header>
-        <ItemsSubTabToggle value={itemsSubTab} onChange={setItemsSubTab} />
+        <ItemsSubTabToggle value={itemsSubTab} onChange={onItemsSubTabChange} />
       </div>
 
       {itemsSubTab === 'build' ? (

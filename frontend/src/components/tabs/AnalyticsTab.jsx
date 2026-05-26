@@ -13,7 +13,16 @@ const SUB_TABS = [
   { id: "items", label: "ITEMS" },
 ];
 
-function renderActiveSubView(sub, data, { compact = false, compareBaseline = null } = {}) {
+function renderActiveSubView(
+  sub,
+  data,
+  {
+    compact = false,
+    compareBaseline = null,
+    itemsSubTab = "build",
+    onItemsSubTabChange,
+  } = {},
+) {
   if (sub === "general")
     return (
       <GeneralMissionStats data={data} compareBaseline={compareBaseline} />
@@ -26,6 +35,8 @@ function renderActiveSubView(sub, data, { compact = false, compareBaseline = nul
         data={data}
         compact={compact}
         compareBaseline={compareBaseline}
+        itemsSubTab={itemsSubTab}
+        onItemsSubTabChange={onItemsSubTabChange}
       />
     );
   return null;
@@ -177,6 +188,7 @@ export default function AnalyticsTab({ data, onPatch }) {
     () => versions[1] ?? versions[0] ?? "",
   );
   const [splitView, setSplitView] = useState(false);
+  const [itemsSubTab, setItemsSubTab] = useState("build");
   const [isOpenA, setIsOpenA] = useState(false);
   const [isOpenB, setIsOpenB] = useState(false);
 
@@ -462,7 +474,10 @@ export default function AnalyticsTab({ data, onPatch }) {
         className={splitView ? "min-h-0" : ""}
       >
         {!splitView ? (
-          renderActiveSubView(sub, data)
+          renderActiveSubView(sub, data, {
+            itemsSubTab,
+            onItemsSubTabChange: setItemsSubTab,
+          })
         ) : (
           <div className="relative flex min-h-0 flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-0">
             <div
@@ -475,7 +490,13 @@ export default function AnalyticsTab({ data, onPatch }) {
                   {versionA || "Version A"}
                 </p>
               </div>
-              <div className="min-w-0">{renderActiveSubView(sub, dataA, { compact: true })}</div>
+              <div className="min-w-0">
+                {renderActiveSubView(sub, dataA, {
+                  compact: true,
+                  itemsSubTab,
+                  onItemsSubTabChange: setItemsSubTab,
+                })}
+              </div>
             </div>
 
             <div className="relative flex shrink-0 items-center justify-center py-2 lg:hidden">
@@ -499,6 +520,8 @@ export default function AnalyticsTab({ data, onPatch }) {
                 {renderActiveSubView(sub, dataB, {
                   compact: true,
                   compareBaseline: dataA,
+                  itemsSubTab,
+                  onItemsSubTabChange: setItemsSubTab,
                 })}
               </div>
             </div>
