@@ -25,7 +25,7 @@ export function resolveRunIndex(run, chronologicalOrder) {
   return chronologicalOrder;
 }
 
-/** Unix ms for chart X-axis / Brush (continuous time scale). */
+/** Unix ms for tooltips and tick labels (ordinal X-axis uses runIndex, not time). */
 export function resolveRunTimestamp(run) {
   const raw = run?.date ?? run?.created_at ?? run?.createdAt;
   const ms = Date.parse(raw ?? '');
@@ -72,6 +72,7 @@ export function buildRunDurationTrendSeries(runs = [], windowSize = MOVING_AVERA
     timestamp: resolveRunTimestamp(run),
     run_id: run?.id ?? null,
     run_index: resolveRunIndex(run, index + 1),
+    runIndex: index + 1,
     order: index + 1,
     durationSec: getRunDurationSeconds(run),
     runId: run.id,

@@ -20,25 +20,42 @@ const ZOOM_OPTIONS = [
   { id: 'LAST_20', label: 'Last 20 Runs' },
 ];
 
-const chartDateFormatter = new Intl.DateTimeFormat('en-US', {
+const axisTickDateFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+});
+
+const tooltipDateTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
   month: 'short',
   day: 'numeric',
   year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
 });
 
-function formatChartDate(unixTime) {
-  if (!Number.isFinite(unixTime)) return '';
-  return chartDateFormatter.format(new Date(unixTime));
+function formatAxisTickDate(row) {
+  if (!row) return '';
+  if (Number.isFinite(row.timestamp) && row.timestamp > 0) {
+    return axisTickDateFormatter.format(new Date(row.timestamp));
+  }
+  if (row.date) return String(row.date);
+  return '';
 }
 
-function dateLabelFromRow(row) {
+function formatFullRunDateTime(row) {
   if (!row) return '—';
   if (Number.isFinite(row.timestamp) && row.timestamp > 0) {
-    const label = formatChartDate(row.timestamp);
+    const label = tooltipDateTimeFormatter.format(new Date(row.timestamp));
     return label || '—';
   }
   if (row.date) return String(row.date);
   return '—';
+}
+
+function dateLabelFromRow(row) {
+  const short = formatAxisTickDate(row);
+  return short || '—';
 }
 
 function safeYDomain(yMin, yMax, yPad) {
@@ -137,9 +154,13 @@ function TacticalRadarChart({
 
   const displayData = useMemo(() => {
     if (!data?.length) return [];
-    if (zoomView === 'LAST_50') return data.slice(-50);
-    if (zoomView === 'LAST_20') return data.slice(-20);
-    return data;
+    let slice = data;
+    if (zoomView === 'LAST_50') slice = data.slice(-50);
+    else if (zoomView === 'LAST_20') slice = data.slice(-20);
+    return slice.map((row, index) => ({
+      ...row,
+      runIndex: index + 1,
+    }));
   }, [data, zoomView]);
 
   const displayLength = displayData.length;
@@ -152,6 +173,14 @@ function TacticalRadarChart({
   }, [displayData, displayLength, zoomView]);
 
   const yDomain = useMemo(() => safeYDomain(yMin, yMax, yPad), [yMin, yMax, yPad]);
+
+  const runIndexTickFormatter = useCallback(
+    (value) => {
+      const row = displayData.find((d) => String(d.runIndex) === String(value));
+      return formatAxisTickDate(row) || String(value);
+    },
+    [displayData],
+  );
 
   const renderScatterShape = useCallback(
     (props) => (
@@ -224,24 +253,20 @@ function TacticalRadarChart({
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" strokeOpacity={0.45} />
               <XAxis
-                dataKey="timestamp"
-                type="number"
-                scale="time"
-                domain={['dataMin', 'dataMax']}
-                minTickGap={32}
+                xAxisId={0}
+                dataKey="runIndex"
+                type="category"
+                scale="point"
+                allowDuplicatedCategory={false}
+                padding={{ left: 16, right: 16 }}
                 interval="preserveStartEnd"
+                minTickGap={28}
                 tick={{ fill: '#94a3b8', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }}
                 axisLine={{ stroke: '#475569' }}
                 tickLine={{ stroke: '#475569' }}
-                tickFormatter={(unixTime) =>
-                  new Intl.DateTimeFormat('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  }).format(new Date(unixTime))
-                }
+                tickFormatter={runIndexTickFormatter}
                 label={{
-                  value: 'Session date',
+                  value: 'Run sequence',
                   position: 'insideBottom',
                   offset: -6,
                   fill: '#64748b',
@@ -297,7 +322,7 @@ function TacticalRadarChart({
                   if (!p) return null;
                   const runId = p.run_id ?? p.runId;
                   if (runId == null) return null;
-                  const when = dateLabelFromRow(p);
+                  const when = formatFullRunDateTime(p);
                   return (
                     <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl">
                       <p className="font-display text-xs font-bold uppercase tracking-wide text-cyan-200">
@@ -307,7 +332,8 @@ function TacticalRadarChart({
                         <span className="text-cyan-300/90">{when}</span>
                         <span className="text-slate-600">
                           {' '}
-                          · DB index {p.run_index ?? '—'}
+                          · Run #{p.runIndex ?? '—'}
+                          {p.run_index != null ? ` · DB index ${p.run_index}` : ''}
                         </span>
                       </p>
                       <p className="font-data mt-2 text-sm tabular-nums text-white">
@@ -331,6 +357,7 @@ function TacticalRadarChart({
               <Scatter
                 name="Density cloud"
                 dataKey="durationSec"
+                xAxisId={0}
                 fill="#22d3ee"
                 fillOpacity={0.18}
                 shape={renderScatterShape}
@@ -340,6 +367,7 @@ function TacticalRadarChart({
               <Line
                 type="monotone"
                 dataKey="movingAverage"
+                xAxisId={0}
                 name="10-run trend"
                 stroke="#67e8f9"
                 strokeWidth={3.5}
