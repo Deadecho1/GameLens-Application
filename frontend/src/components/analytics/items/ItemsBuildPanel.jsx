@@ -92,6 +92,14 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
     setBuildSlots((s) => placeItemInSlots(s, slotIndex, itemId));
   }, []);
 
+  const clearSlot = useCallback((slotIndex) => {
+    setBuildSlots((s) => {
+      const next = [...s];
+      next[slotIndex] = null;
+      return next;
+    });
+  }, []);
+
   const onBrowserItemActivate = (item) => {
     const empty = buildSlots.findIndex((id) => id == null);
     if (empty >= 0) {
@@ -235,10 +243,20 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                     key={i}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setActiveSlot(i)}
+                    onClick={() => {
+                      if (item) {
+                        clearSlot(i);
+                        return;
+                      }
+                      setActiveSlot(i);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
+                        if (item) {
+                          clearSlot(i);
+                          return;
+                        }
                         setActiveSlot(i);
                       }
                     }}
@@ -265,11 +283,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                           className="font-data absolute right-1 top-1 rounded px-1.5 text-[9px] text-slate-500 hover:text-slate-300"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setBuildSlots((s) => {
-                              const n = [...s];
-                              n[i] = null;
-                              return n;
-                            });
+                            clearSlot(i);
                           }}
                         >
                           ×
