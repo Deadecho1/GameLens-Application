@@ -95,13 +95,13 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
           General analytics
         </p>
         <h3 className="mt-2 font-display text-xl font-bold text-slate-100 md:text-2xl">
-          Run command deck
+          Run summary
         </h3>
 
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <BriefMetricCard title="Total runs" subtitle="All recorded sessions" icon={Activity} accent="cyan" hero>
+        <BriefMetricCard title="Total runs" subtitle="All recorded runs" icon={Activity} accent="cyan" hero>
           <motion.p
             className="font-data text-2xl font-bold tabular-nums tracking-tight text-cyan-200 md:text-3xl"
             animate={{
@@ -124,7 +124,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
           ) : null}
         </BriefMetricCard>
 
-        <BriefMetricCard title="Avg. run time" subtitle="Mean session duration" icon={Clock} accent="blue">
+        <BriefMetricCard title="Avg. run time" subtitle="Average run time" icon={Clock} accent="blue">
           <p className="font-data text-2xl font-bold tabular-nums text-slate-100 md:text-3xl">{avgLabel}</p>
           {baselineMetrics ? (
             <DeltaIndicator
@@ -135,7 +135,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
           ) : null}
         </BriefMetricCard>
 
-        <BriefMetricCard title="Longest session" subtitle="Max duration from history" icon={Hourglass} accent="blue">
+        <BriefMetricCard title="Longest run" subtitle="Maximum run time" icon={Hourglass} accent="blue">
           <p className="font-data text-2xl font-bold tabular-nums text-slate-100 md:text-3xl">{longestLabel}</p>
           {baselineMetrics ? (
             <DeltaIndicator
@@ -148,7 +148,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
 
         <BriefMetricCard
           title="Total items found"
-          subtitle="Unique items tracked (catalog)"
+          subtitle="Unique items tracked"
           icon={Package}
           accent="slate"
         >
@@ -170,10 +170,10 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
           <div className="rounded-2xl border border-slate-800 bg-transparent p-4 backdrop-blur-md md:p-6">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
               <h4 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-blue-400/90">
-                Run duration distribution
+                Run time distribution
               </h4>
               <span className="font-data text-[10px] text-slate-600">
-                {histogramTotal} run{histogramTotal === 1 ? '' : 's'} · 5 min buckets
+                {histogramTotal} run{histogramTotal === 1 ? '' : 's'} · 5 min intervals
               </span>
             </div>
             <div className="h-[320px] w-full min-w-0">
@@ -195,7 +195,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
                       textAnchor="end"
                       height={52}
                       label={{
-                        value: 'Duration bucket',
+                        value: 'Time interval',
                         position: 'insideBottom',
                         offset: -4,
                         fill: '#64748b',
@@ -209,7 +209,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
                       axisLine={{ stroke: '#475569' }}
                       tickLine={{ stroke: '#475569' }}
                       label={{
-                        value: 'Run count',
+                        value: 'Number of runs',
                         angle: -90,
                         position: 'insideLeft',
                         fill: '#64748b',
@@ -233,7 +233,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
                               <span className="tabular-nums text-blue-300">{row.count}</span> run
                               {row.count === 1 ? '' : 's'}
                             </p>
-                            <p className="font-data text-[10px] text-slate-500">{pct}% of sessions</p>
+                            <p className="font-data text-[10px] text-slate-500">{pct}% of runs</p>
                           </div>
                         );
                       }}
@@ -258,17 +258,17 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
             <div className="mb-3 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-cyan-400" strokeWidth={1.25} aria-hidden />
               <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300/90">
-                Highlight
+                Top item
               </h4>
             </div>
             {mostPopularItem ? (
               <>
                 <p className="font-display text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Most popular item
+                  Most used item
                 </p>
                 <p className="font-data mt-2 text-lg font-bold text-slate-100">{mostPopularItem.name}</p>
                 <p className="font-data mt-1 text-sm tabular-nums text-cyan-300/90">
-                  Popularity{' '}
+                  Pick rate:{' '}
                   <span className="text-cyan-200">
                     {Math.round(Number(mostPopularItem.popularity))}%
                   </span>
@@ -292,11 +292,11 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
             <div className="mb-3 flex items-center gap-2">
               <Swords className="h-4 w-4 text-blue-400" strokeWidth={1.25} aria-hidden />
               <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400/90">
-                Boss kill rate
+                Boss success rate
               </h4>
             </div>
             {bossKill.total === 0 ? (
-              <p className="font-data text-sm text-slate-500">No boss encounters logged.</p>
+              <p className="font-data text-sm text-slate-500">No boss fights logged.</p>
             ) : (
               <>
                 <div className="flex items-baseline gap-2">
@@ -312,7 +312,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
                 ) : null}
                 <p className="font-data mt-2 text-[11px] text-slate-500">
                   <span className="tabular-nums text-slate-400">{bossKill.defeated}</span> defeated ·{' '}
-                  <span className="tabular-nums text-slate-400">{bossKill.total}</span> encountered
+                  <span className="tabular-nums text-slate-400">{bossKill.total}</span> Boss Fights
                 </p>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
                   <motion.div
@@ -330,10 +330,10 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
             <div className="mb-3 flex items-center gap-2">
               <Crosshair className="h-4 w-4 text-slate-400" strokeWidth={1.25} aria-hidden />
               <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400/90">
-                Performance
+                Run history
               </h4>
             </div>
-            <p className="font-data mb-2 text-[10px] text-slate-600">Sorted longest → shortest</p>
+            <p className="font-data mb-2 text-[10px] text-slate-600">Sorted by longest time</p>
             <ul className="font-data max-h-[220px] min-h-[120px] space-y-2 overflow-y-auto pr-1 text-[11px] [scrollbar-color:rgba(51,65,85,0.9)_transparent]">
               {sortedRunsDesc.length === 0 ? (
                 <li className="py-6 text-center text-slate-500">No run history.</li>
