@@ -19,12 +19,17 @@ export default function Header({
   onOpenSettings,
 }) {
   const status = data.processing.status;
+  const setup = data.setup ?? {};
   const auth = data.auth ?? {
     loggedIn: false,
     email: null,
     syncStatus: "idle",
     syncMessage: "",
   };
+  const selectedGame = String(setup.selectedGame ?? "").trim();
+  const selectedVersion = String(setup.selectedVersion ?? "").trim();
+  const gameLabel = selectedGame ? selectedGame.toUpperCase() : "-";
+  const versionLabel = selectedVersion || "-";
   const profile = resolveUserProfileDisplay(auth);
   const [loginOpen, setLoginOpen] = useState(false);
   const [emailDraft, setEmailDraft] = useState("");
@@ -92,6 +97,13 @@ export default function Header({
 
         {/* Right side */}
         <div className="flex items-center gap-3">
+          {/* Global target version indicator */}
+          <div className="rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-1.5 backdrop-blur-md">
+            <p className="font-data text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+              GAME: {gameLabel} | VERSION: {versionLabel}
+            </p>
+          </div>
+
           {/* Sync badge — only when logged in */}
           {auth.loggedIn && auth.syncStatus === "syncing" && (
             <div className="flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-slate-900/60 px-3 py-1.5">
