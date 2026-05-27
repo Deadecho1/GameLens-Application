@@ -857,7 +857,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                       <div className="w-full shrink-0 xl:sticky xl:top-3 xl:w-[min(100%,22rem)]">
                         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 backdrop-blur-sm md:p-5">
                           <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
-                            Predicted combat outcome
+                             combat outcome
                           </h4>
                           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                             <div>

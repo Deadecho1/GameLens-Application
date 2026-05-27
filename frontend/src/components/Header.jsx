@@ -120,9 +120,6 @@ export default function Header({
               <p className="font-data text-xs font-semibold text-cyan-100/90 truncate">
                 {profile.displayName}
               </p>
-              <div className="mt-1 flex justify-end">
-                <UserDataSourceBadge badge={profile.badge} />
-              </div>
             </div>
             {auth.loggedIn ? (
               <button

@@ -4,7 +4,7 @@ import { Activity } from 'lucide-react';
 const TABS = [
   { id: 'workflow', label: 'MISSION START' },
   { id: 'analytics', label: 'ANALYTICS' },
-  { id: 'runSession', label: 'RUN ANALYTICS', icon: Activity },
+  { id: 'runSession', label: 'SESSION STATS', icon: Activity },
   { id: 'tuning', label: 'GAME TUNING' },
 ];
 
