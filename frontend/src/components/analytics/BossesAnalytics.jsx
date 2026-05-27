@@ -286,14 +286,14 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
     return [
       {
         key: 'base',
-        label: 'Global average (base)',
+        label: 'Average fight time',
         seconds: globalAvgSec,
         minutes: secondsToMinutes(globalAvgSec),
         fill: baseFill,
       },
       {
         key: 'synergy',
-        label: 'Synergy projection',
+        label: 'Estimated time',
         seconds: synergyProjectedSec,
         minutes: secondsToMinutes(synergyProjectedSec),
         fill: synergyFill,
@@ -330,14 +330,10 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
       <header>
         <div className="flex items-center gap-2">
           <Swords className="h-5 w-5 text-cyan-400" strokeWidth={1.25} aria-hidden />
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-cyan-500/80">
-            Boss intelligence
-          </p>
+          <h3 className="font-display text-xl font-bold uppercase tracking-[0.12em] text-slate-100 md:text-2xl">
+            BOSS ANALYTICS
+          </h3>
         </div>
-        <h3 className="mt-2 font-display text-xl font-bold text-slate-100 md:text-2xl">
-          Tactical command · master detail
-        </h3>
-
       </header>
 
       <div className="flex min-h-[min(640px,75vh)] flex-col gap-4 lg:flex-row lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-800/90 lg:bg-slate-950/40 lg:shadow-[inset_0_1px_0_rgba(34,211,238,0.06)]">
@@ -345,7 +341,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
           <div className="flex items-center gap-2 border-b border-slate-800/80 px-4 py-3">
             <Radar className="h-4 w-4 text-cyan-400/90" strokeWidth={1.25} aria-hidden />
             <span className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-              Target rail
+              Select a boss
             </span>
           </div>
           <nav
@@ -412,7 +408,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                   transition={{ duration: 0.2 }}
                   className="flex flex-1 items-center justify-center"
                 >
-                  <p className="font-data text-sm text-slate-500">Select a boss from the rail.</p>
+                  <p className="font-data text-sm text-slate-500">Select a boss from the list.</p>
                 </motion.div>
               ) : (
                 <motion.div
@@ -437,7 +433,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                         <Award className="h-8 w-8 shrink-0 text-cyan-400/90" strokeWidth={1.15} aria-hidden />
                         <div>
                           <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                            Survival rank
+                            Fight duration rank
                           </p>
                           {survivalRank.singleCohort ? (
                             <p className="font-data text-sm text-slate-400">Baseline — single boss in dataset</p>
@@ -447,7 +443,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                 Top {survivalRank.topPct}%
                               </p>
                               <p className="font-data text-[10px] tabular-nums text-slate-500">
-                                #{survivalRank.rank} of {survivalRank.total} by mean lifespan
+                                #{survivalRank.rank} of {survivalRank.total} · average fight length
                               </p>
                             </>
                           )}
@@ -461,11 +457,11 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                       <div className="mb-4 flex items-center gap-2">
                         <Timer className="h-5 w-5 text-cyan-300" strokeWidth={1.25} aria-hidden />
                         <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200/90">
-                          Global average lifespan
+                          Average fight time
                         </h3>
                       </div>
                       <p className="font-data text-[10px] uppercase tracking-wider text-slate-500">
-                        Mean encounter duration · full dataset
+                        Across all recorded boss fights
                       </p>
                       <p
                         className="mt-4 font-data text-4xl font-bold tabular-nums tracking-tight text-cyan-100 md:text-5xl lg:text-6xl"
@@ -503,7 +499,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                         />
                       ) : null}
                       <p className="font-data text-[10px] uppercase tracking-wider text-slate-600">
-                        Encounter count
+                        Total boss fights
                       </p>
                     </div>
                   </div>
@@ -513,14 +509,13 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                       <div className="flex items-center gap-2">
                         <ChartColumn className="h-4 w-4 text-cyan-400/90" strokeWidth={1.25} aria-hidden />
                         <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">
-                          Lifespan frequency distribution
+                          Fight time distribution
                         </h3>
                       </div>
-                      <span className="font-data text-[10px] text-slate-500">Time bracket · occurrences</span>
+                      <span className="font-data text-[10px] text-slate-500">Fight length · number of fights</span>
                     </div>
                     <p className="font-data mb-4 text-[10px] text-slate-600">
-                      Encounters bucketed by fight length — highlights consistency vs. variance in the global
-                      dataset.
+                      Boss fights grouped by length — shows time consistency.
                     </p>
                     <div className="h-[280px] w-full min-w-0 md:h-[300px]">
                       {globalEncounterCount === 0 ? (
@@ -554,7 +549,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                               axisLine={{ stroke: '#475569' }}
                               tickLine={{ stroke: '#475569' }}
                               label={{
-                                value: 'Occurrences',
+                                value: 'Number of fights',
                                 angle: -90,
                                 position: 'insideLeft',
                                 fill: '#64748b',
@@ -573,7 +568,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                       {row.bracket}
                                     </p>
                                     <p className="font-data mt-1 tabular-nums text-sm text-white">
-                                      {row.count} occurrence{row.count === 1 ? '' : 's'}
+                                      {row.count} fight{row.count === 1 ? '' : 's'}
                                     </p>
                                   </div>
                                 );
@@ -581,7 +576,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             />
                             <Bar
                               dataKey="count"
-                              name="Occurrences"
+                              name="Number of fights"
                               fill={`url(#${chartGradId})`}
                               radius={[6, 6, 0, 0]}
                               maxBarSize={72}
@@ -623,10 +618,10 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                           />
                           <div>
                             <p className="font-display text-[10px] font-bold uppercase tracking-[0.28em] text-amber-200/80">
-                              Legendary intel
+                              Best items
                             </p>
                             <h3 className="font-display text-lg font-black uppercase tracking-[0.14em] text-transparent bg-linear-to-r from-amber-200 via-fuchsia-200 to-amber-100 bg-clip-text md:text-xl">
-                              Most lethal synergy
+                              Best item combination
                             </h3>
                           </div>
                         </div>
@@ -664,12 +659,12 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                 .join(' + ')}
                             </p>
                             <p className="font-display mt-4 text-[9px] font-bold uppercase tracking-[0.22em] text-purple-300/80">
-                              Impact efficiency
+                              Effectiveness
                             </p>
                             <p className="font-data mt-1 text-3xl font-bold tabular-nums tracking-tight text-amber-100 md:text-4xl [text-shadow:0_0_28px_rgba(251,191,36,0.35)]">
                               <span className="tabular-nums">{mostLethal.impactEfficiencyPct}%</span>{' '}
                               <span className="text-lg font-semibold text-purple-200/95 md:text-xl">
-                                faster kill rate
+                                faster fight
                               </span>
                             </p>
                             {baselineMostLethal ? (
@@ -680,15 +675,15 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                               />
                             ) : null}
                             <p className="font-data mt-2 text-[10px] text-slate-500">
-                              Mean fight when this loadout appears:{' '}
+                              Average time with this item combination:{' '}
                               <span className="tabular-nums text-slate-300">
                                 {formatSecondsAsHMS(mostLethal.meanSecForCombo)}
                               </span>
                               {mostLethal.source === 'historical' ? (
                                 <span className="text-slate-600">
                                   {' '}
-                                  · <span className="tabular-nums">{mostLethal.comboSampleCount}</span> tagged encounter
-                                  {mostLethal.comboSampleCount === 1 ? '' : 's'} for this set
+                                  · <span className="tabular-nums">{mostLethal.comboSampleCount}</span> recorded boss
+                                  fight{mostLethal.comboSampleCount === 1 ? '' : 's'}
                                 </span>
                               ) : null}
                             </p>
@@ -708,10 +703,10 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                           <Zap className="h-5 w-5 text-cyan-400" strokeWidth={1.25} aria-hidden />
                           <div>
                             <h3 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-cyan-100 md:text-base">
-                              {'Synergy Lab: Item Impact Simulator'}
+                              Test item combinations
                             </h3>
                             <p className="font-data mt-1 text-[10px] text-slate-500">
-                              Scalable armory · max 3 equipped
+                              Select up to 3 items to test
                             </p>
                           </div>
                         </div>
@@ -721,7 +716,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                           className="flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-200"
                         >
                           <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                          Clear all
+                          Clear all items
                         </button>
                       </div>
 
@@ -804,14 +799,14 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                 type="search"
                                 value={libraryQuery}
                                 onChange={(e) => setLibraryQuery(e.target.value)}
-                                placeholder="Search item library…"
+                                placeholder="Search item list…"
                                 className="w-full rounded-lg border border-cyan-500/35 bg-slate-950/85 py-2.5 pl-10 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-600 shadow-[0_0_20px_rgba(34,211,238,0.06)] outline-none ring-0 transition focus:border-cyan-400/65 focus:shadow-[0_0_24px_rgba(34,211,238,0.12)]"
                               />
                             </label>
                           </div>
                           <div className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-color:rgba(51,65,85,0.85)_transparent]">
                             <p className="font-display mb-2 px-0.5 text-[8px] font-bold uppercase tracking-[0.2em] text-slate-600">
-                              Item library
+                              Item list
                             </p>
                             {filteredLibraryItems.length === 0 ? (
                               <p className="font-data py-8 text-center text-sm text-slate-500">No items match.</p>
@@ -857,12 +852,12 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                       <div className="w-full shrink-0 xl:sticky xl:top-3 xl:w-[min(100%,22rem)]">
                         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 backdrop-blur-sm md:p-5">
                           <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
-                             combat outcome
+                            Expected result
                           </h4>
                           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                             <div>
                               <p className="font-data text-[9px] uppercase tracking-wider text-slate-500">
-                                Global average
+                                Average fight time
                               </p>
                               <p className="font-data mt-1 text-xl font-bold tabular-nums text-slate-200">
                                 {globalAvgSec > 0 ? globalAvgLabel : '—'}
@@ -870,7 +865,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             </div>
                             <div>
                               <p className="font-data text-[9px] uppercase tracking-wider text-slate-500">
-                                Synergy lifespan
+                                Time with these items
                               </p>
                               <p
                                 className={`font-data mt-1 text-xl font-bold tabular-nums ${
@@ -896,7 +891,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                           </div>
 
                           <p className="font-display mt-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">
-                            Impact chart
+                            Performance comparison
                           </p>
                           <div className="mt-2 h-[200px] w-full min-w-0 sm:h-[220px]">
                             {globalAvgSec <= 0 ? (
@@ -976,8 +971,8 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             )}
                           </div>
                           <p className="font-data mt-2 text-[9px] leading-relaxed text-slate-600">
-                            Cyan synergy bar = faster clear vs global average; orange = slower. Updates live as you
-                            change loadout.
+                            Cyan bar = faster than average; orange = slower. Updates automatically as you change
+                            items.
                           </p>
                         </div>
                       </div>
