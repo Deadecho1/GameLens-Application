@@ -702,7 +702,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             <p className="font-data mt-1 text-3xl font-bold tabular-nums tracking-tight text-amber-100 md:text-4xl [text-shadow:0_0_28px_rgba(251,191,36,0.35)]">
                               <span className="tabular-nums">{mostLethal.impactEfficiencyPct}%</span>{' '}
                               <span className="text-lg font-semibold text-purple-200/95 md:text-xl">
-                                faster fight
+                                faster than the average time for this boss
                               </span>
                             </p>
                             {baselineMostLethal ? (
@@ -1009,7 +1009,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             )}
                           </div>
                           <p className="font-data mt-2 text-[9px] leading-relaxed text-slate-600">
-                            Cyan bar = faster than average; orange = slower. Updates automatically as you change
+                            Cyan bar = faster than the average time for this boss; orange = slower. Updates automatically as you change
                             items.
                           </p>
                           {equippedIds.length > 0 && !itemImpactEstimate.hasEstimate ? (
