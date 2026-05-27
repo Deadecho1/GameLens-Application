@@ -62,6 +62,7 @@ export default function WorkflowTab({
   const inputRef = useRef(null);
   const [followLogs, setFollowLogs] = useState(true);
   const logCount = processing.logs.length;
+  const userScrolledUpRef = useRef(false);
 
   const handleLogScroll = useCallback(() => {
     const el = logRef.current;

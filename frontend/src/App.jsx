@@ -264,13 +264,17 @@ function App() {
   }, [ipcRequest]);
 
   const handleRun = useCallback(async () => {
+    if (!data.setup?.user?.openAiKey) {
+      setModalError("OpenAI API key is not configured. Add it in Settings before running the pipeline.");
+      return;
+    }
     try {
       const state = await ipcRequest("processing:run");
       setData(state);
     } catch (e) {
       setModalError(String(e?.message || e));
     }
-  }, [ipcRequest]);
+  }, [ipcRequest, data.setup?.user?.openAiKey]);
 
   const handleStop = useCallback(async () => {
     try {

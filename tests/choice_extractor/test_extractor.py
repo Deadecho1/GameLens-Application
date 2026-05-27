@@ -1,7 +1,7 @@
-"""Unit tests for ChoiceExtractor using a fake HTTP session."""
+"""Unit tests for ChoiceExtractor using a mocked OpenAI client."""
 from __future__ import annotations
 
-from typing import Optional
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,87 +10,93 @@ from scripts.choice_extractor.extractor import ChoiceExtractor, ChoiceExtractorC
 from scripts.choice_extractor.models import ExtractionResult
 
 
-def _make_extractor(base_url: str = "http://localhost:7761") -> ChoiceExtractor:
-    cfg = ChoiceExtractorConfig(base_url=base_url, timeout_seconds=5.0)
+def _make_extractor(api_key: str = "test-key") -> ChoiceExtractor:
+    cfg = ChoiceExtractorConfig(api_key=api_key, timeout_seconds=5.0)
     return ChoiceExtractor(config=cfg)
+
+
+def _mock_openai_response(choices: list, selected_choice: str | None) -> MagicMock:
+    content = json.dumps({"choices": choices, "selected_choice": selected_choice})
+    message = MagicMock()
+    message.content = content
+    choice = MagicMock()
+    choice.message = message
+    resp = MagicMock()
+    resp.choices = [choice]
+    return resp
 
 
 class TestChoiceExtractorConfig:
     def test_default_values(self):
         cfg = ChoiceExtractorConfig()
-        assert cfg.base_url == "http://localhost:7761"
-        assert cfg.timeout_seconds == 15.0
-        assert cfg.endpoint_path == "/api/v1/choice/extract-choices"
+        assert cfg.api_key == ""
+        assert cfg.timeout_seconds == 30.0
 
-    def test_custom_base_url(self):
-        cfg = ChoiceExtractorConfig(base_url="http://myserver:8080")
-        assert cfg.base_url == "http://myserver:8080"
+    def test_custom_api_key(self):
+        cfg = ChoiceExtractorConfig(api_key="sk-abc")
+        assert cfg.api_key == "sk-abc"
 
 
 class TestChoiceExtractorInit:
-    def test_endpoint_constructed_correctly(self):
-        cfg = ChoiceExtractorConfig(base_url="http://localhost:7761")
+    def test_uses_configured_model(self):
+        cfg = ChoiceExtractorConfig(api_key="k", model="gpt-4o")
         extractor = ChoiceExtractor(config=cfg)
-        assert extractor._endpoint == "http://localhost:7761/api/v1/choice/extract-choices"
+        assert extractor._model == "gpt-4o"
 
-    def test_trailing_slash_stripped(self):
-        cfg = ChoiceExtractorConfig(base_url="http://localhost:7761/")
-        extractor = ChoiceExtractor(config=cfg)
-        assert not extractor._endpoint.startswith("http://localhost:7761//")
+    def test_default_model_set(self):
+        extractor = _make_extractor()
+        assert extractor._model  # non-empty
 
 
 class TestExtractFrame:
-    def _mock_response(self, choices, selected_choice):
-        mock = MagicMock()
-        mock.raise_for_status.return_value = None
-        mock.json.return_value = {"choices": choices, "selected_choice": selected_choice}
-        return mock
-
     def test_returns_extraction_result(self):
         extractor = _make_extractor()
-        mock_resp = self._mock_response(["Item A", "Item B"], "Item A")
-        with patch("requests.Session.post", return_value=mock_resp):
+        mock_resp = _mock_openai_response(["Item A", "Item B"], "Item A")
+        with patch.object(extractor._client.chat.completions, "create", return_value=mock_resp):
             result = extractor.extract_frame(b"fake_image")
 
         assert isinstance(result, ExtractionResult)
         assert result.choices == ["Item A", "Item B"]
         assert result.selected_choice == "Item A"
 
-    def test_passes_timeout_to_requests(self):
-        cfg = ChoiceExtractorConfig(timeout_seconds=7.5)
-        extractor = ChoiceExtractor(config=cfg)
-        mock_resp = self._mock_response([], None)
-        with patch("requests.Session.post", return_value=mock_resp) as mock_post:
-            extractor.extract_frame(b"img")
-
-        _, kwargs = mock_post.call_args
-        assert kwargs.get("timeout") == pytest.approx(7.5)
-
-    def test_optional_prompt_and_model_passed_as_params(self):
+    def test_empty_choices_returned(self):
         extractor = _make_extractor()
-        mock_resp = self._mock_response([], None)
-        with patch("requests.Session.post", return_value=mock_resp) as mock_post:
-            extractor.extract_frame(b"img", prompt="custom", model="gpt-4")
+        mock_resp = _mock_openai_response([], None)
+        with patch.object(extractor._client.chat.completions, "create", return_value=mock_resp):
+            result = extractor.extract_frame(b"img")
 
-        _, kwargs = mock_post.call_args
-        assert kwargs["params"]["prompt"] == "custom"
-        assert kwargs["params"]["model"] == "gpt-4"
+        assert result.choices == []
+        assert result.selected_choice is None
 
-    def test_no_prompt_means_no_params(self):
+    def test_custom_model_forwarded(self):
         extractor = _make_extractor()
-        mock_resp = self._mock_response([], None)
-        with patch("requests.Session.post", return_value=mock_resp) as mock_post:
-            extractor.extract_frame(b"img")
+        mock_resp = _mock_openai_response([], None)
+        with patch.object(
+            extractor._client.chat.completions, "create", return_value=mock_resp
+        ) as mock_create:
+            extractor.extract_frame(b"img", model="gpt-4o")
 
-        _, kwargs = mock_post.call_args
-        assert kwargs.get("params") == {}
+        call_kwargs = mock_create.call_args[1]
+        assert call_kwargs["model"] == "gpt-4o"
 
-    def test_request_exception_re_raised(self):
-        import requests
+    def test_custom_prompt_forwarded(self):
         extractor = _make_extractor()
-        with patch(
-            "requests.Session.post",
-            side_effect=requests.exceptions.ConnectionError("refused"),
+        mock_resp = _mock_openai_response([], None)
+        with patch.object(
+            extractor._client.chat.completions, "create", return_value=mock_resp
+        ) as mock_create:
+            extractor.extract_frame(b"img", prompt="custom prompt")
+
+        messages = mock_create.call_args[1]["messages"]
+        system_msg = next(m for m in messages if m["role"] == "system")
+        assert system_msg["content"] == "custom prompt"
+
+    def test_openai_exception_re_raised(self):
+        extractor = _make_extractor()
+        with patch.object(
+            extractor._client.chat.completions,
+            "create",
+            side_effect=RuntimeError("network error"),
         ):
-            with pytest.raises(requests.exceptions.ConnectionError):
+            with pytest.raises(RuntimeError, match="network error"):
                 extractor.extract_frame(b"img")

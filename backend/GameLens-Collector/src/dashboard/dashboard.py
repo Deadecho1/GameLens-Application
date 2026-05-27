@@ -635,6 +635,7 @@ def get_items():
                     LEFT JOIN filtered_runs fr ON fr.id = ip.run_id
                     WHERE i.game_id = %s
                     GROUP BY i.id, i.name, rc.total_runs
+                    HAVING COUNT(DISTINCT fr.id) > 0
                     ORDER BY i.name;
                     """,
                     (game_id, version_name, version_name, game_id),

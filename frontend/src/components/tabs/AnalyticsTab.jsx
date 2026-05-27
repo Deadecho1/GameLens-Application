@@ -48,14 +48,14 @@ function applyGameLibrarySlice(data, game, version) {
   const gameLibrary = dashboard.gameLibrary ?? {};
   const gameNode = game ? gameLibrary[game] : null;
   const versionNode = version ? gameNode?.[version] : null;
-  const libraryNode = versionNode ?? null;
+  if (!versionNode) return data;
   return {
     ...data,
     dashboard: {
       ...dashboard,
-      items: libraryNode?.items ?? dashboard.items ?? [],
-      bosses: libraryNode?.bosses ?? dashboard.bosses ?? [],
-      generalStats: libraryNode?.generalStats ?? dashboard.generalStats ?? [],
+      items: versionNode.items ?? dashboard.items ?? [],
+      bosses: versionNode.bosses ?? dashboard.bosses ?? [],
+      generalStats: versionNode.generalStats ?? dashboard.generalStats ?? [],
     },
   };
 }

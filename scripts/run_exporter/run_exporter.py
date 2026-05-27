@@ -353,6 +353,7 @@ class RunExporter:
 
         ok = 0
         failed = 0
+        skipped = 0
         saved_runs_total = 0
 
         for idx, json_path in enumerate(json_files, start=1):
@@ -368,6 +369,9 @@ class RunExporter:
                     verbose=verbose,
                 )
                 ok += 1
+            except FileNotFoundError as e:
+                logger.warning("SKIPPED: %s — %s", json_path.name, e)
+                skipped += 1
             except Exception as e:
                 logger.error("FAILED: %s — %s", json_path.name, e)
                 failed += 1
@@ -378,18 +382,19 @@ class RunExporter:
                 gc.collect()
 
         logger.info(
-            "Done. Successful: %d  Failed: %d  Run JSON files written: %d",
+            "Done. Successful: %d  Failed: %d  Skipped (no video): %d  Run JSON files written: %d",
             ok,
             failed,
+            skipped,
             saved_runs_total,
         )
 
-        if ok == 0:
+        if ok == 0 and failed > 0:
             raise RuntimeError(
                 "Run exporter could not process any event JSON files successfully."
             )
 
-        if saved_runs_total == 0:
+        if saved_runs_total == 0 and ok > 0:
             raise RuntimeError(
                 "Run exporter finished but produced no run JSON files. "
                 "Check matching video files and event detection output."

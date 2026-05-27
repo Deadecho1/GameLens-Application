@@ -99,6 +99,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._active_backend: StorageBackend = LocalSQLiteBackend()
         self._remote_backend = None
         self._sync_worker: SyncWorker | None = None
+        self._migrate_orphaned_online_data_to_offline()
         self._tuning_state: dict = {
             "status": "idle",
             "logs": [],
@@ -898,6 +899,27 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         self._start_sync()
         return dict(self._auth_state)
 
+    def _migrate_orphaned_online_data_to_offline(self) -> None:
+        """Move any non-zero user_id rows to user_id=0 on startup.
+
+        If the app was closed while logged in (without explicit logout), data
+        is stranded under the real user_id and invisible in offline mode.
+        This migration runs at startup before any login so offline mode always
+        sees previously pulled data.
+        """
+        try:
+            from app_core.local_storage import LOCAL_USER_ID, open_local_db
+
+            conn = open_local_db()
+            conn.execute(
+                "UPDATE dash_games SET user_id = ? WHERE user_id != ?",
+                (LOCAL_USER_ID, LOCAL_USER_ID),
+            )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
     def logout_from_ipc(self) -> None:
         if self._sync_worker and self._sync_worker.isRunning():
             self._sync_worker.quit()
@@ -1042,6 +1064,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
             "selectedVersion": current_version.name if current_version else "",
             "fineTunedModels": finetuned_models,
             "selectedModel": self._processing_state.get("selectedModel", "base"),
+            "user": self._ipc_ui_state.get("setup", {}).get("user", {}),
         }
 
         return {

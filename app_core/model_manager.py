@@ -33,9 +33,9 @@ class ModelManager:
         }
 
     @staticmethod
-    def load_choice_extractor(base_url: str = "http://localhost:7761", timeout: float = 60.0) -> ChoiceExtractor:
+    def load_choice_extractor(api_key: str = "", timeout: float = 60.0) -> ChoiceExtractor:
         """Create and return a ChoiceExtractor instance."""
-        return ChoiceExtractor(config=ChoiceExtractorConfig(base_url=base_url, timeout_seconds=timeout))
+        return ChoiceExtractor(config=ChoiceExtractorConfig(api_key=api_key, timeout_seconds=timeout))
 
 
 if __name__ == "__main__":
