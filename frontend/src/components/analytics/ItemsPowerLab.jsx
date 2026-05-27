@@ -24,7 +24,7 @@ export default function ItemsPowerLab({
           <div className="flex items-center gap-2">
             <Timer className="h-5 w-5 text-violet-400" strokeWidth={1.25} aria-hidden />
             <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-violet-400/80">
-              {itemsSubTab === 'build' ? 'Survival simulator' : 'Item intelligence'}
+              {itemsSubTab === 'build' ? 'Item combination simulator' : 'Item details'}
             </p>
           </div>
           <h3
@@ -32,12 +32,12 @@ export default function ItemsPowerLab({
               compact ? 'text-lg' : 'text-xl md:text-2xl'
             }`}
           >
-            {itemsSubTab === 'build' ? 'Run duration lab' : 'Master-detail catalog'}
+            {itemsSubTab === 'build' ? 'Test item combinations' : 'Item catalog'}
           </h3>
           <p className="font-data mt-1.5 text-sm text-slate-500">
             {itemsSubTab === 'build'
-              ? 'Build estimate from per-item run averages in history'
-              : 'Metrics derived from runs history and loadouts in application state'}
+              ? 'Estimate average time based on past runs with these items'
+              : 'Metrics from run history and item combinations in application state'}
           </p>
         </header>
         <ItemsSubTabToggle value={itemsSubTab} onChange={onItemsSubTabChange} />

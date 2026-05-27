@@ -45,7 +45,7 @@ function placeItemInSlots(slots, slotIndex, itemId) {
   return next;
 }
 
-/** Existing survival simulator / build lab UI. */
+/** Existing item combination simulator UI. */
 export default function ItemsBuildPanel({ data, compact = false, compareBaseline = null }) {
   const catalog = data.dashboard.items ?? [];
   const runsHistory = data.dashboard.runsHistory ?? [];
@@ -82,8 +82,8 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
 
   const barChartData = useMemo(
     () => [
-      { key: 'baseline', label: 'Global avg run', minutes: globalAvgSeconds / 60 },
-      { key: 'build', label: 'Avg with this build', minutes: buildAvgSeconds / 60 },
+      { key: 'baseline', label: 'Global average time', minutes: globalAvgSeconds / 60 },
+      { key: 'build', label: 'Estimated time with these items', minutes: buildAvgSeconds / 60 },
     ],
     [globalAvgSeconds, buildAvgSeconds],
   );
@@ -136,7 +136,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
       >
         <div className="border-b border-slate-800/80 px-4 py-3">
           <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-            Item browser
+            Item list
           </p>
           <label className="relative mt-3 block">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -160,8 +160,8 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                 const runCount = st?.runCount ?? 0;
                 const avgLine =
                   runCount > 0
-                    ? `Avg. Duration when equipped: ${formatMmSs(st.avgEquippedRunSeconds)}`
-                    : 'Avg. Duration when equipped: —';
+                    ? `Average time when equipped: ${formatMmSs(st.avgEquippedRunSeconds)}`
+                    : 'Average time when equipped: —';
                 const tooltipLines = [
                   `Found in ${runCount} run${runCount === 1 ? '' : 's'}`,
                   avgLine,
@@ -207,7 +207,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4 text-slate-400" />
                 <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
-                  Full build · 5 slots
+                  Selected items (max 5)
                 </h4>
               </div>
               <button
@@ -216,11 +216,11 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                 className="flex items-center gap-1.5 rounded-lg border border-slate-600 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 hover:border-slate-500 hover:text-slate-200"
               >
                 <RotateCcw className="h-3 w-3" />
-                Reset
+                Clear all items
               </button>
             </div>
             <p className="font-data mb-4 text-[10px] text-slate-500">
-              Drag onto a slot or click an item to auto-fill. Click a slot to target the next click.
+              Drag or click an item to add it to a slot.
             </p>
             <div
               className={`grid gap-3 ${
@@ -288,15 +288,14 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
 
           <section className="rounded-2xl border border-slate-800 bg-slate-950/40 p-5 backdrop-blur-md">
             <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-              Average run duration
+              Average run time
             </h4>
             <p className="font-data mt-1 text-[10px] text-slate-600">
-              Session length (HH:MM:SS from history), compared to a build estimate from item-conditioned
-              averages.
+              Comparison between the global average time and the estimated time for this item combination.
             </p>
             <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <p className="font-data text-sm text-slate-400">
-                Global avg{' '}
+                Global average time{' '}
                 <span className="font-semibold tabular-nums text-slate-200">
                   {formatMmSs(globalAvgSeconds)}
                 </span>
@@ -342,7 +341,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                       fontFamily: 'JetBrains Mono, monospace',
                     }}
                     labelStyle={{ color: '#e2e8f0' }}
-                    formatter={(value) => [`${Number(value).toFixed(1)} min`, 'Avg. duration']}
+                    formatter={(value) => [`${Number(value).toFixed(1)} min`, 'Average time']}
                   />
                   <Bar dataKey="minutes" radius={[6, 6, 0, 0]} maxBarSize={72}>
                     {barChartData.map((entry, index) => (
@@ -361,11 +360,11 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
               className="mt-6 border-t border-slate-800 pt-6"
             >
               <p className="font-display text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
-                Build survival impact
+                Expected result
               </p>
               {!equippedIds.length ? (
                 <p className="font-data mt-3 text-sm text-slate-500">
-                  Add at least one item to compare estimated session length to the global baseline (
+                  Add at least one item to compare estimated time to the global average (
                   {formatMmSs(globalAvgSeconds)}).
                 </p>
               ) : (
@@ -379,7 +378,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                   }`}
                 >
                   {survivalDeltaSeconds > 0 && (
-                    <>{formatSignedDeltaMmSs(survivalDeltaSeconds)} minutes extra survival</>
+                    <>{formatSignedDeltaMmSs(survivalDeltaSeconds)} minutes added to run time</>
                   )}
                   {survivalDeltaSeconds < 0 && (
                     <>{formatSignedDeltaMmSs(survivalDeltaSeconds)} minutes below global average</>
@@ -391,7 +390,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
               )}
               {equippedIds.length > 0 && (
                 <p className="font-data mt-2 text-[11px] text-slate-500">
-                  Global avg {formatMmSs(globalAvgSeconds)} · Build estimate {formatMmSs(buildAvgSeconds)}
+                  Global average: {formatMmSs(globalAvgSeconds)} · Estimated time: {formatMmSs(buildAvgSeconds)}
                 </p>
               )}
             </motion.div>

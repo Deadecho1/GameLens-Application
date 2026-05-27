@@ -1,5 +1,5 @@
 const ITEMS_SUB_TABS = [
-  { id: 'build', label: 'Build' },
+  { id: 'build', label: 'COMBINATION' },
   { id: 'information', label: 'Information' },
 ];
 
