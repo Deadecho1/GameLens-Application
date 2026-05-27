@@ -203,7 +203,7 @@ function TacticalRadarChart({
         <div className="mb-3 shrink-0 rounded-lg border border-slate-800 bg-slate-950/90 px-2 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-display text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500">
-              Tactical zoom
+              Zoom options
             </span>
             {zoomRangeLabel ? (
               <span className="font-data text-[10px] tabular-nums text-cyan-500/80">{zoomRangeLabel}</span>

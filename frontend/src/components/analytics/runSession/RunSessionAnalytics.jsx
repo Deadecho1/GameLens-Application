@@ -167,10 +167,10 @@ export default function RunSessionAnalytics({
     <aside className="flex w-full flex-col border-slate-800/80 lg:w-[min(100%,280px)] lg:shrink-0 lg:border-r lg:border-slate-800/90 lg:bg-slate-950/55">
       <div className="border-b border-slate-800/80 px-4 py-3">
         <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-          Run selection
+          Select a run
         </p>
         <p className="font-data mt-1 text-[10px] text-slate-600">
-          {runsHistory.length} session{runsHistory.length === 1 ? '' : 's'} (dataStore)
+          {runsHistory.length} recorded runs
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-color:rgba(71,85,105,0.45)_transparent]">
@@ -224,10 +224,10 @@ export default function RunSessionAnalytics({
       {!embedded ? (
         <header className="relative z-1 mb-6">
           <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-cyan-500/70">
-            Session intel
+            Session state
           </p>
           <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
-            Run session analytics
+            Session statistics
           </h2>
         </header>
       ) : null}
@@ -250,10 +250,10 @@ export default function RunSessionAnalytics({
                 <Activity className="h-4 w-4 text-cyan-400/80" aria-hidden />
                 <div>
                   <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
-                    Tactical radar · density cloud + trend
+                    Run time trend
                   </h3>
                   <p className="font-data mt-1 text-[10px] text-slate-600">
-                    Use tactical zoom above the chart · {n} run{n === 1 ? '' : 's'} chronological
+                    Use zoom options above the chart · {n} chronological run{n === 1 ? '' : 's'}
                   </p>
                 </div>
               </div>
@@ -307,7 +307,7 @@ export default function RunSessionAnalytics({
                   className="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-slate-700/80 bg-slate-950/40 px-4 py-8"
                 >
                   <p className="font-data text-center text-sm text-slate-500">
-                    Select a run or a shard on the radar to inject{' '}
+                    Select a run or a point on the chart to view{' '}
                     <span className="text-cyan-500/80">telemetry</span>.
                   </p>
                 </motion.div>
@@ -340,7 +340,7 @@ export default function RunSessionAnalytics({
                   <div className="flex items-center gap-2 pb-4">
                     <Timer className="h-4 w-4 text-slate-400" aria-hidden />
                     <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                      Tactical Run Trace
+                      Run timeline
                     </h3>
                   </div>
 
@@ -378,7 +378,7 @@ export default function RunSessionAnalytics({
                           return (
                             <li key={`${selectedRun.id}-enc-${idx}`} className="relative">
                               <p className="font-display pb-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                                Encounter {idx + 1}
+                                Boss Fight {idx + 1}
                               </p>
 
                               <div className="space-y-4">
@@ -386,7 +386,7 @@ export default function RunSessionAnalytics({
                                   <div className="mb-2 flex items-center gap-2">
                                     <Package className="h-3.5 w-3.5 text-cyan-500/70" aria-hidden />
                                     <span className="font-display text-[9px] font-bold uppercase tracking-wider text-cyan-200/80">
-                                      Stage 2 · Synergy nodes
+                                      Acquired items
                                     </span>
                                   </div>
                                   {loadoutIds.length === 0 ? (
@@ -426,7 +426,7 @@ export default function RunSessionAnalytics({
                                     <div className="mb-3 flex items-center gap-2">
                                       <Swords className="h-3.5 w-3.5 text-red-400/90" aria-hidden />
                                       <span className="font-display text-[9px] font-bold uppercase tracking-wider text-red-200/90">
-                                        Stage 3 · High-intensity zone
+                                        Boss Fight details
                                       </span>
                                     </div>
                                     <p className="font-data text-sm text-slate-200">
@@ -434,12 +434,9 @@ export default function RunSessionAnalytics({
                                         <Crosshair className="h-3.5 w-3.5 text-slate-500" aria-hidden />
                                         {bossLabel ?? `Boss ${enc.bossId}`}
                                       </span>
-                                      <span className="ml-2 font-mono text-xs text-slate-500">
-                                        bossId {enc.bossId}
-                                      </span>
                                     </p>
                                     <p className="font-data mt-2 text-[10px] uppercase tracking-wider text-slate-500">
-                                      Lifespan (survived)
+                                      Fight time
                                     </p>
                                     <div className="mt-2 h-2 overflow-hidden rounded border border-slate-700 bg-slate-900/80">
                                       <div
@@ -453,7 +450,7 @@ export default function RunSessionAnalytics({
 
                                     <div className="mt-4 border-t border-red-500/20 pt-4">
                                       <p className="font-display text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                                        Gear trace (this fight)
+                                        Active items
                                       </p>
                                       {loadoutIds.length === 0 ? (
                                         <p className="font-data mt-2 text-xs text-slate-500">No items tagged.</p>
