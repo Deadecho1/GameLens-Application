@@ -65,6 +65,9 @@ function meanSeconds(values) {
   return values.reduce((a, s) => a + s, 0) / values.length;
 }
 
+const SIM_SLOT_COUNT = 5;
+const EMPTY_SIM_SLOTS = Array.from({ length: SIM_SLOT_COUNT }, () => null);
+
 const HISTOGRAM_BRACKETS = [
   { bracket: '0-1m', min: 0, max: 60 },
   { bracket: '1-2m', min: 60, max: 120 },
@@ -104,7 +107,7 @@ function normalizeLoadoutIds(loadout, validIds) {
   const allowed = new Set(validIds);
   return (Array.isArray(loadout) ? loadout : [])
     .filter((id) => allowed.has(id))
-    .slice(0, 3)
+    .slice(0, SIM_SLOT_COUNT)
     .sort((a, b) => a - b);
 }
 
@@ -243,8 +246,8 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
   const bosses = dashboard.bosses ?? [];
   const itemsCatalog = dashboard.items ?? [];
   const [selectedBossId, setSelectedBossId] = useState(null);
-  /** Synergy Lab: up to 3 equipped item ids (inventory slots). */
-  const [simSlots, setSimSlots] = useState([null, null, null]);
+  /** Item combination simulator: up to 5 equipped item ids. */
+  const [simSlots, setSimSlots] = useState(() => [...EMPTY_SIM_SLOTS]);
   const [libraryQuery, setLibraryQuery] = useState('');
   const chartGradId = useId().replace(/:/g, '');
   const simCompareChartId = useId().replace(/:/g, '');
@@ -261,7 +264,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
   }, [bosses]);
 
   useEffect(() => {
-    setSimSlots([null, null, null]);
+    setSimSlots([...EMPTY_SIM_SLOTS]);
     setLibraryQuery('');
   }, [selectedBossId]);
 
@@ -357,7 +360,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
     });
   };
 
-  const clearSimLoadout = () => setSimSlots([null, null, null]);
+  const clearSimLoadout = () => setSimSlots([...EMPTY_SIM_SLOTS]);
 
   const filteredLibraryItems = useMemo(() => {
     const q = libraryQuery.trim().toLowerCase();
@@ -741,7 +744,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                               Test item combinations
                             </h3>
                             <p className="font-data mt-1 text-[10px] text-slate-500">
-                              Select up to 3 items to test
+                              Select up to 5 items to test
                             </p>
                           </div>
                         </div>
@@ -761,7 +764,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                           <p className="font-display mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
                             Loadout
                           </p>
-                          <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                             {simSlots.map((slotId, slotIndex) => {
                               const item = slotId != null ? itemsCatalog.find((i) => i.id === slotId) : null;
                               return (
@@ -791,7 +794,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                       });
                                     }
                                   }}
-                                  className={`relative flex h-24 w-24 flex-col items-center justify-center rounded-xl border-2 border-dashed transition sm:h-28 sm:w-28 ${
+                                  className={`relative flex h-24 w-full min-w-0 flex-col items-center justify-center rounded-xl border-2 border-dashed transition sm:h-28 ${
                                     item
                                       ? 'border-cyan-400/55 bg-slate-900/90 shadow-[0_0_24px_rgba(34,211,238,0.2),inset_0_0_24px_rgba(34,211,238,0.06)]'
                                       : 'border-slate-600 bg-slate-950/80 hover:border-slate-500'
