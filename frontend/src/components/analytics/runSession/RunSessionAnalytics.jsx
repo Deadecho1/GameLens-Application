@@ -160,16 +160,16 @@ export default function RunSessionAnalytics({
   const runSidebar = !embedded ? (
     <aside className="flex w-full flex-col border-slate-800/80 lg:w-[min(100%,280px)] lg:shrink-0 lg:border-r lg:border-slate-800/90 lg:bg-slate-950/55">
       <div className="border-b border-slate-800/80 px-4 py-3">
-        <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+        <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
           Select a run
         </p>
-        <p className="font-data mt-1 text-[10px] text-slate-600">
+        <p className="font-data mt-1 text-base text-slate-300">
           {runsHistory.length} recorded runs
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-color:rgba(71,85,105,0.45)_transparent]">
         {runsHistory.length === 0 ? (
-          <p className="font-data px-2 py-8 text-center text-sm text-slate-500">No runs in history.</p>
+          <p className="font-data px-2 py-8 text-center text-base text-slate-300">No runs in history.</p>
         ) : (
           <ul className="space-y-1">
             {runsHistory.map((run) => {
@@ -185,14 +185,14 @@ export default function RunSessionAnalytics({
                         : 'border-slate-800 bg-slate-900/40 hover:border-slate-600 hover:bg-slate-900/65'
                     }`}
                   >
-                    <span className="font-display text-[11px] font-bold uppercase tracking-wide text-slate-200">
+                    <span className="font-display text-sm font-bold uppercase tracking-wide text-slate-200">
                       {run.id}
                     </span>
-                    <span className="font-data flex items-center gap-1.5 text-[10px] text-slate-500">
+                    <span className="font-data flex items-center gap-1.5 text-base text-slate-300">
                       <Calendar className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                       {run.date}
                     </span>
-                    <span className="font-data flex items-center gap-1.5 text-[11px] tabular-nums text-cyan-300/80">
+                    <span className="font-data flex items-center gap-1.5 text-sm tabular-nums text-cyan-300/80">
                       <Clock className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                       {run.duration}
                     </span>
@@ -217,7 +217,7 @@ export default function RunSessionAnalytics({
     >
       {!embedded ? (
         <header className="relative z-1 mb-6">
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-cyan-500/70">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.35em] text-cyan-500/70">
             Session state
           </p>
           <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
@@ -243,10 +243,10 @@ export default function RunSessionAnalytics({
               <div className="flex flex-wrap items-center gap-2">
                 <Activity className="h-4 w-4 text-cyan-400/80" aria-hidden />
                 <div>
-                  <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
+                  <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                     Run time trend
                   </h3>
-                  <p className="font-data mt-1 text-[10px] text-slate-600">
+                  <p className="font-data mt-1 text-base text-slate-300">
                     Use zoom options above the chart · {n} chronological run{n === 1 ? '' : 's'}
                   </p>
                 </div>
@@ -255,14 +255,14 @@ export default function RunSessionAnalytics({
                 <button
                   type="button"
                   onClick={() => setSelectedRunId(null)}
-                  className="font-display text-[8px] font-bold uppercase tracking-[0.15em] text-cyan-500/80 underline-offset-2 hover:text-cyan-300 hover:underline"
+                  className="font-display text-sm font-bold uppercase tracking-[0.15em] text-cyan-500/80 underline-offset-2 hover:text-cyan-300 hover:underline"
                 >
                   Overview
                 </button>
               ) : null}
             </div>
             {chartData.length === 0 ? (
-              <div className="flex h-[280px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40 font-data text-sm text-slate-500">
+              <div className="flex h-[280px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40 font-data text-base text-slate-300">
                 No data to plot.
               </div>
             ) : (
@@ -300,7 +300,7 @@ export default function RunSessionAnalytics({
                   transition={{ duration: 0.28 }}
                   className="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-slate-700/80 bg-slate-950/40 px-4 py-8"
                 >
-                  <p className="font-data text-center text-sm text-slate-500">
+                  <p className="font-data text-center text-base text-slate-300">
                     Select a run or a point on the chart to view{' '}
                     <span className="text-cyan-500/80">telemetry</span>.
                   </p>
@@ -315,31 +315,31 @@ export default function RunSessionAnalytics({
                   className="relative rounded-2xl border border-slate-800 bg-slate-950/50 p-5"
                 >
                   <div className="mb-6 border-b border-slate-800/90 pb-4">
-                    <p className="font-display text-xs font-bold uppercase tracking-widest text-slate-300">
+                    <p className="font-display text-sm font-bold uppercase tracking-widest text-slate-300">
                       {selectedRun.id}
                     </p>
-                    <p className="font-data mt-2 text-sm text-slate-300">
-                      <span className="text-slate-500">Date:</span>{' '}
+                    <p className="font-data mt-2 text-base text-slate-300">
+                      <span className="font-medium text-slate-300">Date:</span>{' '}
                       <span className="tabular-nums text-slate-200">{selectedRun.date}</span>
                     </p>
-                    <p className="font-data mt-1 text-sm text-slate-300">
-                      <span className="text-slate-500">Duration:</span>{' '}
+                    <p className="font-data mt-1 text-base text-slate-300">
+                      <span className="font-medium text-slate-300">Duration:</span>{' '}
                       <span className="tabular-nums text-cyan-300/90">{selectedRun.duration}</span>
-                      <span className="ml-2 text-xs text-slate-600">
+                      <span className="ml-2 text-base text-slate-300">
                         ({runDurationToSeconds(selectedRun.duration)}s)
                       </span>
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2 pb-4">
-                    <Timer className="h-4 w-4 text-slate-400" aria-hidden />
-                    <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                    <Timer className="h-4 w-4 text-slate-300" aria-hidden />
+                    <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                       Run timeline
                     </h3>
                   </div>
 
                   {(selectedRun.bossEncounters ?? []).length === 0 ? (
-                    <p className="font-data text-sm text-slate-600">No boss encounters for this run.</p>
+                    <p className="font-data text-base text-slate-300">No boss encounters for this run.</p>
                   ) : (
                     <div className="relative flex gap-4 md:gap-6">
                       <div className="relative w-8 shrink-0 md:w-10" aria-hidden>
@@ -371,7 +371,7 @@ export default function RunSessionAnalytics({
 
                           return (
                             <li key={`${selectedRun.id}-enc-${idx}`} className="relative">
-                              <p className="font-display pb-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                              <p className="font-display pb-3 text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                                 Boss Fight {idx + 1}
                               </p>
 
@@ -379,12 +379,12 @@ export default function RunSessionAnalytics({
                                 <div className="overflow-visible pt-2">
                                   <div className="mb-2 flex items-center gap-2">
                                     <Package className="h-3.5 w-3.5 text-cyan-500/70" aria-hidden />
-                                    <span className="font-display text-[9px] font-bold uppercase tracking-wider text-cyan-200/80">
+                                    <span className="font-display text-sm font-bold uppercase tracking-wider text-cyan-200/80">
                                       Acquired items
                                     </span>
                                   </div>
                                   {loadoutIds.length === 0 ? (
-                                    <p className="font-data text-xs text-slate-600">No loadout recorded.</p>
+                                    <p className="font-data text-base text-slate-300">No loadout recorded.</p>
                                   ) : (
                                     <div className="flex flex-wrap gap-3 overflow-visible pb-2">
                                       {loadoutIds.map((itemId) => {
@@ -418,17 +418,17 @@ export default function RunSessionAnalytics({
                                   <div className="relative z-1">
                                     <div className="mb-3 flex items-center gap-2">
                                       <Swords className="h-3.5 w-3.5 text-red-400/90" aria-hidden />
-                                      <span className="font-display text-[9px] font-bold uppercase tracking-wider text-red-200/90">
+                                      <span className="font-display text-sm font-bold uppercase tracking-wider text-red-200/90">
                                         Boss Fight details
                                       </span>
                                     </div>
                                     <p className="font-data text-sm text-slate-200">
                                       <span className="inline-flex items-center gap-1.5">
-                                        <Crosshair className="h-3.5 w-3.5 text-slate-500" aria-hidden />
+                                        <Crosshair className="h-3.5 w-3.5 text-slate-300" aria-hidden />
                                         {bossLabel ?? `Boss ${enc.bossId}`}
                                       </span>
                                     </p>
-                                    <p className="font-data mt-2 text-[10px] uppercase tracking-wider text-slate-500">
+                                    <p className="font-data mt-2 text-sm font-semibold uppercase tracking-wider text-slate-300">
                                       Fight time
                                     </p>
                                     <div className="mt-2 h-2 overflow-hidden rounded border border-slate-700 bg-slate-900/80">
@@ -437,25 +437,25 @@ export default function RunSessionAnalytics({
                                         style={{ width: `${barPct}%` }}
                                       />
                                     </div>
-                                    <p className="font-data mt-1.5 tabular-nums text-xs text-red-200/85">
+                                    <p className="font-data mt-1.5 tabular-nums text-sm text-red-200/85">
                                       {enc.lifespan ?? '—'}
                                     </p>
 
                                     <div className="mt-4 border-t border-red-500/20 pt-4">
-                                      <p className="font-display text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                                      <p className="font-display text-sm font-bold uppercase tracking-wider text-slate-300">
                                         Active items
                                       </p>
                                       {loadoutIds.length === 0 ? (
-                                        <p className="font-data mt-2 text-xs text-slate-500">No items tagged.</p>
+                                        <p className="font-data mt-2 text-base text-slate-300">No items tagged.</p>
                                       ) : (
                                         <ul className="mt-2 space-y-1.5">
                                           {loadoutIds.map((itemId) => (
                                             <li
                                               key={`${selectedRun.id}-enc-${idx}-gear-${itemId}`}
-                                              className="font-data flex flex-wrap items-baseline gap-x-2 text-sm text-slate-300"
+                                              className="font-data flex flex-wrap items-baseline gap-x-2 text-base text-slate-300"
                                             >
                                               <span className="tabular-nums text-cyan-400/80">{itemId}</span>
-                                              <span className="text-slate-500">
+                                              <span className="text-slate-300">
                                                 {itemNameById(itemsCatalog, itemId) ?? '—'}
                                               </span>
                                             </li>

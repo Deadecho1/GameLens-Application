@@ -144,13 +144,13 @@ export default function WorkflowTab({
       className="mx-auto max-w-6xl px-4 py-8 md:py-10"
     >
       <header className="mb-8 text-center md:text-left">
-        <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
+        <p className="font-display text-sm font-bold uppercase tracking-[0.35em] text-blue-500/70">
           Mission start
         </p>
         <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
           Workflow sequence
         </h2>
-        <p className="font-data mt-2 text-sm text-slate-500">
+        <p className="font-data mt-2 text-base text-slate-300">
           Step <span className="text-cyan-400">{step}</span> of 3{" "}
         </p>
       </header>
@@ -172,7 +172,7 @@ export default function WorkflowTab({
                         ? "border-cyan-400 bg-cyan-500/15 text-cyan-300 shadow-[0_0_24px_rgba(34,211,238,0.35)]"
                         : done
                           ? "border-blue-500/50 bg-blue-500/10 text-blue-300"
-                          : "border-slate-800 bg-slate-900/80 text-slate-600"
+                          : "border-slate-800 bg-slate-900/80 text-slate-300"
                     }`}
                     animate={active ? { scale: [1, 1.04, 1] } : {}}
                     transition={{
@@ -186,10 +186,10 @@ export default function WorkflowTab({
                       strokeWidth={1.25}
                     />
                   </motion.div>
-                  <p className="font-display mt-2 hidden text-center text-[9px] font-bold tracking-wider text-slate-500 sm:block md:text-[10px]">
+                  <p className="font-display mt-2 hidden text-center text-sm font-bold tracking-wider text-slate-300 sm:block md:text-sm">
                     {s.label}
                   </p>
-                  <p className="font-display mt-1 text-center text-[8px] font-bold tracking-wider text-slate-600 sm:hidden">
+                  <p className="font-display mt-1 text-center text-sm font-bold tracking-wider text-slate-300 sm:hidden">
                     {s.short}
                   </p>
                 </div>
@@ -256,7 +256,7 @@ export default function WorkflowTab({
                 <motion.button
                   type="button"
                   disabled={!configureReady}
-                  className="relative z-[1] inline-flex items-center gap-2 rounded-2xl border border-cyan-500/50 bg-slate-950 px-8 py-4 font-display text-xs font-bold uppercase tracking-[0.2em] text-cyan-200 shadow-[0_0_32px_rgba(34,211,238,0.25)] transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  className="relative z-[1] inline-flex items-center gap-2 rounded-2xl border border-cyan-500/50 bg-slate-950 px-8 py-4 font-display text-sm font-bold uppercase tracking-[0.2em] text-cyan-200 shadow-[0_0_32px_rgba(34,211,238,0.25)] transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
                   whileHover={configureReady ? { scale: 1.02 } : {}}
                   whileTap={configureReady ? { scale: 0.98 } : {}}
                   onClick={() =>
@@ -282,7 +282,7 @@ export default function WorkflowTab({
             className="grid gap-8 lg:grid-cols-2"
           >
             <section>
-              <h3 className="font-display mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-500/80">
+              <h3 className="font-display mb-3 text-sm font-bold uppercase tracking-[0.2em] text-cyan-500/80">
                 Ingest port
               </h3>
               <div
@@ -333,13 +333,13 @@ export default function WorkflowTab({
                   <Trash2 className="h-4 w-4" />
                   Reset staged files
                 </button>
-                <code className="font-data max-w-full flex-1 truncate rounded-lg border border-slate-800 bg-black/50 px-3 py-2 text-[11px] text-cyan-600/80">
+                <code className="font-data max-w-full flex-1 truncate rounded-lg border border-slate-800 bg-black/50 px-3 py-2 text-sm text-cyan-600/80">
                   {processing.pipelinePath}
                 </code>
               </div>
-              <ul className="font-data mt-4 max-h-28 space-y-1 overflow-y-auto rounded-xl border border-slate-800 bg-black/35 p-2 text-xs">
+              <ul className="font-data mt-4 max-h-28 space-y-1 overflow-y-auto rounded-xl border border-slate-800 bg-black/35 p-2 text-sm">
                 {processing.videoFiles.length === 0 ? (
-                  <li className="py-4 text-center text-slate-600">
+                  <li className="py-4 text-center text-slate-300">
                     No MP4 clips staged
                   </li>
                 ) : (
@@ -357,14 +357,14 @@ export default function WorkflowTab({
             </section>
 
             <section className="flex flex-col">
-              <h3 className="font-display mb-3 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-500/80">
+              <h3 className="font-display mb-3 text-sm font-bold uppercase tracking-[0.2em] text-cyan-500/80">
                 Trace flags
               </h3>
               <div className="flex flex-wrap gap-2">
                 {OPTIONS.map((opt) => (
                   <label
                     key={opt.value}
-                    className="font-data flex cursor-pointer items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2 text-xs text-slate-400 backdrop-blur-sm has-checked:border-cyan-500/40 has-checked:bg-cyan-500/5 has-checked:text-cyan-200"
+                    className="font-data flex cursor-pointer items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/50 px-3 py-2 text-sm font-medium text-slate-300 backdrop-blur-sm has-checked:border-cyan-500/40 has-checked:bg-cyan-500/5 has-checked:text-cyan-200"
                   >
                     <input
                       type="radio"
@@ -381,7 +381,7 @@ export default function WorkflowTab({
                   </label>
                 ))}
               </div>
-              <p className="font-data mt-6 text-xs text-slate-600">
+              <p className="font-data mt-6 text-base text-slate-300">
                 Game:{" "}
                 <span className="text-cyan-500/80">{setup.selectedGame}</span> ·
                 Version:{" "}
@@ -392,7 +392,7 @@ export default function WorkflowTab({
               <div className="mt-auto flex flex-col gap-3 pt-8">
                 <button
                   type="button"
-                  className="font-display rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
+                  className="font-display rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-3 text-sm font-bold uppercase tracking-wider text-slate-300 transition hover:border-slate-600 hover:text-slate-200"
                   onClick={() => onPatch({ ui: { ...ui, workflowStep: 1 } })}
                 >
                   ← Back to configure
@@ -423,10 +423,10 @@ export default function WorkflowTab({
           >
             <div className="mb-6 rounded-2xl border border-slate-800/90 bg-slate-900/45 p-4 backdrop-blur-md">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <span className="font-data text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                <span className="font-data text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                   Engine state
                 </span>
-                <span className="font-data text-xs font-bold tracking-wider text-cyan-400">
+                <span className="font-data text-sm font-bold tracking-wider text-cyan-400">
                   {STATUS_LABEL[processing.status]}
                 </span>
               </div>
@@ -493,7 +493,7 @@ export default function WorkflowTab({
 
             <button
               type="button"
-              className="font-data mt-4 text-xs text-slate-500 underline-offset-4 hover:text-slate-400 hover:underline"
+              className="font-data mt-4 text-base text-slate-300 underline-offset-4 hover:text-slate-200 hover:underline"
               onClick={() => onPatch({ ui: { ...ui, workflowStep: 2 } })}
             >
               ← Back to initialize
@@ -501,12 +501,12 @@ export default function WorkflowTab({
 
             <section className="mt-10">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-blue-500/80">
+                <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-blue-500/80">
                   Diagnostics terminal
                 </h3>
                 <button
                   type="button"
-                  className="font-data inline-flex items-center gap-1 rounded-lg border border-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-500 transition hover:border-cyan-500/30 hover:text-cyan-400"
+                  className="font-data inline-flex items-center gap-1 rounded-lg border border-slate-800 px-2 py-1 text-sm font-semibold text-slate-300 transition hover:border-cyan-500/30 hover:text-cyan-400"
                   onClick={onClearLogs}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -516,10 +516,10 @@ export default function WorkflowTab({
               <div
                 ref={logRef}
                 onScroll={handleLogScroll}
-                className="gl-terminal-scanlines max-h-72 min-h-[220px] overflow-y-auto rounded-2xl border border-cyan-500/15 bg-black/80 p-4 font-data text-xs leading-relaxed text-emerald-400/95 shadow-[inset_0_0_48px_rgba(34,211,238,0.04)] backdrop-blur-sm"
+                className="gl-terminal-scanlines max-h-72 min-h-[220px] overflow-y-auto rounded-2xl border border-cyan-500/15 bg-black/80 p-4 font-data text-sm leading-relaxed text-emerald-400/95 shadow-[inset_0_0_48px_rgba(34,211,238,0.04)] backdrop-blur-sm"
               >
                 {processing.logs.length === 0 ? (
-                  <span className="text-slate-600">&gt; buffer empty</span>
+                  <span className="text-slate-300">&gt; buffer empty</span>
                 ) : (
                   processing.logs.map((line, i) => (
                     <motion.div
@@ -563,7 +563,7 @@ function ModelCard({ fineTunedModels, selectedModel, onSelect }) {
           <Cpu className="h-6 w-6" strokeWidth={1.25} />
         </div>
       </div>
-      <p className="font-display relative mt-6 text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
+      <p className="font-display relative mt-6 text-sm font-bold uppercase tracking-[0.25em] text-slate-300">
         Model
       </p>
       <p className="font-data relative mt-2 text-lg font-semibold text-cyan-100/95 md:text-xl">
@@ -573,7 +573,7 @@ function ModelCard({ fineTunedModels, selectedModel, onSelect }) {
         <select
           value={selectedModel}
           onChange={(e) => onSelect(e.target.value)}
-          className="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-3 py-2 font-data text-xs text-slate-300 outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20"
+          className="w-full rounded-xl border border-slate-700 bg-slate-950/50 px-3 py-2 font-data text-base text-slate-300 outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20"
         >
           <option value="base">Base Model (default)</option>
           {fineTunedModels.map((m) => (
@@ -613,7 +613,7 @@ function SelectionCard({
           <Plus className="h-5 w-5" strokeWidth={2.5} />
         </button>
       </div>
-      <p className="font-display relative mt-6 text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
+      <p className="font-display relative mt-6 text-sm font-bold uppercase tracking-[0.25em] text-slate-300">
         {kicker}
       </p>
       <p className="font-data relative mt-2 text-lg font-semibold text-cyan-100/95 md:text-xl">
@@ -621,7 +621,7 @@ function SelectionCard({
       </p>
       <button
         type="button"
-        className="font-display relative mt-6 inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-300 backdrop-blur-sm transition hover:border-blue-500/40 hover:text-cyan-200"
+        className="font-display relative mt-6 inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-2.5 text-sm font-bold uppercase tracking-wider text-slate-300 backdrop-blur-sm transition hover:border-blue-500/40 hover:text-cyan-200"
         onClick={onChange}
       >
         <RefreshCw className="h-3.5 w-3.5" />

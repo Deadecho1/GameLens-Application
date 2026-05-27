@@ -35,11 +35,11 @@ export default function DeltaIndicator({ kind, baseline, current }) {
       ? 'text-emerald-400'
       : formatted.direction === 'down'
         ? 'text-rose-400'
-        : 'text-slate-500';
+        : 'text-slate-300';
 
   return (
     <p
-      className={`font-data mt-1.5 text-xs font-medium tabular-nums tracking-tight ${colorClass}`}
+      className={`font-data mt-1.5 text-sm font-medium tabular-nums tracking-tight ${colorClass}`}
       aria-label={`Change vs version A: ${formatted.text}`}
     >
       {formatted.text}

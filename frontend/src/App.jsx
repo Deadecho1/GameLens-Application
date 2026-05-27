@@ -447,7 +447,7 @@ function App() {
 
   if (showWelcome) {
     return (
-      <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-base text-slate-200">
         <TitleBar />
         <div className="flex min-h-0 flex-1 overflow-hidden">
           <div className="min-h-0 flex-1 overflow-auto">
@@ -462,10 +462,10 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-base text-slate-200">
       <TitleBar />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-950 text-slate-100">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-950 text-base text-slate-200">
           <div
             className="pointer-events-none absolute inset-0 gl-cyber-grid"
             aria-hidden
@@ -604,14 +604,14 @@ function App() {
                       <p className="font-display text-sm font-semibold uppercase tracking-widest text-red-300 mb-1">
                         Error
                       </p>
-                      <p className="font-data text-sm text-slate-200 break-words">
+                      <p className="font-data text-base text-slate-200 break-words">
                         {modalError}
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setModalError("")}
-                      className="shrink-0 rounded p-1 text-slate-400 hover:text-slate-200 transition-colors"
+                      className="shrink-0 rounded p-1 text-slate-300 hover:text-slate-200 transition-colors"
                       aria-label="Dismiss"
                     >
                       <X size={16} />

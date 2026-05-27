@@ -91,7 +91,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
   return (
     <div className="space-y-8">
       <header>
-        <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
+        <p className="font-display text-sm font-bold uppercase tracking-[0.35em] text-blue-500/70">
           General analytics
         </p>
         <h3 className="mt-2 font-display text-xl font-bold text-slate-100 md:text-2xl">
@@ -169,17 +169,17 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
         <div className="xl:col-span-2">
           <div className="rounded-2xl border border-slate-800 bg-transparent p-4 backdrop-blur-md md:p-6">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-              <h4 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-blue-400/90">
+              <h4 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-blue-400/90">
                 Run time distribution
               </h4>
-              <span className="font-data text-[10px] text-slate-600">
+              <span className="font-data text-base text-slate-300">
                 {histogramTotal} run{histogramTotal === 1 ? '' : 's'} · 5 min intervals
               </span>
             </div>
             <div className="h-[320px] w-full min-w-0">
               {histogramTotal === 0 ? (
                 <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
-                  <p className="font-data text-sm text-slate-500">No runs recorded yet.</p>
+                  <p className="font-data text-base text-slate-300">No runs recorded yet.</p>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -228,12 +228,12 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
                             : 0;
                         return (
                           <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
-                            <p className="font-data text-xs font-semibold text-cyan-200">{row.bucket}</p>
+                            <p className="font-data text-sm font-semibold text-cyan-200">{row.bucket}</p>
                             <p className="font-data mt-1 text-sm text-slate-200">
                               <span className="tabular-nums text-blue-300">{row.count}</span> run
                               {row.count === 1 ? '' : 's'}
                             </p>
-                            <p className="font-data text-[10px] text-slate-500">{pct}% of runs</p>
+                            <p className="font-data text-base text-slate-300">{pct}% of runs</p>
                           </div>
                         );
                       }}
@@ -257,13 +257,13 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
           <div className="rounded-2xl border border-cyan-500/20 bg-slate-900/30 p-4 ring-1 ring-cyan-500/15 backdrop-blur-md md:p-5">
             <div className="mb-3 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-cyan-400" strokeWidth={1.25} aria-hidden />
-              <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300/90">
+              <h4 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-cyan-300/90">
                 Top item
               </h4>
             </div>
             {mostPopularItem ? (
               <>
-                <p className="font-display text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <p className="font-display text-sm font-semibold uppercase tracking-wider text-slate-300">
                   Most used item
                 </p>
                 <p className="font-data mt-2 text-lg font-bold text-slate-100">{mostPopularItem.name}</p>
@@ -284,19 +284,19 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
                 ) : null}
               </>
             ) : (
-              <p className="font-data text-sm text-slate-500">No item catalog data.</p>
+              <p className="font-data text-base text-slate-300">No item catalog data.</p>
             )}
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/25 p-4 backdrop-blur-md ring-1 ring-blue-500/15 md:p-5">
             <div className="mb-3 flex items-center gap-2">
               <Swords className="h-4 w-4 text-blue-400" strokeWidth={1.25} aria-hidden />
-              <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400/90">
+              <h4 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-blue-400/90">
                 Boss success rate
               </h4>
             </div>
             {bossKill.total === 0 ? (
-              <p className="font-data text-sm text-slate-500">No boss fights logged.</p>
+              <p className="font-data text-base text-slate-300">No boss fights logged.</p>
             ) : (
               <>
                 <div className="flex items-baseline gap-2">
@@ -310,9 +310,9 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
                     current={metrics.bossKillPercent}
                   />
                 ) : null}
-                <p className="font-data mt-2 text-[11px] text-slate-500">
-                  <span className="tabular-nums text-slate-400">{bossKill.defeated}</span> defeated ·{' '}
-                  <span className="tabular-nums text-slate-400">{bossKill.total}</span> Boss Fights
+                <p className="font-data mt-2 text-base text-slate-300">
+                  <span className="tabular-nums text-slate-300">{bossKill.defeated}</span> defeated ·{' '}
+                  <span className="tabular-nums text-slate-300">{bossKill.total}</span> Boss Fights
                 </p>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-800">
                   <motion.div
@@ -328,15 +328,15 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
 
           <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-800 bg-transparent p-4 backdrop-blur-md md:p-5">
             <div className="mb-3 flex items-center gap-2">
-              <Crosshair className="h-4 w-4 text-slate-400" strokeWidth={1.25} aria-hidden />
-              <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400/90">
+              <Crosshair className="h-4 w-4 text-slate-300" strokeWidth={1.25} aria-hidden />
+              <h4 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-blue-400/90">
                 Run history
               </h4>
             </div>
-            <p className="font-data mb-2 text-[10px] text-slate-600">Sorted by longest time</p>
-            <ul className="font-data max-h-[220px] min-h-[120px] space-y-2 overflow-y-auto pr-1 text-[11px] [scrollbar-color:rgba(51,65,85,0.9)_transparent]">
+            <p className="font-data mb-2 text-base text-slate-300">Sorted by longest time</p>
+            <ul className="font-data max-h-[220px] min-h-[120px] space-y-2 overflow-y-auto pr-1 text-sm [scrollbar-color:rgba(51,65,85,0.9)_transparent]">
               {sortedRunsDesc.length === 0 ? (
-                <li className="py-6 text-center text-slate-500">No run history.</li>
+                <li className="py-6 text-center text-slate-300">No run history.</li>
               ) : (
                 sortedRunsDesc.map((run) => (
                   <li
@@ -367,7 +367,7 @@ function BriefMetricCard({ title, subtitle, icon: Icon, children, accent, hero =
     cyan: 'text-cyan-400',
     blue: 'text-blue-400',
     emerald: 'text-emerald-400',
-    slate: 'text-slate-400',
+    slate: 'text-slate-300',
   };
 
   return (
@@ -385,11 +385,11 @@ function BriefMetricCard({ title, subtitle, icon: Icon, children, accent, hero =
         <div>
           <div className="flex items-center gap-2">
             <Icon className={`h-5 w-5 ${iconCls[accent]}`} strokeWidth={1.25} />
-            <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
+            <h3 className="font-display text-sm font-bold uppercase tracking-[0.18em] text-slate-300">
               {title}
             </h3>
           </div>
-          <p className="font-data mt-1 text-[10px] text-slate-600">{subtitle}</p>
+          <p className="font-data mt-1 text-base text-slate-300">{subtitle}</p>
         </div>
       </div>
       <div className="relative font-data">{children}</div>

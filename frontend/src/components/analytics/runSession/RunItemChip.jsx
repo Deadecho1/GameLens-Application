@@ -49,7 +49,7 @@ export default function RunItemChip({
           className="pointer-events-none absolute -left-px -top-px h-1.5 w-1.5 border-l border-t border-cyan-400"
           aria-hidden
         />
-        <span className="font-data text-[10px] font-bold uppercase tracking-widest tabular-nums text-cyan-200/90 transition-colors group-hover:text-cyan-100">
+        <span className="font-data text-sm font-bold uppercase tracking-widest tabular-nums text-cyan-200/90 transition-colors group-hover:text-cyan-100">
           {name}
         </span>
       </div>
@@ -60,12 +60,12 @@ export default function RunItemChip({
         className="pointer-events-none absolute bottom-full left-1/2 z-[120] mb-2 w-56 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
       >
         <div className="rounded-md border border-slate-700 bg-slate-800 p-3 shadow-xl shadow-black/40">
-          <p className="font-display text-xs font-bold uppercase tracking-wide text-emerald-400">
+          <p className="font-display text-sm font-bold uppercase tracking-wide text-emerald-400">
             {name}
           </p>
          
           {acquiredLabel ? (
-            <p className="mt-2 font-data text-[10px] leading-snug text-slate-500">
+            <p className="mt-2 font-data text-sm leading-snug text-slate-300">
               Acquired: {acquiredLabel}
             </p>
           ) : null}
@@ -77,7 +77,7 @@ export default function RunItemChip({
       </div>
 
       {typeof synergyBonusSeconds === 'number' && synergyBonusSeconds > 0 ? (
-        <span className="pointer-events-none absolute -right-1 -top-1 rounded border border-cyan-500/40 bg-slate-950 px-1 font-data text-[9px] font-bold text-cyan-300 opacity-0 shadow-sm transition-opacity duration-200 group-hover:opacity-100">
+        <span className="pointer-events-none absolute -right-1 -top-1 rounded border border-cyan-500/40 bg-slate-950 px-1 font-data text-sm font-bold text-cyan-300 opacity-0 shadow-sm transition-opacity duration-200 group-hover:opacity-100">
           +{synergyBonusSeconds}s
         </span>
       ) : null}

@@ -49,7 +49,7 @@ export default function TitleBar() {
         style={dragStyle}
       >
         <span
-          className="font-display text-[9px] font-bold uppercase tracking-[0.28em] text-cyan-500/70"
+          className="font-display text-sm font-bold uppercase tracking-[0.28em] text-cyan-500/70"
           aria-hidden
         >
           GameLens
@@ -94,7 +94,7 @@ function WindowControlButton({ label, onClick, className = '', children }) {
       title={label}
       onClick={onClick}
       style={noDragStyle}
-      className={`flex h-8 w-11 items-center justify-center text-slate-400 transition ${className}`}
+      className={`flex h-8 w-11 items-center justify-center text-slate-300 transition ${className}`}
     >
       {children}
     </button>

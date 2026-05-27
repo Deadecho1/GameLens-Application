@@ -77,23 +77,23 @@ export default function ItemsInformationPanel({
         className={`flex shrink-0 flex-col border-slate-800/80 lg:border-r ${masterWidth} lg:bg-slate-950/60`}
       >
         <div className="border-b border-slate-800/80 p-3">
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
             Item catalog
           </p>
           <label className="relative mt-2 block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter items…"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950/85 py-2 pl-9 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-600 outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950/85 py-2 pl-9 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-400 outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/20"
             />
           </label>
         </div>
         <ul className="analytics-split-scroll min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
           {filteredCatalog.length === 0 ? (
-            <li className="font-data py-8 text-center text-sm text-slate-500">No items match.</li>
+            <li className="font-data py-8 text-center text-base text-slate-300">No items match.</li>
           ) : (
             filteredCatalog.map((item) => {
               const active = Number(item.id) === Number(selectedId);
@@ -114,11 +114,11 @@ export default function ItemsInformationPanel({
                       aria-hidden
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="font-display block truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
+                      <span className="font-display block truncate text-sm font-bold uppercase tracking-wide text-slate-200">
                         {item.name}
                       </span>
                       {item.popularity != null ? (
-                        <span className="font-data text-[10px] text-slate-500">
+                        <span className="font-data text-base text-slate-300">
                           {Math.round(item.popularity)}% pick rate
                         </span>
                       ) : null}
@@ -134,7 +134,7 @@ export default function ItemsInformationPanel({
       <section className="analytics-split-scroll min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:p-6">
         {!detail ? (
           <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
-            <p className="font-data text-sm text-slate-500">Select an item to view details.</p>
+            <p className="font-data text-base text-slate-300">Select an item to view details.</p>
           </div>
         ) : (
           <motion.div
@@ -156,14 +156,14 @@ export default function ItemsInformationPanel({
                     <h4 className="font-display text-lg font-bold uppercase tracking-wide text-slate-100 md:text-xl">
                       {detail.item.name}
                     </h4>
-                    <p className="font-data mt-0.5 text-xs text-slate-500">
+                    <p className="font-data mt-0.5 text-base text-slate-300 font-medium">
                       Based on {detail.runCount} run{detail.runCount === 1 ? '' : 's'}
                     </p>
                   </div>
                 </div>
                 {detail.popularity != null ? (
                   <div className="rounded-xl border border-violet-500/25 bg-violet-500/10 px-4 py-2 text-right">
-                    <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-violet-300/80">
+                    <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-violet-300/80">
                       Pick rate
                     </p>
                     <p className="font-data text-2xl font-bold tabular-nums text-violet-200">
@@ -185,7 +185,7 @@ export default function ItemsInformationPanel({
               <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-4">
                 <div className="mb-2 flex items-center gap-2">
                   <Clock className="h-4 w-4 text-cyan-400/80" />
-                  <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                     Average run time
                   </p>
                 </div>
@@ -200,14 +200,14 @@ export default function ItemsInformationPanel({
                     current={detail.avgRunDurationSec}
                   />
                 ) : null}
-                <p className="font-data mt-1 text-[11px] text-slate-600">
+                <p className="font-data mt-1 text-base text-slate-300">
                   Average time of runs using this item
                 </p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-4">
                 <div className="mb-2 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-emerald-400/80" />
-                  <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                  <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                     Times selected
                   </p>
                 </div>
@@ -221,7 +221,7 @@ export default function ItemsInformationPanel({
                     current={detail.totalPicks}
                   />
                 ) : null}
-                <p className="font-data mt-1 text-[11px] text-slate-600">
+                <p className="font-data mt-1 text-base text-slate-300">
                   Number of runs where this item was used
                 </p>
               </div>
@@ -230,12 +230,12 @@ export default function ItemsInformationPanel({
             <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-4 md:p-5">
               <div className="mb-4 flex items-center gap-2">
                 <Link2 className="h-4 w-4 text-violet-400/80" />
-                <h5 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
+                <h5 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                   Top combinations · frequently used with
                 </h5>
               </div>
               {detail.topSynergies.length === 0 ? (
-                <p className="font-data text-sm text-slate-500">
+                <p className="font-data text-base text-slate-300">
                   No co-occurring items in shared runs yet.
                 </p>
               ) : (
@@ -245,7 +245,7 @@ export default function ItemsInformationPanel({
                         key={syn.id}
                         className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-2.5"
                       >
-                        <span className="font-display w-6 text-center text-[10px] font-bold text-slate-600">
+                        <span className="font-display w-6 text-center text-sm font-bold text-slate-300">
                           #{idx + 1}
                         </span>
                         <span
@@ -253,10 +253,10 @@ export default function ItemsInformationPanel({
                           style={itemAccentDotStyle(syn.id)}
                           aria-hidden
                         />
-                        <span className="font-display min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
+                        <span className="font-display min-w-0 flex-1 truncate text-sm font-bold uppercase tracking-wide text-slate-200">
                           {syn.name}
                         </span>
-                        <span className="font-data shrink-0 text-xs tabular-nums text-cyan-400/90">
+                        <span className="font-data shrink-0 text-sm tabular-nums text-cyan-400/90">
                           {syn.count} run{syn.count === 1 ? '' : 's'} · {syn.pct}%
                         </span>
                       </li>
@@ -266,10 +266,10 @@ export default function ItemsInformationPanel({
             </div>
 
             <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-4 md:p-5">
-              <h5 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
+              <h5 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                 Time acquired
               </h5>
-              <p className="font-data mt-1 text-[11px] text-slate-600">
+              <p className="font-data mt-1 text-base text-slate-300">
                 When this item is usually obtained during a run
               </p>
               <div className={`mt-4 w-full min-w-0 ${compact ? 'h-[200px]' : 'h-[240px]'}`}>
@@ -321,7 +321,7 @@ export default function ItemsInformationPanel({
                 {detail.pickPhaseChart.map((bucket, index) => (
                   <span
                     key={bucket.id}
-                    className="font-data inline-flex items-center gap-1.5 text-[10px] text-slate-500"
+                    className="font-data inline-flex items-center gap-1.5 text-base text-slate-300"
                   >
                     <span
                       className="h-2 w-2 rounded-full"

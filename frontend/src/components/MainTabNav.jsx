@@ -29,10 +29,10 @@ export default function MainTabNav({ data, onPatch }) {
               type="button"
               role="tab"
               aria-selected={isActive}
-              className={`relative min-w-[120px] flex-1 rounded-xl border px-4 py-3 font-display text-xs font-bold tracking-[0.15em] transition sm:flex-none sm:min-w-[160px] md:px-8 ${
+              className={`relative min-w-[120px] flex-1 rounded-xl border px-4 py-3 font-display text-sm font-bold tracking-[0.15em] transition sm:flex-none sm:min-w-[160px] md:px-8 ${
                 isActive
                   ? 'border-cyan-500/40 bg-slate-900/80 text-cyan-300 shadow-[0_0_24px_rgba(34,211,238,0.12),inset_0_1px_0_rgba(34,211,238,0.12)]'
-                  : 'border-slate-800/90 bg-slate-900/35 text-slate-500 hover:border-slate-700 hover:bg-slate-900/55 hover:text-slate-300'
+                  : 'border-slate-800/90 bg-slate-900/35 text-slate-300 hover:border-slate-700 hover:bg-slate-900/55 hover:text-slate-100'
               }`}
               onClick={() => {
                 if (

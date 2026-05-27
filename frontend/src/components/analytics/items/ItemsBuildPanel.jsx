@@ -143,23 +143,23 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
         }`}
       >
         <div className="border-b border-slate-800/80 px-4 py-3">
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
             Item list
           </p>
           <label className="relative mt-3 block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search items…"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950/85 py-2.5 pl-10 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-600 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-600/40"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950/85 py-2.5 pl-10 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-400 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500/40"
             />
           </label>
         </div>
         <div className="analytics-split-scroll min-h-0 max-h-[min(40vh,320px)] flex-1 overflow-y-auto p-2 lg:max-h-none">
           {filteredItems.length === 0 ? (
-            <p className="font-data py-8 text-center text-sm text-slate-500">No matches.</p>
+            <p className="font-data py-8 text-center text-base text-slate-300">No matches.</p>
           ) : (
             <ul className="space-y-1">
               {filteredItems.map((item) => {
@@ -194,7 +194,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                         style={itemAccentDotStyle(item.id, inBuild)}
                         aria-hidden
                       />
-                      <span className="font-display min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
+                      <span className="font-display min-w-0 flex-1 truncate text-sm font-bold uppercase tracking-wide text-slate-200">
                         {item.name}
                       </span>
                     </button>
@@ -213,21 +213,21 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
           <section>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-slate-400" />
-                <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
+                <Package className="h-4 w-4 text-slate-300" />
+                <h4 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                   Selected items (max 5)
                 </h4>
               </div>
               <button
                 type="button"
                 onClick={clearBuild}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-600 px-2.5 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.15em] text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-600 px-2.5 py-1.5 font-display text-sm font-bold uppercase tracking-[0.15em] text-slate-300 hover:border-slate-500 hover:text-slate-200"
               >
                 <RotateCcw className="h-3 w-3" />
                 Clear all items
               </button>
             </div>
-            <p className="font-data mb-4 text-[10px] text-slate-500">
+            <p className="font-data mb-4 text-base text-slate-300">
               Drag or click an item to add it to a slot.
             </p>
             <div
@@ -275,12 +275,12 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                           style={itemAccentDotStyle(item.id, true)}
                           aria-hidden
                         />
-                        <p className="font-display mt-3 max-w-full truncate px-1 text-center text-[10px] font-bold uppercase tracking-wide text-slate-200">
+                        <p className="font-display mt-3 max-w-full truncate px-1 text-center text-sm font-bold uppercase tracking-wide text-slate-200">
                           {item.name}
                         </p>
                         <button
                           type="button"
-                          className="font-data absolute right-1 top-1 rounded px-1.5 text-[9px] text-slate-500 hover:text-slate-300"
+                          className="font-data absolute right-1 top-1 rounded px-1.5 text-sm font-medium text-slate-300 hover:text-slate-100"
                           onClick={(e) => {
                             e.stopPropagation();
                             clearSlot(i);
@@ -290,7 +290,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                         </button>
                       </>
                     ) : (
-                      <span className="font-data text-[10px] uppercase tracking-wider text-slate-600">
+                      <span className="font-data text-sm font-semibold uppercase tracking-wider text-slate-300">
                         Slot {i + 1}
                       </span>
                     )}
@@ -301,14 +301,14 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
           </section>
 
           <section className="rounded-2xl border border-slate-800 bg-slate-950/40 p-5 backdrop-blur-md">
-            <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+            <h4 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
               Average run time
             </h4>
-            <p className="font-data mt-1 text-[10px] text-slate-600">
+            <p className="font-data mt-1 text-base text-slate-300">
               Comparison between the global average time and the estimated time for this item combination.
             </p>
             <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <p className="font-data text-sm text-slate-400">
+              <p className="font-data text-base text-slate-300">
                 Global average time{' '}
                 <span className="font-semibold tabular-nums text-slate-200">
                   {formatMmSs(globalAvgSeconds)}
@@ -373,11 +373,11 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
               transition={{ duration: 0.2 }}
               className="mt-6 border-t border-slate-800 pt-6"
             >
-              <p className="font-display text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
+              <p className="font-display text-sm font-bold uppercase tracking-[0.25em] text-slate-300">
                 Expected result
               </p>
               {!equippedIds.length ? (
-                <p className="font-data mt-3 text-sm text-slate-500">
+                <p className="font-data mt-3 text-base text-slate-300">
                   Add at least one item to compare estimated time to the global average (
                   {formatMmSs(globalAvgSeconds)}).
                 </p>
@@ -403,7 +403,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                 </p>
               )}
               {equippedIds.length > 0 && (
-                <p className="font-data mt-2 text-[11px] text-slate-500">
+                <p className="font-data mt-2 text-base text-slate-300">
                   Global average: {formatMmSs(globalAvgSeconds)} · Estimated time: {formatMmSs(buildAvgSeconds)}
                 </p>
               )}

@@ -107,7 +107,7 @@ function VersionDropdown({
     >
       <span
         id={`${id}-label`}
-        className="shrink-0 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500"
+        className="shrink-0 font-display text-sm font-bold uppercase tracking-[0.18em] text-slate-300"
       >
         {label}
       </span>
@@ -120,13 +120,13 @@ function VersionDropdown({
         aria-controls={listboxId}
         disabled={disabled}
         onClick={toggle}
-        className={`font-data relative box-border flex h-8 min-w-[5ch] max-w-[16rem] w-max cursor-pointer items-center justify-center gap-1 rounded-lg border bg-slate-900 px-3 pr-8 text-xs leading-none text-slate-200 outline-none transition ring-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 ${
+        className={`font-data relative box-border flex h-8 min-w-[5ch] max-w-[16rem] w-max cursor-pointer items-center justify-center gap-1 rounded-lg border bg-slate-900 px-3 pr-8 text-sm leading-none text-slate-200 outline-none transition ring-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 ${
           isOpen ? "border-cyan-500/50" : "border-slate-800"
         }`}
       >
         <span className="min-w-0 truncate text-center">{value || "—"}</span>
         <ChevronDown
-          className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-300 transition-transform ${isOpen ? "rotate-180" : ""}`}
           strokeWidth={2}
           aria-hidden
         />
@@ -146,7 +146,7 @@ function VersionDropdown({
                   type="button"
                   role="option"
                   aria-selected={selected}
-                  className={`font-data w-full px-3 py-2 text-left text-xs leading-snug outline-none ring-0 transition focus:outline-none ${
+                  className={`font-data w-full px-3 py-2 text-left text-sm leading-snug outline-none ring-0 transition focus:outline-none ${
                     selected
                       ? "bg-slate-800/55 text-cyan-100 hover:bg-cyan-500/20 hover:text-cyan-200 focus:bg-cyan-500/20 focus:text-cyan-200"
                       : "text-slate-200 hover:bg-cyan-500/20 hover:text-cyan-200 focus:bg-cyan-500/20 focus:text-cyan-200"
@@ -283,7 +283,7 @@ export default function AnalyticsTab({ data, onPatch }) {
         className="mx-auto max-w-[1800px] px-4 py-8 md:py-10"
       >
         <header className="mb-8">
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.35em] text-blue-500/70">
             Intelligence
           </p>
           <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
@@ -297,17 +297,17 @@ export default function AnalyticsTab({ data, onPatch }) {
             strokeWidth={1.25}
             aria-hidden
           />
-          <p className="mt-5 font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-400">
+          <p className="mt-5 font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
             No game selected
           </p>
-          <p className="mt-2 max-w-md font-data text-sm leading-relaxed text-slate-500">
+          <p className="mt-2 max-w-md font-data text-base leading-relaxed text-slate-300">
             Please select a game to view analytics. Choose an existing game below
             or configure one under Mission Start.
           </p>
 
           {games.length > 0 ? (
             <label className="mt-8 flex w-full max-w-xs flex-col items-start gap-2 text-left">
-              <span className="font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              <span className="font-display text-sm font-bold uppercase tracking-[0.18em] text-slate-300">
                 Select game
               </span>
               <select
@@ -329,7 +329,7 @@ export default function AnalyticsTab({ data, onPatch }) {
             <button
               type="button"
               onClick={goToMissionSetup}
-              className="mt-8 inline-flex items-center gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-5 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-200 transition hover:border-cyan-400/55 hover:bg-cyan-500/15"
+              className="mt-8 inline-flex items-center gap-2 rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-5 py-2.5 font-display text-sm font-bold uppercase tracking-[0.14em] text-cyan-200 transition hover:border-cyan-400/55 hover:bg-cyan-500/15"
             >
               <Gamepad2 className="h-4 w-4 shrink-0" aria-hidden />
               Go to Mission Start
@@ -349,7 +349,7 @@ export default function AnalyticsTab({ data, onPatch }) {
       className="mx-auto max-w-[1800px] px-4 py-8 md:py-10"
     >
       <header className="mb-6">
-        <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
+        <p className="font-display text-sm font-bold uppercase tracking-[0.35em] text-blue-500/70">
           Intelligence
         </p>
         <h2 className="mt-2 font-display text-2xl font-bold text-slate-100 md:text-3xl">
@@ -362,12 +362,12 @@ export default function AnalyticsTab({ data, onPatch }) {
         aria-label="Version comparison"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex shrink-0 items-center gap-2 text-slate-400">
+          <div className="flex shrink-0 items-center gap-2 text-slate-300">
             <GitCompare
               className="h-4 w-4 shrink-0 text-cyan-500/80"
               aria-hidden
             />
-            <p className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-slate-300">
+            <p className="font-display text-sm font-bold uppercase tracking-[0.22em] text-slate-300">
               Version comparison
             </p>
           </div>
@@ -395,10 +395,10 @@ export default function AnalyticsTab({ data, onPatch }) {
               onOpenChange={setDropdownBOpen}
             />
             <div className="flex shrink-0 items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 transition hover:border-slate-600">
-              <Columns2 className="h-4 w-4 text-slate-500" aria-hidden />
+              <Columns2 className="h-4 w-4 text-slate-300" aria-hidden />
               <span
                 id="analytics-split-view-label"
-                className="font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-400"
+                className="font-display text-sm font-bold uppercase tracking-[0.18em] text-slate-300"
               >
                 Enable split view
               </span>
@@ -425,7 +425,7 @@ export default function AnalyticsTab({ data, onPatch }) {
           </div>
         </div>
         {versions.length === 0 ? (
-          <p className="font-data mt-2 text-[11px] text-amber-200/80">
+          <p className="font-data mt-2 text-sm text-amber-200/80">
             No versions in setup — add versions under Mission setup to enable
             comparison.
           </p>
@@ -445,12 +445,12 @@ export default function AnalyticsTab({ data, onPatch }) {
               type="button"
               role="tab"
               aria-selected={active}
-              className={`relative flex-1 rounded-lg px-4 py-2.5 font-display text-[10px] font-bold tracking-[0.2em] transition sm:flex-none sm:min-w-[100px] ${
+              className={`relative flex-1 rounded-lg px-4 py-2.5 font-display text-sm font-bold tracking-[0.2em] transition sm:flex-none sm:min-w-[100px] ${
                 active
                   ? itemsTab
                     ? "bg-violet-500/15 text-violet-200 ring-1 ring-violet-500/40"
                     : "bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/35"
-                  : "text-slate-500 hover:bg-slate-900/60 hover:text-slate-300"
+                  : "text-slate-300 hover:bg-slate-900/60 hover:text-slate-100"
               }`}
               onClick={() =>
                 onPatch({
@@ -484,7 +484,7 @@ export default function AnalyticsTab({ data, onPatch }) {
               className="analytics-split-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto sm:min-h-[min(420px,50vh)] lg:max-h-[calc(100vh-11rem)] lg:min-h-0 lg:w-1/2 lg:border-r lg:border-slate-800/80 lg:pr-4"
             >
               <div className="mb-2 border-b border-slate-800/60 pb-2">
-                <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-500/90">
+                <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-cyan-500/90">
                   {versionA || "Version A"}
                 </p>
               </div>
@@ -499,7 +499,7 @@ export default function AnalyticsTab({ data, onPatch }) {
 
             <div className="relative flex shrink-0 items-center justify-center py-2 lg:hidden">
               <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-600/80 to-transparent" />
-              <span className="absolute left-1/2 inline-flex -translate-x-1/2 rounded-full border border-slate-600/90 bg-slate-900/95 px-2.5 py-1 font-display text-[9px] font-bold tracking-[0.25em] text-slate-300 shadow-lg shadow-black/40 ring-1 ring-slate-800/90">
+              <span className="absolute left-1/2 inline-flex -translate-x-1/2 rounded-full border border-slate-600/90 bg-slate-900/95 px-2.5 py-1 font-display text-sm font-bold tracking-[0.25em] text-slate-300 shadow-lg shadow-black/40 ring-1 ring-slate-800/90">
                 VS
               </span>
             </div>
@@ -510,7 +510,7 @@ export default function AnalyticsTab({ data, onPatch }) {
               className="analytics-split-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto sm:min-h-[min(420px,50vh)] lg:max-h-[calc(100vh-11rem)] lg:min-h-0 lg:w-1/2 lg:pl-4"
             >
               <div className="mb-2 border-b border-slate-800/60 pb-2">
-                <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-indigo-300/90">
+                <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-indigo-300/90">
                   {versionB || "Version B"}
                 </p>
               </div>
@@ -529,7 +529,7 @@ export default function AnalyticsTab({ data, onPatch }) {
               aria-hidden
             >
               <div className="absolute inset-y-6 left-1/2 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-slate-600/85 to-transparent" />
-              <span className="relative z-10 inline-flex shrink-0 rounded-full border border-slate-600/90 bg-slate-950 px-2.5 py-1 font-display text-[9px] font-bold tracking-[0.25em] text-slate-300 shadow-lg shadow-black/40 ring-1 ring-slate-800/90">
+              <span className="relative z-10 inline-flex shrink-0 rounded-full border border-slate-600/90 bg-slate-950 px-2.5 py-1 font-display text-sm font-bold tracking-[0.25em] text-slate-300 shadow-lg shadow-black/40 ring-1 ring-slate-800/90">
                 VS
               </span>
             </div>

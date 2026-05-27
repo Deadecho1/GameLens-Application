@@ -56,7 +56,7 @@ export default function ChangePickerModal({ data, onPatch }) {
                 </h2>
                 <button
                   type="button"
-                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-800 hover:text-cyan-400"
+                  className="rounded-lg p-2 text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
                   onClick={() => onPatch({ ui: { ...ui, changePicker: null } })}
                   aria-label="Close"
                 >

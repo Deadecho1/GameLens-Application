@@ -51,7 +51,7 @@ export default function AddItemModal({
                 </h2>
                 <button
                   type="button"
-                  className="rounded-lg p-1 text-slate-500 transition hover:bg-slate-800 hover:text-cyan-400"
+                  className="rounded-lg p-1 text-slate-300 transition hover:bg-slate-800 hover:text-cyan-400"
                   onClick={onClose}
                   aria-label="Close"
                 >
@@ -61,7 +61,7 @@ export default function AddItemModal({
               <input
                 id={inputId}
                 type="text"
-                className="font-data mb-6 w-full rounded-xl border border-slate-800 bg-black/50 px-4 py-3 text-slate-100 outline-none ring-cyan-500/20 placeholder:text-slate-600 focus:ring-2"
+                className="font-data mb-6 w-full rounded-xl border border-slate-800 bg-black/50 px-4 py-3 text-slate-100 outline-none ring-cyan-500/20 placeholder:text-slate-400 focus:ring-2"
                 placeholder="Identifier…"
                 value={draftValue}
                 onChange={(e) => onDraftChange(e.target.value)}
@@ -70,14 +70,14 @@ export default function AddItemModal({
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
-                  className="font-data rounded-xl px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+                  className="font-data rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-slate-300"
                   onClick={onClose}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className="font-display rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:bg-blue-500 disabled:opacity-40"
+                  className="font-display rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:bg-blue-500 disabled:opacity-40"
                   disabled={!draftValue.trim()}
                   onClick={onConfirm}
                 >

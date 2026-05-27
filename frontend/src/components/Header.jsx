@@ -89,7 +89,7 @@ export default function Header({
             <h1 className="font-display text-xl font-extrabold tracking-[0.12em] text-transparent [text-shadow:0_0_24px_rgba(34,211,238,0.35)] bg-linear-to-b from-cyan-200 via-cyan-400 to-blue-600 bg-clip-text md:text-2xl">
               GAMELENS
             </h1>
-            <p className="font-data text-[10px] font-medium uppercase tracking-[0.35em] text-blue-500/60">
+            <p className="font-data text-sm font-medium uppercase tracking-[0.35em] text-blue-500/60">
               Dev build console
             </p>
           </div>
@@ -99,7 +99,7 @@ export default function Header({
         <div className="flex items-center gap-3">
           {/* Global target version indicator */}
           <div className="rounded-lg border border-slate-800 bg-slate-900/40 px-3 py-1.5 backdrop-blur-md">
-            <p className="font-data text-[10px] font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+            <p className="font-data text-sm font-semibold text-slate-300 uppercase tracking-widest whitespace-nowrap">
               GAME: {gameLabel} | VERSION: {versionLabel}
             </p>
           </div>
@@ -111,7 +111,7 @@ export default function Header({
                 className="h-3 w-3 animate-spin text-cyan-400"
                 aria-hidden
               />
-              <span className="font-data text-[10px] text-cyan-300/80 uppercase tracking-wider">
+              <span className="font-data text-sm text-cyan-300/80 uppercase tracking-wider">
                 Syncing…
               </span>
             </div>
@@ -126,10 +126,10 @@ export default function Header({
             }`}
           >
             <div className="text-right min-w-0 max-w-[200px]">
-              <p className="font-data text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+              <p className="font-data text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                 {profile.isGuest ? "Account" : "Signed in"}
               </p>
-              <p className="font-data text-xs font-semibold text-cyan-100/90 truncate">
+              <p className="font-data text-sm font-semibold text-cyan-100/90 truncate">
                 {profile.displayName}
               </p>
             </div>
@@ -137,7 +137,7 @@ export default function Header({
               <button
                 onClick={onSyncNow}
                 disabled={auth.syncStatus === "syncing"}
-                className="ml-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="ml-1 rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 title={
                   auth.syncStatus === "syncing"
                     ? "Sync in progress"
@@ -153,7 +153,7 @@ export default function Header({
               <button
                 type="button"
                 onClick={() => setLoginOpen(true)}
-                className="rounded-lg border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-300"
+                className="rounded-lg border border-slate-700 bg-slate-800/60 px-2.5 py-1.5 text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-300"
                 title="Sign in for Cloud Sync"
               >
                 <LogIn className="h-3.5 w-3.5" aria-hidden />
@@ -162,7 +162,7 @@ export default function Header({
             <button
               type="button"
               onClick={onLogout}
-              className="rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-400 transition hover:border-red-500/40 hover:bg-red-950/30 hover:text-red-400"
+              className="rounded-lg border border-slate-700 bg-slate-800/60 p-1.5 text-slate-300 transition hover:border-red-500/40 hover:bg-red-950/30 hover:text-red-400"
               title={
                 profile.isGuest
                   ? "Exit to welcome screen"
@@ -183,7 +183,7 @@ export default function Header({
               aria-hidden
             />
             <div className="text-right">
-              <p className="font-data text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+              <p className="font-data text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                 Status
               </p>
               <p className="font-data text-sm font-semibold text-cyan-100/90">
@@ -222,7 +222,7 @@ export default function Header({
               <h2 className="font-display text-lg font-bold tracking-widest text-cyan-300 mb-4 uppercase">
                 Sign in
               </h2>
-              <label className="block font-data text-xs text-slate-400 mb-1 uppercase tracking-widest">
+              <label className="block font-data text-sm font-medium text-slate-300 mb-1 uppercase tracking-widest">
                 Email
               </label>
               <input
@@ -230,11 +230,11 @@ export default function Header({
                 autoFocus
                 value={emailDraft}
                 onChange={(e) => setEmailDraft(e.target.value)}
-                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 font-data text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500/60 focus:outline-none"
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 font-data text-base text-slate-100 placeholder:text-slate-400 focus:border-cyan-500/60 focus:outline-none"
                 placeholder="you@example.com"
               />
               {loginError && (
-                <p className="mt-2 font-data text-xs text-red-400">
+                <p className="mt-2 font-data text-sm text-red-400">
                   {loginError}
                 </p>
               )}
@@ -245,7 +245,7 @@ export default function Header({
                     setLoginOpen(false);
                     setLoginError("");
                   }}
-                  className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 font-data text-sm text-slate-400 hover:text-slate-200 transition-colors"
+                  className="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 font-data text-base text-slate-300 hover:text-slate-200 transition-colors"
                 >
                   Cancel
                 </button>

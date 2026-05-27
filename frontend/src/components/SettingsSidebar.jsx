@@ -15,7 +15,7 @@ function SecureField({
 }) {
   return (
     <label htmlFor={id} className="block space-y-1.5">
-      <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+      <span className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
         {label}
       </span>
       <div className="relative">
@@ -30,7 +30,7 @@ function SecureField({
         <button
           type="button"
           onClick={onToggleVisible}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-500 transition hover:bg-slate-800 hover:text-cyan-300"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-300 transition hover:bg-slate-800 hover:text-cyan-300"
           aria-label={visible ? 'Hide value' : 'Show value'}
         >
           {visible ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
@@ -65,14 +65,14 @@ function ModalShell({ open, title, icon: Icon, onClose, children }) {
               <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
                 <div className="flex items-center gap-2">
                   <Icon className="h-4 w-4 text-cyan-400/85" aria-hidden />
-                  <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-200/90">
+                  <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-cyan-200/90">
                     {title}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-800 hover:text-cyan-300"
+                  className="rounded-lg p-2 text-slate-300 transition hover:bg-slate-800 hover:text-cyan-300"
                   aria-label="Close modal"
                 >
                   <X className="h-4 w-4" aria-hidden />
@@ -182,14 +182,14 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
               <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
                 <div className="flex items-center gap-2">
                   <Settings className="h-4 w-4 text-cyan-400/85" aria-hidden />
-                  <p className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-100/90">
+                  <p className="font-display text-sm font-bold uppercase tracking-[0.22em] text-cyan-100/90">
                     Settings
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-800 hover:text-cyan-300"
+                  className="rounded-lg p-2 text-slate-300 transition hover:bg-slate-800 hover:text-cyan-300"
                   aria-label="Close settings sidebar"
                 >
                   <X className="h-4 w-4" aria-hidden />
@@ -215,7 +215,7 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
                       <div className="mt-1">
                         <UserDataSourceBadge badge={profile.badge} />
                       </div>
-                      <p className="mt-1.5 truncate font-data text-[11px] text-slate-500">
+                      <p className="mt-1.5 truncate font-data text-base text-slate-300">
                         {profile.subtitle}
                       </p>
                     </div>
@@ -224,12 +224,12 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
                     <button
                       type="button"
                       onClick={() => setEditModalOpen(true)}
-                      className="mt-4 w-full rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.2em] text-cyan-100 transition hover:border-cyan-400/60 hover:bg-cyan-500/15"
+                      className="mt-4 w-full rounded-xl border border-cyan-500/35 bg-cyan-500/10 px-3 py-2 font-display text-sm font-bold uppercase tracking-[0.2em] text-cyan-100 transition hover:border-cyan-400/60 hover:bg-cyan-500/15"
                     >
                       Edit
                     </button>
                   ) : (
-                    <p className="mt-4 rounded-xl border border-slate-700/80 bg-slate-950/50 px-3 py-2 font-data text-[10px] leading-relaxed text-slate-500">
+                    <p className="mt-4 rounded-xl border border-slate-700/80 bg-slate-950/50 px-3 py-2 font-data text-base leading-relaxed text-slate-300">
                       Sign in from the header to enable Cloud Sync and replace local-only
                       storage.
                     </p>
@@ -237,12 +237,12 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
                 </section>
 
                 <section className="mt-5 space-y-4 rounded-2xl border border-slate-800 bg-slate-900/30 p-4">
-                  <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                  <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                     Analytics targeting
                   </p>
 
                   <label className="block space-y-1.5">
-                    <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                    <span className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                       Game
                     </span>
                     <select
@@ -259,7 +259,7 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
                   </label>
 
                   <label className="block space-y-1.5">
-                    <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                    <span className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                       Version
                     </span>
                     <select
@@ -281,18 +281,18 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
                 <button
                   type="button"
                   onClick={() => setKeyModalOpen(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-500/35 bg-violet-500/10 px-3 py-2.5 font-display text-[9px] font-bold uppercase tracking-[0.2em] text-violet-100 transition hover:border-violet-400/55 hover:bg-violet-500/15"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-500/35 bg-violet-500/10 px-3 py-2.5 font-display text-sm font-bold uppercase tracking-[0.2em] text-violet-100 transition hover:border-violet-400/55 hover:bg-violet-500/15"
                 >
                   <KeyRound className="h-4 w-4" aria-hidden />
                   OpenAI API Configuration
                 </button>
                 {user.openAiKey ? (
-                  <div className="flex items-center gap-1.5 justify-center font-data text-[11px] text-emerald-400">
+                  <div className="flex items-center gap-1.5 justify-center font-data text-sm text-emerald-400">
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     API key set
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1.5 justify-center font-data text-[11px] text-slate-500">
+                  <div className="flex items-center gap-1.5 justify-center font-data text-base text-slate-300">
                     <KeyRound className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     No key configured
                   </div>
@@ -311,7 +311,7 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
       >
         <div className="space-y-4 px-5 py-5">
           <label htmlFor="settings-email" className="block space-y-1.5">
-            <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+            <span className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
               Email
             </span>
             <input
@@ -329,7 +329,7 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
               type="button"
               onClick={() => setEditModalOpen(false)}
               disabled={profileSaving}
-              className="rounded-xl border border-slate-700 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.16em] text-slate-300 transition hover:border-slate-500 hover:text-slate-100 disabled:opacity-50"
+              className="rounded-xl border border-slate-700 px-3 py-2 font-display text-sm font-bold uppercase tracking-[0.16em] text-slate-300 transition hover:border-slate-500 hover:text-slate-100 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -337,7 +337,7 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
               type="button"
               onClick={() => void saveProfile()}
               disabled={profileSaving || !emailDraft.trim()}
-              className="rounded-xl border border-cyan-500/45 bg-cyan-500/12 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.16em] text-cyan-100 transition hover:border-cyan-400/65 hover:bg-cyan-500/18 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-xl border border-cyan-500/45 bg-cyan-500/12 px-3 py-2 font-display text-sm font-bold uppercase tracking-[0.16em] text-cyan-100 transition hover:border-cyan-400/65 hover:bg-cyan-500/18 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {profileSaving ? 'Saving…' : 'Save'}
             </button>
@@ -366,14 +366,14 @@ export default function SettingsSidebar({ data, onPatch, onUpdateEmail, open, on
             <button
               type="button"
               onClick={() => setKeyModalOpen(false)}
-              className="rounded-xl border border-slate-700 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.16em] text-slate-300 transition hover:border-slate-500 hover:text-slate-100"
+              className="rounded-xl border border-slate-700 px-3 py-2 font-display text-sm font-bold uppercase tracking-[0.16em] text-slate-300 transition hover:border-slate-500 hover:text-slate-100"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={saveKey}
-              className="rounded-xl border border-violet-500/45 bg-violet-500/12 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.16em] text-violet-100 transition hover:border-violet-400/65 hover:bg-violet-500/18"
+              className="rounded-xl border border-violet-500/45 bg-violet-500/12 px-3 py-2 font-display text-sm font-bold uppercase tracking-[0.16em] text-violet-100 transition hover:border-violet-400/65 hover:bg-violet-500/18"
             >
               Save key
             </button>

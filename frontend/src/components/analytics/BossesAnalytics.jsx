@@ -383,7 +383,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
         <aside className="flex w-full flex-col border-slate-800/80 lg:w-[25%] lg:min-w-[220px] lg:max-w-[320px] lg:border-r lg:bg-slate-950/50">
           <div className="flex items-center gap-2 border-b border-slate-800/80 px-4 py-3">
             <Radar className="h-4 w-4 text-cyan-400/90" strokeWidth={1.25} aria-hidden />
-            <span className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+            <span className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
               Select a boss
             </span>
           </div>
@@ -392,7 +392,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
             aria-label="Boss list"
           >
             {bosses.length === 0 ? (
-              <p className="font-data px-2 py-6 text-center text-sm text-slate-500">No bosses listed.</p>
+              <p className="font-data px-2 py-6 text-center text-base text-slate-300">No bosses listed.</p>
             ) : (
               bosses.map((boss) => {
                 const active = boss.id === selectedBossId;
@@ -422,8 +422,8 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                       aria-hidden
                     />
                     <span
-                      className={`font-display text-xs font-bold uppercase tracking-[0.14em] ${
-                        active ? 'text-cyan-100' : 'text-slate-400 group-hover:text-slate-200'
+                      className={`font-display text-sm font-bold uppercase tracking-[0.14em] ${
+                        active ? 'text-cyan-100' : 'text-slate-300 group-hover:text-slate-200'
                       }`}
                     >
                       {boss.name}
@@ -451,7 +451,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                   transition={{ duration: 0.2 }}
                   className="flex flex-1 items-center justify-center"
                 >
-                  <p className="font-data text-sm text-slate-500">Select a boss from the list.</p>
+                  <p className="font-data text-base text-slate-300">Select a boss from the list.</p>
                 </motion.div>
               ) : (
                 <motion.div
@@ -467,7 +467,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                       <h2 className="font-display text-3xl font-black uppercase tracking-[0.18em] text-white [text-shadow:0_0_40px_rgba(34,211,238,0.25)] md:text-4xl lg:text-5xl">
                         {selected.name}
                       </h2>
-                      <p className="font-data mt-2 text-xs uppercase tracking-[0.25em] text-cyan-500/70">
+                      <p className="font-data mt-2 text-sm uppercase tracking-[0.25em] text-cyan-500/70">
                         Global performance metrics
                       </p>
                     </div>
@@ -475,14 +475,14 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                       <div className="flex items-center gap-3 rounded-xl border border-slate-700/90 bg-slate-950/55 px-4 py-3 ring-1 ring-cyan-500/10 backdrop-blur-md">
                         <Award className="h-8 w-8 shrink-0 text-cyan-400/90" strokeWidth={1.15} aria-hidden />
                         <div>
-                          <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                          <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                             Fight time ranking
                           </p>
                           <p className="font-data text-xl font-bold tabular-nums tracking-tight text-cyan-100 md:text-2xl">
                             #{survivalRank.rank} of {survivalRank.total}{' '}
                             {survivalRank.total === 1 ? 'Boss' : 'Bosses'}
                           </p>
-                          <p className="font-data mt-1 text-[10px] text-slate-500">
+                          <p className="font-data mt-1 text-base text-slate-300">
                             Ranked by average fight time
                           </p>
                         </div>
@@ -494,11 +494,11 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                     <div className="rounded-2xl border border-cyan-500/20 bg-slate-900/50 p-6 shadow-[0_0_40px_rgba(34,211,238,0.08),inset_0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-cyan-500/10 backdrop-blur-md">
                       <div className="mb-4 flex items-center gap-2">
                         <Timer className="h-5 w-5 text-cyan-300" strokeWidth={1.25} aria-hidden />
-                        <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200/90">
+                        <h3 className="font-display text-sm font-bold uppercase tracking-[0.22em] text-cyan-200/90">
                           Average fight time
                         </h3>
                       </div>
-                      <p className="font-data text-[10px] uppercase tracking-wider text-slate-500">
+                      <p className="font-data text-sm font-semibold uppercase tracking-wider text-slate-300">
                         Across all recorded boss fights
                       </p>
                       <p
@@ -514,15 +514,15 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                           current={globalAvgSec}
                         />
                       ) : null}
-                      <p className="font-data mt-2 text-xs tabular-nums text-slate-500">
+                      <p className="font-data mt-2 text-sm font-medium tabular-nums text-slate-300">
                         {globalAvgSec > 0 ? `${secondsToMinutes(globalAvgSec)} min mean` : '—'}
                       </p>
                     </div>
 
                     <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 backdrop-blur-md md:flex-col md:items-stretch md:px-5 md:py-4">
-                      <div className="flex items-center gap-2 text-slate-500">
+                      <div className="flex items-center gap-2 text-slate-300">
                         <Globe className="h-4 w-4 shrink-0 text-cyan-500/80" strokeWidth={1.25} aria-hidden />
-                        <span className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                        <span className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                           Global
                         </span>
                       </div>
@@ -536,7 +536,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                           current={globalEncounterCount}
                         />
                       ) : null}
-                      <p className="font-data text-[10px] uppercase tracking-wider text-slate-600">
+                      <p className="font-data text-sm font-semibold uppercase tracking-wider text-slate-300">
                         Total boss fights
                       </p>
                     </div>
@@ -546,19 +546,19 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                     <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <ChartColumn className="h-4 w-4 text-cyan-400/90" strokeWidth={1.25} aria-hidden />
-                        <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">
+                        <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-white/90">
                           Fight time distribution
                         </h3>
                       </div>
-                      <span className="font-data text-[10px] text-slate-500">Fight length · number of fights</span>
+                      <span className="font-data text-base text-slate-300">Fight length · number of fights</span>
                     </div>
-                    <p className="font-data mb-4 text-[10px] text-slate-600">
+                    <p className="font-data mb-4 text-base text-slate-300">
                       Boss fights grouped by length — shows time consistency.
                     </p>
                     <div className="h-[280px] w-full min-w-0 md:h-[300px]">
                       {globalEncounterCount === 0 ? (
                         <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800">
-                          <p className="font-data text-sm text-slate-500">No global samples for this boss.</p>
+                          <p className="font-data text-base text-slate-300">No global samples for this boss.</p>
                         </div>
                       ) : (
                         <ResponsiveContainer width="100%" height="100%">
@@ -602,7 +602,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                 const row = payload[0].payload;
                                 return (
                                   <div className="rounded-lg border border-cyan-900/50 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
-                                    <p className="font-data text-[10px] font-semibold uppercase tracking-wider text-cyan-400/90">
+                                    <p className="font-data text-sm font-semibold uppercase tracking-wider text-cyan-400/90">
                                       {row.bracket}
                                     </p>
                                     <p className="font-data mt-1 tabular-nums text-sm text-white">
@@ -655,7 +655,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             aria-hidden
                           />
                           <div>
-                            <p className="font-display text-[10px] font-bold uppercase tracking-[0.28em] text-amber-200/80">
+                            <p className="font-display text-sm font-bold uppercase tracking-[0.28em] text-amber-200/80">
                               Best items
                             </p>
                             <h3 className="font-display text-lg font-black uppercase tracking-[0.14em] text-transparent bg-linear-to-r from-amber-200 via-fuchsia-200 to-amber-100 bg-clip-text md:text-xl">
@@ -664,7 +664,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                           </div>
                         </div>
                         {!mostLethal ? (
-                          <p className="font-data text-sm text-slate-500">
+                          <p className="font-data text-base text-slate-300">
                             Not enough aggregate data to rank loadouts for this target.
                           </p>
                         ) : (
@@ -683,20 +683,20 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                       style={itemAccentDotStyle(item.id, true)}
                                       aria-hidden
                                     />
-                                    <span className="font-display text-[10px] font-bold uppercase tracking-wide text-amber-100">
+                                    <span className="font-display text-sm font-bold uppercase tracking-wide text-amber-100">
                                       {item.name}
                                     </span>
                                   </span>
                                 );
                               })}
                             </div>
-                            <p className="font-display text-xs font-bold uppercase tracking-wider text-slate-200 md:text-sm">
+                            <p className="font-display text-sm font-bold uppercase tracking-wider text-slate-200 md:text-sm">
                               {mostLethal.itemIds
                                 .map((id) => itemsCatalog.find((i) => i.id === id)?.name)
                                 .filter(Boolean)
                                 .join(' + ')}
                             </p>
-                            <p className="font-display mt-4 text-[9px] font-bold uppercase tracking-[0.22em] text-purple-300/80">
+                            <p className="font-display mt-4 text-sm font-bold uppercase tracking-[0.22em] text-purple-300/80">
                               Effectiveness
                             </p>
                             <p className="font-data mt-1 text-3xl font-bold tabular-nums tracking-tight text-amber-100 md:text-4xl [text-shadow:0_0_28px_rgba(251,191,36,0.35)]">
@@ -712,22 +712,22 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                 current={mostLethal.impactEfficiencyPct}
                               />
                             ) : null}
-                            <p className="font-data mt-2 text-[10px] text-slate-500">
+                            <p className="font-data mt-2 text-base text-slate-300">
                               Average time with this item combination:{' '}
                               <span className="tabular-nums text-slate-300">
                                 {formatSecondsAsHMS(mostLethal.meanSecForCombo)}
                               </span>
                               {mostLethal.source === 'historical' ? (
-                                <span className="text-slate-600">
+                                <span className="text-slate-300">
                                   {' '}
                                   · <span className="tabular-nums">{mostLethal.comboSampleCount}</span> recorded boss
                                   fight{mostLethal.comboSampleCount === 1 ? '' : 's'}
                                 </span>
                               ) : null}
                             </p>
-                            <p className="font-data mt-3 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                            <p className="font-data mt-3 text-sm font-semibold uppercase tracking-[0.2em] text-slate-300">
                               Based on aggregate analysis of{' '}
-                              <span className="tabular-nums text-slate-400">{mostLethal.totalEncounters}</span>{' '}
+                              <span className="tabular-nums text-slate-300">{mostLethal.totalEncounters}</span>{' '}
                               encounters.
                             </p>
                           </>
@@ -743,7 +743,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             <h3 className="font-display text-sm font-bold uppercase tracking-[0.16em] text-cyan-100 md:text-base">
                               Test item combinations
                             </h3>
-                            <p className="font-data mt-1 text-[10px] text-slate-500">
+                            <p className="font-data mt-1 text-base text-slate-300">
                               Select up to 5 items to test
                             </p>
                           </div>
@@ -751,7 +751,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                         <button
                           type="button"
                           onClick={clearSimLoadout}
-                          className="flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 font-display text-[9px] font-bold uppercase tracking-[0.18em] text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-200"
+                          className="flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-900/80 px-3 py-2 font-display text-sm font-bold uppercase tracking-[0.18em] text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-200"
                         >
                           <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
                           Clear all items
@@ -761,7 +761,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                       <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:gap-8">
                         <div className="min-w-0 flex-1 space-y-4">
                         <div>
-                          <p className="font-display mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                          <p className="font-display mb-2 text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                             Loadout
                           </p>
                           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -810,12 +810,12 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                         style={itemAccentDotStyle(item.id, true)}
                                         aria-hidden
                                       />
-                                      <span className="font-display mt-2 max-w-22 truncate px-1 text-center text-[9px] font-bold uppercase tracking-wide text-slate-200">
+                                      <span className="font-display mt-2 max-w-22 truncate px-1 text-center text-sm font-bold uppercase tracking-wide text-slate-200">
                                         {item.name}
                                       </span>
                                     </>
                                   ) : (
-                                    <span className="font-data text-[10px] uppercase tracking-wider text-slate-600">
+                                    <span className="font-data text-sm font-semibold uppercase tracking-wider text-slate-300">
                                       Empty
                                     </span>
                                   )}
@@ -838,16 +838,16 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                 value={libraryQuery}
                                 onChange={(e) => setLibraryQuery(e.target.value)}
                                 placeholder="Search item list…"
-                                className="w-full rounded-lg border border-cyan-500/35 bg-slate-950/85 py-2.5 pl-10 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-600 shadow-[0_0_20px_rgba(34,211,238,0.06)] outline-none ring-0 transition focus:border-cyan-400/65 focus:shadow-[0_0_24px_rgba(34,211,238,0.12)]"
+                                className="w-full rounded-lg border border-cyan-500/35 bg-slate-950/85 py-2.5 pl-10 pr-3 font-data text-sm text-slate-100 placeholder:text-slate-400 shadow-[0_0_20px_rgba(34,211,238,0.06)] outline-none ring-0 transition focus:border-cyan-400/65 focus:shadow-[0_0_24px_rgba(34,211,238,0.12)]"
                               />
                             </label>
                           </div>
                           <div className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-color:rgba(51,65,85,0.85)_transparent]">
-                            <p className="font-display mb-2 px-0.5 text-[8px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                            <p className="font-display mb-2 px-0.5 text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                               Item list
                             </p>
                             {filteredLibraryItems.length === 0 ? (
-                              <p className="font-data py-8 text-center text-sm text-slate-500">No items match.</p>
+                              <p className="font-data py-8 text-center text-base text-slate-300">No items match.</p>
                             ) : (
                               <ul className="space-y-1 pb-4">
                                 {filteredLibraryItems.map((item) => {
@@ -869,11 +869,11 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                           style={itemAccentDotStyle(item.id, inLoadout)}
                                           aria-hidden
                                         />
-                                        <span className="font-display min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-wide text-slate-200">
+                                        <span className="font-display min-w-0 flex-1 truncate text-sm font-bold uppercase tracking-wide text-slate-200">
                                           {item.name}
                                         </span>
                                         {item.popularity != null ? (
-                                          <span className="font-data shrink-0 text-[10px] tabular-nums text-slate-500">
+                                          <span className="font-data shrink-0 text-sm font-medium tabular-nums text-slate-300">
                                             {item.popularity}%
                                           </span>
                                         ) : null}
@@ -889,12 +889,12 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
 
                       <div className="w-full shrink-0 xl:sticky xl:top-3 xl:w-[min(100%,22rem)]">
                         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 backdrop-blur-sm md:p-5">
-                          <h4 className="font-display text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
+                          <h4 className="font-display text-sm font-bold uppercase tracking-[0.22em] text-slate-300">
                             Expected result
                           </h4>
                           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
                             <div>
-                              <p className="font-data text-[9px] uppercase tracking-wider text-slate-500">
+                              <p className="font-data text-sm font-semibold uppercase tracking-wider text-slate-300">
                                 Average fight time
                               </p>
                               <p className="font-data mt-1 text-xl font-bold tabular-nums text-slate-200">
@@ -902,13 +902,13 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                               </p>
                             </div>
                             <div>
-                              <p className="font-data text-[9px] uppercase tracking-wider text-slate-500">
+                              <p className="font-data text-sm font-semibold uppercase tracking-wider text-slate-300">
                                 Time with these items
                               </p>
                               <p
                                 className={`font-data mt-1 text-xl font-bold tabular-nums ${
                                   equippedIds.length === 0
-                                    ? 'text-slate-400'
+                                    ? 'text-slate-300'
                                     : synergyFaster
                                       ? 'text-cyan-300'
                                       : 'text-orange-300'
@@ -917,7 +917,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                 {globalAvgSec > 0 ? formatSecondsAsHMS(synergyProjectedSec) : '—'}
                               </p>
                               {equippedIds.length > 0 && globalAvgSec > 0 && itemImpactEstimate.hasEstimate && (
-                                <p className="font-data mt-2 text-[10px] tabular-nums text-slate-500">
+                                <p className="font-data mt-2 text-sm font-medium tabular-nums text-slate-300">
                                   Data delta:{' '}
                                   <span className={synergyFaster ? 'text-cyan-400' : 'text-orange-400'}>
                                     {synergyDeltaPct > 0 ? '−' : synergyDeltaPct < 0 ? '+' : ''}
@@ -928,13 +928,13 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             </div>
                           </div>
 
-                          <p className="font-display mt-4 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                          <p className="font-display mt-4 text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                             Performance comparison
                           </p>
                           <div className="mt-2 h-[200px] w-full min-w-0 sm:h-[220px]">
                             {globalAvgSec <= 0 ? (
                               <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-800">
-                                <p className="font-data px-2 text-center text-sm text-slate-500">
+                                <p className="font-data px-2 text-center text-base text-slate-300">
                                   No baseline duration for comparison.
                                 </p>
                               </div>
@@ -983,11 +983,11 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                       const row = payload[0].payload;
                                       return (
                                         <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
-                                          <p className="font-data text-[10px] font-semibold text-slate-300">{row.label}</p>
+                                          <p className="font-data text-sm font-semibold text-slate-300">{row.label}</p>
                                           <p className="font-data mt-1 tabular-nums text-sm text-white">
                                             {formatSecondsAsHMS(row.seconds)}
                                           </p>
-                                          <p className="font-data text-[10px] text-slate-500">{row.minutes} min</p>
+                                          <p className="font-data text-base text-slate-300">{row.minutes} min</p>
                                         </div>
                                       );
                                     }}
@@ -1008,12 +1008,12 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                               </ResponsiveContainer>
                             )}
                           </div>
-                          <p className="font-data mt-2 text-[9px] leading-relaxed text-slate-600">
+                          <p className="font-data mt-2 text-base leading-relaxed text-slate-300">
                             Cyan bar = faster than the average time for this boss; orange = slower. Updates automatically as you change
                             items.
                           </p>
                           {equippedIds.length > 0 && !itemImpactEstimate.hasEstimate ? (
-                            <p className="font-data mt-2 text-[10px] text-slate-500">
+                            <p className="font-data mt-2 text-base text-slate-300">
                               Insufficient historical data to estimate item impact.
                             </p>
                           ) : null}

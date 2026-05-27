@@ -23,7 +23,7 @@ export default function ItemsPowerLab({
         <header className="min-w-0">
           <div className="flex items-center gap-2">
             <Timer className="h-5 w-5 text-violet-400" strokeWidth={1.25} aria-hidden />
-            <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-violet-400/80">
+            <p className="font-display text-sm font-bold uppercase tracking-[0.35em] text-violet-400/80">
               {itemsSubTab === 'build' ? 'Item combination simulator' : 'Item details'}
             </p>
           </div>
@@ -34,7 +34,7 @@ export default function ItemsPowerLab({
           >
             {itemsSubTab === 'build' ? 'Test item combinations' : 'Item catalog'}
           </h3>
-          <p className="font-data mt-1.5 text-sm text-slate-500">
+          <p className="font-data mt-1.5 text-base text-slate-300">
             {itemsSubTab === 'build'
               ? 'Estimate average time based on past runs with these items'
               : 'Statistics from past runs and item combinations'}

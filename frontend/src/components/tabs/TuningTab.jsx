@@ -420,7 +420,7 @@ export default function TuningTab({ data, ipcRequest }) {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.35em] text-blue-500/70">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.35em] text-blue-500/70">
             Fine-Tuning
           </p>
           <h2 className="mt-1 font-display text-2xl font-bold text-slate-100">
@@ -429,14 +429,14 @@ export default function TuningTab({ data, ipcRequest }) {
         </div>
         <div className="flex items-center gap-3">
           {error && (
-            <span className="font-data max-w-xs truncate rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-xs text-red-300">
+            <span className="font-data max-w-xs truncate rounded-lg border border-red-500/40 bg-red-950/40 px-3 py-1.5 text-sm text-red-300">
               {error}
             </span>
           )}
           <button
             type="button"
             onClick={startTour}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-3.5 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 transition hover:border-cyan-500/40 hover:text-cyan-200"
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-3.5 py-2.5 font-display text-sm font-bold uppercase tracking-[0.14em] text-slate-300 transition hover:border-cyan-500/40 hover:text-cyan-200"
             aria-label="Start interactive tour"
           >
             <HelpCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
@@ -446,7 +446,7 @@ export default function TuningTab({ data, ipcRequest }) {
             type="button"
             disabled={isTraining || !canStartTraining}
             onClick={() => setShowNameModal(true)}
-            className="tuning-tour-start-training inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-800 px-5 py-2.5 font-display text-xs font-bold uppercase tracking-[0.15em] text-white shadow-[0_0_24px_rgba(16,185,129,0.25)] transition hover:shadow-[0_0_32px_rgba(16,185,129,0.4)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="tuning-tour-start-training inline-flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-800 px-5 py-2.5 font-display text-sm font-bold uppercase tracking-[0.15em] text-white shadow-[0_0_24px_rgba(16,185,129,0.25)] transition hover:shadow-[0_0_32px_rgba(16,185,129,0.4)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Cpu className="h-4 w-4" />
             Start Fine-Tuning
@@ -455,7 +455,7 @@ export default function TuningTab({ data, ipcRequest }) {
             <button
               type="button"
               onClick={handleStopTraining}
-              className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-gradient-to-b from-red-600 to-red-800 px-4 py-2.5 font-display text-xs font-bold uppercase tracking-[0.15em] text-white"
+              className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-gradient-to-b from-red-600 to-red-800 px-4 py-2.5 font-display text-sm font-bold uppercase tracking-[0.15em] text-white"
             >
               <Square className="h-4 w-4 fill-current" />
               Stop
@@ -468,12 +468,12 @@ export default function TuningTab({ data, ipcRequest }) {
       <div className="grid gap-4" style={{ gridTemplateColumns: '220px 1fr 260px' }}>
         {/* ── Left: Video sidebar ─────────────────────────────────────────── */}
         <aside className="flex flex-col gap-2">
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-500/80">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-cyan-500/80">
             Videos
           </p>
           <div className="flex flex-col gap-1.5 rounded-2xl border border-slate-800/90 bg-slate-950/50 p-2 backdrop-blur-xl">
             {videos.length === 0 && (
-              <p className="py-6 text-center font-data text-xs text-slate-600">
+              <p className="py-6 text-center font-data text-base text-slate-300">
                 No videos loaded
               </p>
             )}
@@ -494,13 +494,13 @@ export default function TuningTab({ data, ipcRequest }) {
                   className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left transition ${
                     isActive
                       ? 'border border-cyan-500/30 bg-cyan-500/10 text-cyan-200'
-                      : 'border border-transparent text-slate-400 hover:border-slate-700 hover:bg-slate-900/50 hover:text-slate-200'
+                      : 'border border-transparent text-slate-300 hover:border-slate-700 hover:bg-slate-900/50 hover:text-slate-200'
                   }`}
                 >
                   <Film className="h-3.5 w-3.5 shrink-0 text-blue-400/70" />
-                  <span className="min-w-0 flex-1 truncate font-data text-xs">{v.name}</span>
+                  <span className="min-w-0 flex-1 truncate font-data text-sm">{v.name}</span>
                   {totalMarks > 0 && (
-                    <span className="shrink-0 rounded-full bg-cyan-500/20 px-1.5 py-0.5 font-data text-[10px] text-cyan-400">
+                    <span className="shrink-0 rounded-full bg-cyan-500/20 px-1.5 py-0.5 font-data text-sm text-cyan-400">
                       {totalMarks}
                     </span>
                   )}
@@ -511,7 +511,7 @@ export default function TuningTab({ data, ipcRequest }) {
           <button
             type="button"
             onClick={handleAddVideo}
-            className="tuning-tour-add-video flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-blue-500/35 bg-slate-950/40 py-3 font-display text-[10px] font-bold uppercase tracking-wider text-slate-500 transition hover:border-cyan-400/45 hover:text-cyan-400"
+            className="tuning-tour-add-video flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-blue-500/35 bg-slate-950/40 py-3 font-display text-sm font-bold uppercase tracking-wider text-slate-300 transition hover:border-cyan-400/45 hover:text-cyan-400"
           >
             <Plus className="h-3.5 w-3.5" />
             Add Video
@@ -562,7 +562,7 @@ export default function TuningTab({ data, ipcRequest }) {
                 >
                   {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 </button>
-                <span className="font-data shrink-0 text-xs tabular-nums text-slate-400">
+                <span className="font-data shrink-0 text-sm tabular-nums text-slate-300">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
                 <div className="flex-1" />
@@ -570,7 +570,7 @@ export default function TuningTab({ data, ipcRequest }) {
                   <button
                     type="button"
                     onClick={deleteSelectedMark}
-                    className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 font-data text-xs text-red-300 transition hover:border-red-400/50 hover:text-red-200"
+                    className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 font-data text-sm text-red-300 transition hover:border-red-400/50 hover:text-red-200"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Delete {isSegmentModel ? 'segment' : 'mark'}
@@ -676,34 +676,34 @@ export default function TuningTab({ data, ipcRequest }) {
                 {/* Controls row — event: category + Mark frame; boss: drag hints on timeline */}
                 <div className="tuning-tour-annotation-controls mt-3 flex min-h-[2.25rem] flex-wrap items-center gap-3">
                   {isSegmentModel ? (
-                    <p className="font-data text-xs text-slate-500">
-                      <span className="text-slate-400">Drag</span> on timeline to mark boss fight segment ·{' '}
-                      <span className="text-slate-400">Del</span> remove selected ·{' '}
-                      <span className="text-slate-400">Space</span> play/pause
+                    <p className="font-data text-base text-slate-300">
+                      <span className="text-slate-300">Drag</span> on timeline to mark boss fight segment ·{' '}
+                      <span className="text-slate-300">Del</span> remove selected ·{' '}
+                      <span className="text-slate-300">Space</span> play/pause
                     </p>
                   ) : (
                     <>
                       <button
                         type="button"
                         onClick={() => markCurrentFrame()}
-                        className="tuning-tour-mark-frame flex items-center gap-1.5 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/60 hover:text-cyan-100"
+                        className="tuning-tour-mark-frame flex items-center gap-1.5 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 py-1.5 font-display text-sm font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/60 hover:text-cyan-100"
                       >
                         Mark frame
-                        <span className="rounded border border-cyan-500/30 px-1 font-data text-[10px]">
+                        <span className="rounded border border-cyan-500/30 px-1 font-data text-sm">
                           M
                         </span>
                       </button>
-                      <span className="font-data text-xs text-slate-600">as</span>
+                      <span className="font-data text-sm font-medium text-slate-300">as</span>
                       <div className="flex gap-1.5">
                         {activeModelConfig?.categories.map((cat) => (
                           <button
                             key={cat.id}
                             type="button"
                             onClick={() => setActiveCategoryId(cat.id)}
-                            className={`flex items-center gap-1 rounded-lg border px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wider transition ${
+                            className={`flex items-center gap-1 rounded-lg border px-2 py-1 font-display text-sm font-bold uppercase tracking-wider transition ${
                               activeCategoryId === cat.id
                                 ? 'border-transparent text-slate-900'
-                                : 'border-slate-700 text-slate-500 hover:text-slate-300'
+                                : 'border-slate-700 text-slate-300 hover:text-slate-300'
                             }`}
                             style={
                               activeCategoryId === cat.id
@@ -711,14 +711,14 @@ export default function TuningTab({ data, ipcRequest }) {
                                 : {}
                             }
                           >
-                            <span className="rounded border border-current/40 px-0.5 font-data text-[9px] opacity-70">
+                            <span className="rounded border border-current/40 px-0.5 font-data text-sm opacity-70">
                               {cat.key}
                             </span>
                             {cat.label}
                           </button>
                         ))}
                       </div>
-                      <p className="ml-auto font-data text-[10px] text-slate-600">
+                      <p className="ml-auto font-data text-base text-slate-300">
                         1–3 select &amp; mark · M mark · Del remove · Space play/pause
                       </p>
                     </>
@@ -731,13 +731,13 @@ export default function TuningTab({ data, ipcRequest }) {
               <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-800 py-16">
                 <div className="text-center">
                   <Film className="mx-auto h-12 w-12 text-slate-700" strokeWidth={1} />
-                  <p className="mt-3 font-display text-sm font-bold uppercase tracking-wider text-slate-600">
+                  <p className="mt-3 font-display text-sm font-bold uppercase tracking-wider text-slate-300">
                     Add a video to begin
                   </p>
                   <button
                     type="button"
                     onClick={handleAddVideo}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-blue-500/35 bg-slate-900/60 px-4 py-2 font-display text-xs font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/50"
+                    className="mt-4 inline-flex items-center gap-2 rounded-xl border border-blue-500/35 bg-slate-900/60 px-4 py-2 font-display text-sm font-bold uppercase tracking-wider text-cyan-300 transition hover:border-cyan-400/50"
                   >
                     <Plus className="h-4 w-4" />
                     Add Video
@@ -752,21 +752,21 @@ export default function TuningTab({ data, ipcRequest }) {
                     style={{ left: '35%' }}
                   />
                 </div>
-                <p className="mt-2 font-data text-[10px] text-slate-500">
+                <p className="mt-2 font-data text-base text-slate-300">
                   Click or drag here to scrub — boss fights are marked by dragging spans
                 </p>
               </div>
               <div className="tuning-tour-annotation-controls flex flex-wrap items-center gap-3 rounded-xl border border-slate-800/90 bg-slate-900/40 px-4 py-3 opacity-70">
-                <span className="tuning-tour-mark-frame flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/5 px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider text-cyan-400/80">
+                <span className="tuning-tour-mark-frame flex items-center gap-1.5 rounded-lg border border-cyan-500/25 bg-cyan-500/5 px-3 py-1.5 font-display text-sm font-bold uppercase tracking-wider text-cyan-400/80">
                   Mark frame
-                  <span className="rounded border border-cyan-500/20 px-1 font-data text-[10px]">M</span>
+                  <span className="rounded border border-cyan-500/20 px-1 font-data text-sm">M</span>
                 </span>
-                <span className="font-data text-xs text-slate-600">as</span>
+                <span className="font-data text-sm font-medium text-slate-300">as</span>
                 <div className="flex gap-1.5">
                   {TUNING_MODEL_CONFIGS[0]?.categories.map((cat) => (
                     <span
                       key={cat.id}
-                      className="rounded-lg border border-slate-700 px-2 py-1 font-display text-[10px] font-bold uppercase tracking-wider text-slate-500"
+                      className="rounded-lg border border-slate-700 px-2 py-1 font-display text-sm font-bold uppercase tracking-wider text-slate-300"
                     >
                       {cat.label}
                     </span>
@@ -779,7 +779,7 @@ export default function TuningTab({ data, ipcRequest }) {
 
         {/* ── Right: Category / segment panel ─────────────────────────────── */}
         <aside className="flex flex-col gap-3">
-          <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-500/80">
+          <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-cyan-500/80">
             {isSegmentModel ? 'Segments' : 'Categories'}
           </p>
 
@@ -795,10 +795,10 @@ export default function TuningTab({ data, ipcRequest }) {
                   setSegPreview(null);
                   dragRef.current.active = false;
                 }}
-                className={`rounded-lg border px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-wider transition ${
+                className={`rounded-lg border px-3 py-1.5 font-display text-sm font-bold uppercase tracking-wider transition ${
                   activeModelId === cfg.id
                     ? 'border-cyan-500/40 bg-slate-900/80 text-cyan-300'
-                    : 'border-slate-800 bg-slate-900/35 text-slate-500 hover:border-slate-700 hover:text-slate-300'
+                    : 'border-slate-800 bg-slate-900/35 text-slate-300 hover:border-slate-700 hover:text-slate-300'
                 }`}
               >
                 {cfg.label}
@@ -821,11 +821,11 @@ export default function TuningTab({ data, ipcRequest }) {
                 }}
                 className="accent-cyan-500"
               />
-              <span className="font-data text-xs text-slate-400">
+              <span className="font-data text-base text-slate-300">
                 Train {activeModelConfig.label}
               </span>
               {isModelReady(activeModelId) && (
-                <span className="ml-auto rounded-full bg-emerald-500/20 px-2 py-0.5 font-data text-[10px] text-emerald-400">
+                <span className="ml-auto rounded-full bg-emerald-500/20 px-2 py-0.5 font-data text-sm text-emerald-400">
                   READY
                 </span>
               )}
@@ -867,11 +867,11 @@ export default function TuningTab({ data, ipcRequest }) {
                         className="h-3 w-3 shrink-0 rounded-full"
                         style={{ backgroundColor: cat.color }}
                       />
-                      <span className="flex-1 font-display text-[10px] font-bold uppercase tracking-wider text-slate-300">
+                      <span className="flex-1 font-display text-sm font-bold uppercase tracking-wider text-slate-300">
                         {cat.label}
                       </span>
                       <span
-                        className="shrink-0 rounded border px-1 font-data text-[9px] text-slate-600"
+                        className="shrink-0 rounded border px-1 font-data text-sm font-semibold text-slate-300"
                         style={{ borderColor: cat.color + '40' }}
                       >
                         {cat.key}
@@ -888,8 +888,8 @@ export default function TuningTab({ data, ipcRequest }) {
                         />
                       </div>
                       <span
-                        className={`shrink-0 font-data text-xs tabular-nums ${
-                          count >= MIN_CLIPS ? 'text-emerald-400' : 'text-slate-500'
+                        className={`shrink-0 font-data text-sm tabular-nums ${
+                          count >= MIN_CLIPS ? 'text-emerald-400' : 'text-slate-300'
                         }`}
                       >
                         {count}/{MIN_CLIPS}
@@ -903,7 +903,7 @@ export default function TuningTab({ data, ipcRequest }) {
 
           {/* Summary */}
           <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-3 py-2">
-            <p className="font-data text-[10px] text-slate-500">
+            <p className="font-data text-base text-slate-300">
               Total:{' '}
               <span className="text-slate-300">
                 {videos.reduce((s, v) => s + v.marks.length, 0)}
@@ -927,12 +927,12 @@ export default function TuningTab({ data, ipcRequest }) {
             className="mt-6"
           >
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-blue-500/80">
+              <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-blue-500/80">
                 Training Terminal
               </h3>
               <div className="flex items-center gap-2">
                 <span
-                  className={`font-data text-xs font-bold tracking-wider ${
+                  className={`font-data text-sm font-bold tracking-wider ${
                     tuning.status === 'running'
                       ? 'text-cyan-400'
                       : tuning.status === 'completed'
@@ -949,7 +949,7 @@ export default function TuningTab({ data, ipcRequest }) {
                 <button
                   type="button"
                   onClick={handleClearLogs}
-                  className="font-data inline-flex items-center gap-1 rounded-lg border border-slate-800 px-2 py-1 text-[11px] font-semibold text-slate-500 transition hover:border-cyan-500/30 hover:text-cyan-400"
+                  className="font-data inline-flex items-center gap-1 rounded-lg border border-slate-800 px-2 py-1 text-sm font-semibold text-slate-300 transition hover:border-cyan-500/30 hover:text-cyan-400"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Clear
@@ -982,10 +982,10 @@ export default function TuningTab({ data, ipcRequest }) {
 
             <div
               ref={logRef}
-              className="gl-terminal-scanlines max-h-64 min-h-[160px] overflow-y-auto rounded-2xl border border-cyan-500/15 bg-black/80 p-4 font-data text-xs leading-relaxed text-emerald-400/95 shadow-[inset_0_0_48px_rgba(34,211,238,0.04)] backdrop-blur-sm"
+              className="gl-terminal-scanlines max-h-64 min-h-[160px] overflow-y-auto rounded-2xl border border-cyan-500/15 bg-black/80 p-4 font-data text-sm leading-relaxed text-emerald-400/95 shadow-[inset_0_0_48px_rgba(34,211,238,0.04)] backdrop-blur-sm"
             >
               {tuning.logs.length === 0 ? (
-                <span className="text-slate-600">&gt; awaiting output…</span>
+                <span className="text-slate-300">&gt; awaiting output…</span>
               ) : (
                 tuning.logs.map((line, i) => (
                   <div key={i} className="whitespace-pre-wrap pl-2">
@@ -1018,14 +1018,14 @@ export default function TuningTab({ data, ipcRequest }) {
               <button
                 type="button"
                 onClick={() => setShowNameModal(false)}
-                className="absolute right-4 top-4 text-slate-500 transition hover:text-slate-300"
+                className="absolute right-4 top-4 text-slate-300 transition hover:text-slate-300"
               >
                 <X className="h-4 w-4" />
               </button>
               <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-100">
                 Name Your Model
               </h3>
-              <p className="mt-1 font-data text-xs text-slate-500">
+              <p className="mt-1 font-data text-base text-slate-300">
                 This name will appear in the pipeline model dropdown.
               </p>
               <input
@@ -1038,13 +1038,13 @@ export default function TuningTab({ data, ipcRequest }) {
                   if (e.key === 'Escape') setShowNameModal(false);
                 }}
                 placeholder="e.g. hades-v1"
-                className="mt-4 w-full rounded-xl border border-slate-700 bg-black/50 px-4 py-3 font-data text-sm text-slate-100 placeholder-slate-600 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                className="mt-4 w-full rounded-xl border border-slate-700 bg-black/50 px-4 py-3 font-data text-sm text-slate-100 placeholder:text-slate-400 outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
               />
               <div className="mt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowNameModal(false)}
-                  className="flex-1 rounded-xl border border-slate-700 py-3 font-display text-xs font-bold uppercase tracking-wider text-slate-400 transition hover:text-slate-200"
+                  className="flex-1 rounded-xl border border-slate-700 py-3 font-display text-sm font-bold uppercase tracking-wider text-slate-300 transition hover:text-slate-200"
                 >
                   Cancel
                 </button>
@@ -1052,7 +1052,7 @@ export default function TuningTab({ data, ipcRequest }) {
                   type="button"
                   disabled={!modelNameDraft.trim()}
                   onClick={handleStartTraining}
-                  className="flex-1 rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-800 py-3 font-display text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(16,185,129,0.25)] disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex-1 rounded-xl border border-emerald-500/40 bg-gradient-to-b from-emerald-600 to-emerald-800 py-3 font-display text-sm font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(16,185,129,0.25)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Begin Training
                 </button>
@@ -1089,7 +1089,7 @@ function SegmentProgress({ modelId, modelConfig, videos, minCount, minDuration }
       <div className="rounded-xl border border-slate-800 p-3" style={{ borderColor: color + '30', backgroundColor: color + '08' }}>
         <div className="flex items-center gap-2">
           <div className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-          <span className="flex-1 font-display text-[10px] font-bold uppercase tracking-wider text-slate-300">
+          <span className="flex-1 font-display text-sm font-bold uppercase tracking-wider text-slate-300">
             Boss Fight Segments
           </span>
         </div>
@@ -1104,14 +1104,14 @@ function SegmentProgress({ modelId, modelConfig, videos, minCount, minDuration }
             />
           </div>
           <span
-            className={`shrink-0 font-data text-xs tabular-nums ${
-              count >= minCount ? 'text-emerald-400' : 'text-slate-500'
+            className={`shrink-0 font-data text-sm tabular-nums ${
+              count >= minCount ? 'text-emerald-400' : 'text-slate-300'
             }`}
           >
             {count}/{minCount}
           </span>
         </div>
-        <p className="mt-1 font-data text-[10px] text-slate-600">
+        <p className="mt-1 font-data text-base text-slate-300">
           Valid = ≥ {minDuration}s · Total drawn: {allSegments.length}
         </p>
       </div>
@@ -1128,11 +1128,11 @@ function SegmentProgress({ modelId, modelConfig, videos, minCount, minDuration }
                 className="flex items-center justify-between rounded-lg border border-slate-800 px-2.5 py-1.5"
                 style={isValid ? { borderColor: color + '30', backgroundColor: color + '0a' } : {}}
               >
-                <span className="font-data text-[10px] text-slate-400 tabular-nums">
+                <span className="font-data text-base text-slate-300 tabular-nums">
                   {formatTime(seg.start)} → {formatTime(seg.end)}
                 </span>
                 <span
-                  className={`font-data text-[10px] tabular-nums ${
+                  className={`font-data text-sm tabular-nums ${
                     isValid ? 'text-emerald-400' : 'text-red-400/70'
                   }`}
                 >
@@ -1145,7 +1145,7 @@ function SegmentProgress({ modelId, modelConfig, videos, minCount, minDuration }
       )}
 
       {allSegments.length === 0 && (
-        <p className="py-3 text-center font-data text-[10px] text-slate-600">
+        <p className="py-3 text-center font-data text-base text-slate-300">
           Drag on timeline to mark boss fights
         </p>
       )}

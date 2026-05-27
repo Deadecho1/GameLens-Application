@@ -8,10 +8,10 @@ export default function UserDataSourceBadge({ badge, className = '' }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 font-data text-[9px] font-semibold uppercase tracking-[0.12em] ${
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 font-data text-sm font-semibold uppercase tracking-[0.12em] ${
         isOnline
           ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300/90'
-          : 'border-slate-600 bg-slate-900/60 text-slate-400'
+          : 'border-slate-600 bg-slate-900/60 text-slate-300'
       } ${className}`}
     >
       {isOnline ? (

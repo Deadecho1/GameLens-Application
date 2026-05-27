@@ -202,11 +202,11 @@ function TacticalRadarChart({
       {dataLength > 0 ? (
         <div className="mb-3 shrink-0 rounded-lg border border-slate-800 bg-slate-950/90 px-2 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-display text-[8px] font-bold uppercase tracking-[0.2em] text-slate-500">
+            <span className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
               Zoom options
             </span>
             {zoomRangeLabel ? (
-              <span className="font-data text-[10px] tabular-nums text-cyan-500/80">{zoomRangeLabel}</span>
+              <span className="font-data text-sm tabular-nums text-cyan-500/80">{zoomRangeLabel}</span>
             ) : null}
           </div>
           <div
@@ -224,10 +224,10 @@ function TacticalRadarChart({
                   type="button"
                   disabled={disabled}
                   onClick={() => setZoomView(opt.id)}
-                  className={`rounded-md border px-3 py-1.5 font-display text-[8px] font-bold uppercase tracking-[0.12em] transition ${
+                  className={`rounded-md border px-3 py-1.5 font-display text-sm font-bold uppercase tracking-[0.12em] transition ${
                     active
                       ? 'border-cyan-400/70 bg-cyan-500/15 text-cyan-100 shadow-[0_0_12px_rgba(34,211,238,0.25)]'
-                      : 'border-slate-700 bg-slate-900/80 text-slate-400 hover:border-cyan-500/35 hover:text-cyan-200'
+                      : 'border-slate-700 bg-slate-900/80 text-slate-300 hover:border-cyan-500/35 hover:text-cyan-200'
                   } disabled:cursor-not-allowed disabled:opacity-40`}
                   aria-pressed={active}
                 >
@@ -325,12 +325,12 @@ function TacticalRadarChart({
                   const when = formatFullRunDateTime(p);
                   return (
                     <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl">
-                      <p className="font-display text-xs font-bold uppercase tracking-wide text-cyan-200">
+                      <p className="font-display text-sm font-bold uppercase tracking-wide text-cyan-200">
                         Run ID · {runId}
                       </p>
-                      <p className="font-data mt-1 text-[10px] tabular-nums text-slate-500">
+                      <p className="font-data mt-1 text-sm tabular-nums text-slate-300">
                         <span className="text-cyan-300/90">{when}</span>
-                        <span className="text-slate-600">
+                        <span className="text-slate-300">
                           {' '}
                           · Run #{p.runIndex ?? '—'}
                           {p.run_index != null ? ` · DB index ${p.run_index}` : ''}
@@ -339,11 +339,11 @@ function TacticalRadarChart({
                       <p className="font-data mt-2 text-sm tabular-nums text-white">
                         {p.durationLabel ?? formatSecondsAsHMS(p.durationSec)}
                       </p>
-                      <p className="font-data text-[10px] tabular-nums text-slate-500">
+                      <p className="font-data text-sm tabular-nums text-slate-300">
                         {formatSecondsAsHMS(p.durationSec)}
                       </p>
                       {typeof p.movingAverage === 'number' ? (
-                        <p className="font-data mt-2 border-t border-slate-800 pt-2 text-[10px] text-slate-500">
+                        <p className="font-data mt-2 border-t border-slate-800 pt-2 text-base text-slate-300">
                           10-run trend{' '}
                           <span className="tabular-nums text-cyan-400/90">
                             {formatSecondsAsHMS(Math.round(p.movingAverage))}
@@ -388,7 +388,7 @@ function TacticalRadarChart({
           </ResponsiveContainer>
         ) : (
           <div
-            className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/40 font-data text-sm text-slate-500"
+            className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/40 font-data text-base text-slate-300"
             style={{ minHeight: plotHeightPx }}
           >
             No data to plot.
