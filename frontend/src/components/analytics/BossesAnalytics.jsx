@@ -758,13 +758,13 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                         </button>
                       </div>
 
-                      <div className="flex min-w-0 flex-col flex-wrap gap-6 2xl:flex-row 2xl:items-start 2xl:gap-8">
-                        <div className="min-w-0 w-full flex-1 basis-full space-y-4 2xl:min-w-[min(100%,32rem)]">
+                      <div className="flex w-full flex-wrap gap-8">
+                        <div className="min-w-[400px] flex-1 space-y-4">
                         <div>
                           <p className="font-display mb-2 text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                             Loadout
                           </p>
-                          <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 xl:grid-cols-5 xl:gap-3">
+                          <div className="flex flex-wrap justify-start gap-3">
                             {simSlots.map((slotId, slotIndex) => {
                               const item = slotId != null ? itemsCatalog.find((i) => i.id === slotId) : null;
                               return (
@@ -794,7 +794,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                       });
                                     }
                                   }}
-                                  className={`relative flex h-24 w-full min-w-[5.5rem] shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed transition sm:h-28 ${
+                                  className={`relative flex h-24 w-24 shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed transition sm:h-28 sm:w-28 ${
                                     item
                                       ? 'border-cyan-400/55 bg-slate-900/90 shadow-[0_0_24px_rgba(34,211,238,0.2),inset_0_0_24px_rgba(34,211,238,0.06)]'
                                       : 'border-slate-600 bg-slate-950/80 hover:border-slate-500'
@@ -885,9 +885,9 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             )}
                           </div>
                         </div>
-                      </div>
+                        </div>
 
-                      <div className="w-full min-w-0 shrink-0 basis-full 2xl:sticky 2xl:top-3 2xl:w-full 2xl:max-w-[22rem] 2xl:basis-auto">
+                        <div className="min-w-[400px] flex-1">
                         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 backdrop-blur-sm md:p-5">
                           <h4 className="font-display text-sm font-bold uppercase tracking-[0.22em] text-slate-300">
                             Expected result
