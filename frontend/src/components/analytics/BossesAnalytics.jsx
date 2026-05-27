@@ -86,13 +86,10 @@ function lifespanHistogramData(secondsList) {
   }));
 }
 
-/** Longer mean lifespan → better rank (rank 1 = longest). Top % = ceil(rank / N * 100). */
-function survivalRankTopPercent(bossId, dashboard) {
+/** Longer mean lifespan → better rank (rank 1 = longest average fight time). */
+function fightTimeRanking(bossId, dashboard) {
   const bosses = dashboard.bosses ?? [];
-  if (!bosses.length) return { topPct: null, rank: null, total: 0, singleCohort: false };
-  if (bosses.length === 1) {
-    return { topPct: null, rank: 1, total: 1, singleCohort: true };
-  }
+  if (!bosses.length) return { rank: null, total: 0 };
 
   const scored = bosses.map((b) => ({
     id: b.id,
@@ -100,8 +97,7 @@ function survivalRankTopPercent(bossId, dashboard) {
   }));
   const sorted = [...scored].sort((a, b) => b.mean - a.mean);
   const rank = sorted.findIndex((x) => x.id === bossId) + 1;
-  const topPct = Math.max(1, Math.ceil((rank / bosses.length) * 100));
-  return { topPct, rank, total: bosses.length, singleCohort: false };
+  return { rank, total: bosses.length };
 }
 
 /** Client-side mock: positive total = shorter projected engagement (percent points vs baseline). */
@@ -246,8 +242,8 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
   const survivalRank = useMemo(
     () =>
       selected
-        ? survivalRankTopPercent(selected.id, dashboard)
-        : { topPct: null, rank: null, total: 0, singleCohort: false },
+        ? fightTimeRanking(selected.id, dashboard)
+        : { rank: null, total: 0 },
     [selected, dashboard]
   );
 
@@ -428,28 +424,23 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                         Global performance metrics
                       </p>
                     </div>
-                    {(survivalRank.topPct != null || survivalRank.singleCohort) && (
+                    {survivalRank.rank != null && survivalRank.total > 0 ? (
                       <div className="flex items-center gap-3 rounded-xl border border-slate-700/90 bg-slate-950/55 px-4 py-3 ring-1 ring-cyan-500/10 backdrop-blur-md">
                         <Award className="h-8 w-8 shrink-0 text-cyan-400/90" strokeWidth={1.15} aria-hidden />
                         <div>
                           <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                            Fight duration rank
+                            Fight time ranking
                           </p>
-                          {survivalRank.singleCohort ? (
-                            <p className="font-data text-sm text-slate-400">Baseline — single boss in dataset</p>
-                          ) : (
-                            <>
-                              <p className="font-data text-lg font-bold tabular-nums text-cyan-100">
-                                Top {survivalRank.topPct}%
-                              </p>
-                              <p className="font-data text-[10px] tabular-nums text-slate-500">
-                                #{survivalRank.rank} of {survivalRank.total} · average fight length
-                              </p>
-                            </>
-                          )}
+                          <p className="font-data text-xl font-bold tabular-nums tracking-tight text-cyan-100 md:text-2xl">
+                            #{survivalRank.rank} of {survivalRank.total}{' '}
+                            {survivalRank.total === 1 ? 'Boss' : 'Bosses'}
+                          </p>
+                          <p className="font-data mt-1 text-[10px] text-slate-500">
+                            Ranked by average fight time
+                          </p>
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
