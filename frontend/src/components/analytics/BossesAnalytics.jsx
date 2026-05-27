@@ -379,7 +379,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
         </div>
       </header>
 
-      <div className="flex min-h-[min(640px,75vh)] flex-col gap-4 lg:flex-row lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-800/90 lg:bg-slate-950/40 lg:shadow-[inset_0_1px_0_rgba(34,211,238,0.06)]">
+      <div className="flex min-h-[min(640px,75vh)] min-w-0 flex-col gap-4 lg:flex-row lg:gap-0 lg:rounded-2xl lg:border lg:border-slate-800/90 lg:bg-slate-950/40 lg:shadow-[inset_0_1px_0_rgba(34,211,238,0.06)]">
         <aside className="flex w-full flex-col border-slate-800/80 lg:w-[25%] lg:min-w-[220px] lg:max-w-[320px] lg:border-r lg:bg-slate-950/50">
           <div className="flex items-center gap-2 border-b border-slate-800/80 px-4 py-3">
             <Radar className="h-4 w-4 text-cyan-400/90" strokeWidth={1.25} aria-hidden />
@@ -435,7 +435,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
           </nav>
         </aside>
 
-        <section className="relative flex min-h-[480px] flex-1 flex-col lg:w-[75%]">
+        <section className="relative flex min-h-[480px] min-w-0 flex-1 flex-col overflow-x-hidden lg:w-[75%]">
           <div
             className="gl-terminal-scanlines pointer-events-none absolute inset-0 rounded-none opacity-70 lg:rounded-r-2xl"
             aria-hidden
@@ -625,7 +625,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                     </div>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="min-w-0 space-y-6">
                     <motion.section
                       initial={false}
                       animate={{
@@ -758,13 +758,13 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                         </button>
                       </div>
 
-                      <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:gap-8">
-                        <div className="min-w-0 flex-1 space-y-4">
+                      <div className="flex min-w-0 flex-col flex-wrap gap-6 2xl:flex-row 2xl:items-start 2xl:gap-8">
+                        <div className="min-w-0 w-full flex-1 basis-full space-y-4 2xl:min-w-[min(100%,32rem)]">
                         <div>
                           <p className="font-display mb-2 text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                             Loadout
                           </p>
-                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                          <div className="grid w-full min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 xl:grid-cols-5 xl:gap-3">
                             {simSlots.map((slotId, slotIndex) => {
                               const item = slotId != null ? itemsCatalog.find((i) => i.id === slotId) : null;
                               return (
@@ -794,7 +794,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                                       });
                                     }
                                   }}
-                                  className={`relative flex h-24 w-full min-w-0 flex-col items-center justify-center rounded-xl border-2 border-dashed transition sm:h-28 ${
+                                  className={`relative flex h-24 w-full min-w-[5.5rem] shrink-0 flex-col items-center justify-center rounded-xl border-2 border-dashed transition sm:h-28 ${
                                     item
                                       ? 'border-cyan-400/55 bg-slate-900/90 shadow-[0_0_24px_rgba(34,211,238,0.2),inset_0_0_24px_rgba(34,211,238,0.06)]'
                                       : 'border-slate-600 bg-slate-950/80 hover:border-slate-500'
@@ -825,7 +825,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                           </div>
                         </div>
 
-                        <div className="flex max-h-[min(420px,52vh)] flex-col overflow-hidden rounded-xl border border-slate-800/90 bg-slate-950/75 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)] backdrop-blur-md">
+                        <div className="flex min-h-[min(280px,36vh)] max-h-[min(420px,52vh)] min-w-0 w-full flex-col overflow-hidden rounded-xl border border-slate-800/90 bg-slate-950/75 shadow-[inset_0_0_40px_rgba(0,0,0,0.35)] backdrop-blur-md">
                           <div className="shrink-0 border-b border-slate-800/80 p-3">
                             <label className="relative block">
                               <Search
@@ -842,14 +842,14 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                               />
                             </label>
                           </div>
-                          <div className="min-h-0 flex-1 overflow-y-auto p-3 [scrollbar-color:rgba(51,65,85,0.85)_transparent]">
+                          <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto p-3 [scrollbar-color:rgba(51,65,85,0.85)_transparent]">
                             <p className="font-display mb-2 px-0.5 text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
                               Item list
                             </p>
                             {filteredLibraryItems.length === 0 ? (
                               <p className="font-data py-8 text-center text-base text-slate-300">No items match.</p>
                             ) : (
-                              <ul className="space-y-1 pb-4">
+                              <ul className="min-w-[min(100%,16rem)] space-y-1 pb-4">
                                 {filteredLibraryItems.map((item) => {
                                   const inLoadout = simSlots.includes(item.id);
                                   return (
@@ -887,7 +887,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                         </div>
                       </div>
 
-                      <div className="w-full shrink-0 xl:sticky xl:top-3 xl:w-[min(100%,22rem)]">
+                      <div className="w-full min-w-0 shrink-0 basis-full 2xl:sticky 2xl:top-3 2xl:w-full 2xl:max-w-[22rem] 2xl:basis-auto">
                         <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 backdrop-blur-sm md:p-5">
                           <h4 className="font-display text-sm font-bold uppercase tracking-[0.22em] text-slate-300">
                             Expected result
