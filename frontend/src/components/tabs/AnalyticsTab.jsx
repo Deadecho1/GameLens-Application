@@ -4,7 +4,6 @@ import { BarChart3, ChevronDown, Columns2, Gamepad2, GitCompare } from "lucide-r
 import GeneralMissionStats from "../analytics/GeneralMissionStats";
 import BossesAnalytics from "../analytics/BossesAnalytics";
 import ItemsPowerLab from "../analytics/ItemsPowerLab";
-import { initialData } from "../../dataStore.js";
 import { sliceAnalyticsDataByVersion } from "../../utils/analyticsVersionSlice";
 
 const SUB_TABS = [
@@ -179,8 +178,7 @@ export default function AnalyticsTab({ data, onPatch }) {
 
   const versions = useMemo(() => {
     const list = data?.setup?.versions;
-    if (Array.isArray(list) && list.length > 0) return list;
-    return initialData.setup.versions ?? [];
+    return Array.isArray(list) ? list.filter(Boolean) : [];
   }, [data?.setup?.versions]);
 
   const [versionA, setVersionA] = useState(() => versions[0] ?? "");

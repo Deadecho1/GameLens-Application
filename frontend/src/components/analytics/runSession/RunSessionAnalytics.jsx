@@ -17,12 +17,6 @@ import {
 import { MemoizedRadarChart } from './TacticalRadarChart';
 import RunItemChip from './RunItemChip';
 
-/** Synergy bonus label from catalog popularity (dataStore) — scaled to seconds proxy. */
-function itemSynergySeconds(item) {
-  if (!item || typeof item.popularity !== 'number') return 1;
-  return Math.max(1, Math.round(item.popularity / 12));
-}
-
 /**
  * Converts run `duration` strings from dataStore (e.g. "00:28:00") to seconds for charts.
  */
@@ -395,14 +389,13 @@ export default function RunSessionAnalytics({
                                     <div className="flex flex-wrap gap-3 overflow-visible pb-2">
                                       {loadoutIds.map((itemId) => {
                                         const row = itemById(itemsCatalog, itemId);
-                                        const bonus = itemSynergySeconds(row);
                                         return (
                                           <RunItemChip
                                             key={`${selectedRun.id}-enc-${idx}-syn-${itemId}`}
                                             item={row}
                                             itemId={itemId}
                                             run={selectedRun}
-                                            synergyBonusSeconds={bonus}
+                                            synergyBonusSeconds={0}
                                           />
                                         );
                                       })}

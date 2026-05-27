@@ -100,21 +100,6 @@ function fightTimeRanking(bossId, dashboard) {
   return { rank, total: bosses.length };
 }
 
-/** Client-side mock: positive total = shorter projected engagement (percent points vs baseline). */
-function mockSynergyTimeReductionPct(itemIds, catalog) {
-  let pct = 0;
-  for (const id of itemIds) {
-    if (id == null) continue;
-    const item = catalog.find((i) => i.id === id);
-    if (!item) continue;
-    const imp = String(item.impact ?? '').toLowerCase();
-    if (imp === 'high') pct += 12;
-    else if (imp === 'low') pct += 4;
-    else pct += 7;
-  }
-  return pct;
-}
-
 function normalizeLoadoutIds(loadout, validIds) {
   const allowed = new Set(validIds);
   return (Array.isArray(loadout) ? loadout : [])
@@ -265,10 +250,12 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
   }, [baselineDashboard, selected]);
 
   const equippedIds = useMemo(() => simSlots.filter((id) => id != null), [simSlots]);
-  const synergyReductionPct = useMemo(
-    () => mockSynergyTimeReductionPct(equippedIds, itemsCatalog),
-    [equippedIds, itemsCatalog]
-  );
+  const synergyReductionPct = useMemo(() => {
+    if (!selected || equippedIds.length !== 1) return 0;
+    const row = (selected.itemEffectiveness ?? []).find((it) => it.itemId === equippedIds[0]);
+    const pct = Number(row?.timeReductionVsGlobalPct);
+    return Number.isFinite(pct) ? Math.max(0, Math.round(pct)) : 0;
+  }, [selected, equippedIds]);
   const synergyProjectedSec = useMemo(() => {
     if (globalAvgSec <= 0) return 0;
     if (equippedIds.length === 0) return globalAvgSec;
@@ -871,7 +858,7 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                               </p>
                               {equippedIds.length > 0 && globalAvgSec > 0 && (
                                 <p className="font-data mt-2 text-[10px] tabular-nums text-slate-500">
-                                  Mock loadout delta:{' '}
+                                  Data delta:{' '}
                                   <span className={synergyFaster ? 'text-cyan-400' : 'text-orange-400'}>
                                     {synergyReductionPct > 0 ? '−' : synergyReductionPct < 0 ? '+' : ''}
                                     {Math.abs(synergyReductionPct)}% vs baseline

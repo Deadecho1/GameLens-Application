@@ -76,7 +76,7 @@ export default function RunItemChip({
         />
       </div>
 
-      {synergyBonusSeconds != null ? (
+      {typeof synergyBonusSeconds === 'number' && synergyBonusSeconds > 0 ? (
         <span className="pointer-events-none absolute -right-1 -top-1 rounded border border-cyan-500/40 bg-slate-950 px-1 font-data text-[9px] font-bold text-cyan-300 opacity-0 shadow-sm transition-opacity duration-200 group-hover:opacity-100">
           +{synergyBonusSeconds}s
         </span>
