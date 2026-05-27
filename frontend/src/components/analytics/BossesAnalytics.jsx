@@ -177,6 +177,63 @@ function computeMostLethalSynergy(bossId, dashboard) {
   };
 }
 
+function estimateSimulatorFightTime(bossId, dashboard, equippedIds, globalAvgSec) {
+  if (!bossId || globalAvgSec <= 0 || equippedIds.length === 0) {
+    return { projectedSec: globalAvgSec, hasEstimate: false, usedExactMatch: false };
+  }
+
+  const items = dashboard.items ?? [];
+  const validIds = items.map((i) => i.id);
+  const runsHistory = dashboard.runsHistory ?? [];
+  const normalizedEquipped = [...equippedIds].sort((a, b) => a - b);
+  const exactKey = normalizedEquipped.join(':');
+  const encounters = [];
+
+  for (const run of runsHistory) {
+    for (const enc of run.bossEncounters || []) {
+      if (enc.bossId !== bossId || !enc.lifespan) continue;
+      const sec = durationToSeconds(enc.lifespan);
+      if (sec <= 0) continue;
+      const ids = normalizeLoadoutIds(enc.loadout, validIds);
+      encounters.push({ sec, ids });
+    }
+  }
+
+  const exactSecs = encounters
+    .filter((row) => row.ids.join(':') === exactKey)
+    .map((row) => row.sec);
+  if (exactSecs.length > 0) {
+    return {
+      projectedSec: Math.max(15, Math.round(meanSeconds(exactSecs))),
+      hasEstimate: true,
+      usedExactMatch: true,
+    };
+  }
+
+  let sumDeltaSec = 0;
+  let itemsWithHistory = 0;
+  for (const itemId of normalizedEquipped) {
+    const secsForItem = encounters
+      .filter((row) => row.ids.includes(itemId))
+      .map((row) => row.sec);
+    if (secsForItem.length === 0) continue;
+    const itemMeanSec = meanSeconds(secsForItem);
+    sumDeltaSec += globalAvgSec - itemMeanSec;
+    itemsWithHistory += 1;
+  }
+
+  if (itemsWithHistory === 0) {
+    return { projectedSec: globalAvgSec, hasEstimate: false, usedExactMatch: false };
+  }
+
+  const aggregateDeltaSec = sumDeltaSec / normalizedEquipped.length;
+  return {
+    projectedSec: Math.max(15, Math.round(globalAvgSec - aggregateDeltaSec)),
+    hasEstimate: true,
+    usedExactMatch: false,
+  };
+}
+
 /**
  * BOSSES — Master-detail tactical intel. dashboard.bosses + runsHistory + dashboard.items (gear).
  */
@@ -250,19 +307,19 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
   }, [baselineDashboard, selected]);
 
   const equippedIds = useMemo(() => simSlots.filter((id) => id != null), [simSlots]);
-  const synergyReductionPct = useMemo(() => {
-    if (!selected || equippedIds.length !== 1) return 0;
-    const row = (selected.itemEffectiveness ?? []).find((it) => it.itemId === equippedIds[0]);
-    const pct = Number(row?.timeReductionVsGlobalPct);
-    return Number.isFinite(pct) ? Math.max(0, Math.round(pct)) : 0;
-  }, [selected, equippedIds]);
-  const synergyProjectedSec = useMemo(() => {
-    if (globalAvgSec <= 0) return 0;
-    if (equippedIds.length === 0) return globalAvgSec;
-    const raw = Math.round(globalAvgSec * (1 - synergyReductionPct / 100));
-    return Math.max(15, raw);
-  }, [globalAvgSec, equippedIds.length, synergyReductionPct]);
-  const synergyFaster = synergyProjectedSec < globalAvgSec;
+  const itemImpactEstimate = useMemo(
+    () =>
+      selected
+        ? estimateSimulatorFightTime(selected.id, dashboard, equippedIds, globalAvgSec)
+        : { projectedSec: globalAvgSec, hasEstimate: false, usedExactMatch: false },
+    [selected, dashboard, equippedIds, globalAvgSec]
+  );
+  const synergyProjectedSec = itemImpactEstimate.projectedSec;
+  const synergyFaster = itemImpactEstimate.hasEstimate && synergyProjectedSec < globalAvgSec;
+  const synergyDeltaPct = useMemo(() => {
+    if (!itemImpactEstimate.hasEstimate || globalAvgSec <= 0) return 0;
+    return Math.round((1 - synergyProjectedSec / globalAvgSec) * 100);
+  }, [itemImpactEstimate.hasEstimate, globalAvgSec, synergyProjectedSec]);
   const compareBarData = useMemo(() => {
     const baseFill = '#575f6b';
     const synergyFill = equippedIds.length === 0 ? '#64748b' : synergyFaster ? '#22d3ee' : '#fb923c';
@@ -856,12 +913,12 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                               >
                                 {globalAvgSec > 0 ? formatSecondsAsHMS(synergyProjectedSec) : '—'}
                               </p>
-                              {equippedIds.length > 0 && globalAvgSec > 0 && (
+                              {equippedIds.length > 0 && globalAvgSec > 0 && itemImpactEstimate.hasEstimate && (
                                 <p className="font-data mt-2 text-[10px] tabular-nums text-slate-500">
                                   Data delta:{' '}
                                   <span className={synergyFaster ? 'text-cyan-400' : 'text-orange-400'}>
-                                    {synergyReductionPct > 0 ? '−' : synergyReductionPct < 0 ? '+' : ''}
-                                    {Math.abs(synergyReductionPct)}% vs baseline
+                                    {synergyDeltaPct > 0 ? '−' : synergyDeltaPct < 0 ? '+' : ''}
+                                    {Math.abs(synergyDeltaPct)}% vs baseline
                                   </span>
                                 </p>
                               )}
@@ -952,6 +1009,11 @@ export default function BossesAnalytics({ data, compareBaseline = null }) {
                             Cyan bar = faster than average; orange = slower. Updates automatically as you change
                             items.
                           </p>
+                          {equippedIds.length > 0 && !itemImpactEstimate.hasEstimate ? (
+                            <p className="font-data mt-2 text-[10px] text-slate-500">
+                              Insufficient historical data to estimate item impact.
+                            </p>
+                          ) : null}
                         </div>
                       </div>
                     </div>
