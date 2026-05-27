@@ -119,7 +119,7 @@ export default function ItemsInformationPanel({
                       </span>
                       {item.popularity != null ? (
                         <span className="font-data text-[10px] text-slate-500">
-                          {Math.round(item.popularity)}% popularity
+                          {Math.round(item.popularity)}% pick rate
                         </span>
                       ) : null}
                     </span>
@@ -134,7 +134,7 @@ export default function ItemsInformationPanel({
       <section className="analytics-split-scroll min-h-0 min-w-0 flex-1 overflow-y-auto p-4 md:p-6">
         {!detail ? (
           <div className="flex h-full min-h-[280px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
-            <p className="font-data text-sm text-slate-500">Select an item to view intelligence.</p>
+            <p className="font-data text-sm text-slate-500">Select an item to view details.</p>
           </div>
         ) : (
           <motion.div
@@ -157,14 +157,14 @@ export default function ItemsInformationPanel({
                       {detail.item.name}
                     </h4>
                     <p className="font-data mt-0.5 text-xs text-slate-500">
-                      Derived from {detail.runCount} run{detail.runCount === 1 ? '' : 's'} in history
+                      Based on {detail.runCount} run{detail.runCount === 1 ? '' : 's'}
                     </p>
                   </div>
                 </div>
                 {detail.popularity != null ? (
                   <div className="rounded-xl border border-violet-500/25 bg-violet-500/10 px-4 py-2 text-right">
                     <p className="font-display text-[9px] font-bold uppercase tracking-[0.2em] text-violet-300/80">
-                      Popularity
+                      Pick rate
                     </p>
                     <p className="font-data text-2xl font-bold tabular-nums text-violet-200">
                       {Math.round(detail.popularity)}%
@@ -186,7 +186,7 @@ export default function ItemsInformationPanel({
                 <div className="mb-2 flex items-center gap-2">
                   <Clock className="h-4 w-4 text-cyan-400/80" />
                   <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                    Avg run duration when picked
+                    Average run time
                   </p>
                 </div>
                 <p className="font-data text-3xl font-bold tabular-nums text-cyan-200">
@@ -201,14 +201,14 @@ export default function ItemsInformationPanel({
                   />
                 ) : null}
                 <p className="font-data mt-1 text-[11px] text-slate-600">
-                  Mean session length for runs containing this item
+                  Average time of runs using this item
                 </p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-4">
                 <div className="mb-2 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-emerald-400/80" />
                   <p className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-                    Pick events
+                    Times selected
                   </p>
                 </div>
                 <p className="font-data text-3xl font-bold tabular-nums text-slate-200">
@@ -222,7 +222,7 @@ export default function ItemsInformationPanel({
                   />
                 ) : null}
                 <p className="font-data mt-1 text-[11px] text-slate-600">
-                  First appearance per run (loadout or pickup record)
+                  Number of runs where this item was used
                 </p>
               </div>
             </div>
@@ -231,7 +231,7 @@ export default function ItemsInformationPanel({
               <div className="mb-4 flex items-center gap-2">
                 <Link2 className="h-4 w-4 text-violet-400/80" />
                 <h5 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
-                  Top synergies · commonly picked with
+                  Top combinations · frequently used with
                 </h5>
               </div>
               {detail.topSynergies.length === 0 ? (
@@ -267,10 +267,10 @@ export default function ItemsInformationPanel({
 
             <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-4 md:p-5">
               <h5 className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-slate-300">
-                Pick priority over time
+                Time acquired
               </h5>
               <p className="font-data mt-1 text-[11px] text-slate-600">
-                When this item was acquired (seconds into run, or inferred from encounter order)
+                When this item is usually obtained during a run
               </p>
               <div className={`mt-4 w-full min-w-0 ${compact ? 'h-[200px]' : 'h-[240px]'}`}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -305,7 +305,7 @@ export default function ItemsInformationPanel({
                         fontFamily: 'JetBrains Mono, monospace',
                       }}
                       formatter={(value, _name, item) => [
-                        `${value} pick${value === 1 ? '' : 's'}`,
+                        `${value} time${value === 1 ? '' : 's'} selected`,
                         item?.payload?.sublabel ?? '',
                       ]}
                     />

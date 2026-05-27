@@ -37,7 +37,7 @@ export default function ItemsPowerLab({
           <p className="font-data mt-1.5 text-sm text-slate-500">
             {itemsSubTab === 'build'
               ? 'Estimate average time based on past runs with these items'
-              : 'Metrics from run history and item combinations in application state'}
+              : 'Statistics from past runs and item combinations'}
           </p>
         </header>
         <ItemsSubTabToggle value={itemsSubTab} onChange={onItemsSubTabChange} />
