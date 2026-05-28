@@ -1020,7 +1020,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         if not game_name:
             return []
         user_id = self._auth_state.get("userId") or 0
-        return self._active_backend.get_runs(user_id, game_name, None)
+        return self._active_backend.get_runs(user_id, game_name, version_name or None)
 
     def get_dashboard_stats_from_ipc(
         self, game_name: str, version_name: str | None
@@ -1050,7 +1050,7 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
                 "bosses": self._active_backend.get_bosses(
                     user_id, game_name, version_name
                 ),
-                "runsHistory": self._active_backend.get_runs(user_id, game_name, None),
+                "runsHistory": self._active_backend.get_runs(user_id, game_name, version_name),
             }
         else:
             dashboard = {"items": [], "bosses": [], "runsHistory": []}

@@ -181,16 +181,19 @@ class LocalSQLiteBackend(StorageBackend):
             if game_id is None:
                 return []
 
+            vf = "AND gv.name = ?" if version_name else ""
+            vp = (version_name,) if version_name else ()
+
             run_rows = conn.execute(
-                """
+                f"""
                 SELECT r.id, substr(r.recorded_at, 1, 10), r.duration_seconds, r.outcome,
                        gv.name AS game_version
                 FROM dash_runs r
                 JOIN dash_game_versions gv ON gv.id = r.version_id
-                WHERE gv.game_id = ?
+                WHERE gv.game_id = ? {vf}
                 ORDER BY r.id DESC
                 """,
-                (game_id,),
+                (game_id,) + vp,
             ).fetchall()
 
             if not run_rows:
