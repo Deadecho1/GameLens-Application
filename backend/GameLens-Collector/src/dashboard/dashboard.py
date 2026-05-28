@@ -884,7 +884,7 @@ def get_runs():
                     FROM dashboard.runs r
                     JOIN dashboard.game_versions gv ON gv.id = r.version_id
                     WHERE gv.game_id = %s
-                    ORDER BY r.recorded_at DESC, r.id DESC;
+                    ORDER BY r.id DESC;
                     """,
                     (game_id,),
                 )

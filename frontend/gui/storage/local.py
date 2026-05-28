@@ -188,7 +188,7 @@ class LocalSQLiteBackend(StorageBackend):
                 FROM dash_runs r
                 JOIN dash_game_versions gv ON gv.id = r.version_id
                 WHERE gv.game_id = ?
-                ORDER BY r.recorded_at DESC, r.id DESC
+                ORDER BY r.id DESC
                 """,
                 (game_id,),
             ).fetchall()
