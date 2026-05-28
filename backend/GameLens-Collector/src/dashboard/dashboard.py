@@ -873,8 +873,11 @@ def get_runs():
 
                 game_id = game[0]
 
+                version_filter = "AND gv.name = %s" if version_name else ""
+                version_params = (version_name,) if version_name else ()
+
                 cur.execute(
-                    """
+                    f"""
                     SELECT
                         r.id,
                         r.recorded_at::date,
@@ -883,10 +886,10 @@ def get_runs():
                         gv.name AS game_version
                     FROM dashboard.runs r
                     JOIN dashboard.game_versions gv ON gv.id = r.version_id
-                    WHERE gv.game_id = %s
-                    ORDER BY r.recorded_at DESC, r.id DESC;
+                    WHERE gv.game_id = %s {version_filter}
+                    ORDER BY r.id DESC;
                     """,
-                    (game_id,),
+                    (game_id,) + version_params,
                 )
                 run_rows = cur.fetchall()
 
