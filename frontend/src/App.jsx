@@ -29,6 +29,7 @@ function App() {
   const [data, setData] = useState(() => cloneInitialData());
   const [error, setError] = useState("");
   const [modalError, setModalError] = useState("");
+  const [duplicateVideos, setDuplicateVideos] = useState([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [guestContinued, setGuestContinued] = useState(readGuestModeContinued);
   const pollRef = useRef(null);
@@ -274,18 +275,38 @@ function App() {
     }
   }, [ipcRequest]);
 
+  const handleRemoveFile = useCallback((filename) => {
+    const next = (data.processing?.videoFiles ?? []).filter((f) => f !== filename);
+    mergePatch({ processing: { videoFiles: next } });
+    setDuplicateVideos((prev) => prev.filter((f) => f !== filename));
+  }, [data.processing?.videoFiles, mergePatch]);
+
   const handleRun = useCallback(async () => {
     if (!data.setup?.user?.openAiKey) {
       setModalError("OpenAI API key is not configured. Add it in Settings before running the pipeline.");
       return;
     }
     try {
+      const videoFiles = data.processing?.videoFiles ?? [];
+      const gameName = (data.setup?.selectedGame ?? "").trim();
+      const versionName = (data.setup?.selectedVersion ?? "").trim() || null;
+      if (videoFiles.length > 0 && gameName) {
+        const dupes = await ipcRequest("processing:check_duplicates", {
+          game_name: gameName,
+          version_name: versionName,
+          video_names: videoFiles,
+        });
+        if (dupes.length > 0) {
+          setDuplicateVideos(dupes);
+          return;
+        }
+      }
       const state = await ipcRequest("processing:run");
       setData(state);
     } catch (e) {
       setModalError(String(e?.message || e));
     }
-  }, [ipcRequest, data.setup?.user?.openAiKey]);
+  }, [ipcRequest, data.setup?.user?.openAiKey, data.processing?.videoFiles, data.setup?.selectedGame, data.setup?.selectedVersion, mergePatch]);
 
   const handleStop = useCallback(async () => {
     try {
@@ -526,6 +547,7 @@ function App() {
                 onRun={handleRun}
                 onStop={handleStop}
                 onClearLogs={handleClearLogs}
+                onRemoveFile={handleRemoveFile}
               />
             )}
             {tab === "analytics" && (
@@ -630,6 +652,64 @@ function App() {
                   </div>
                 </div>
               </motion.div>
+                </>
+              )}
+              {duplicateVideos.length > 0 && (
+                <>
+                  <motion.div
+                    key="dup-backdrop"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-[80] bg-slate-950/70 backdrop-blur-sm"
+                    onClick={() => setDuplicateVideos([])}
+                  />
+                  <motion.div
+                    key="dup-modal"
+                    role="alertdialog"
+                    aria-modal="true"
+                    initial={{ opacity: 0, scale: 0.94, y: 12 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.94, y: 8 }}
+                    transition={{ type: "spring", damping: 24, stiffness: 320 }}
+                    className="fixed inset-0 z-[81] flex items-center justify-center p-4 pointer-events-none"
+                  >
+                    <div className="pointer-events-auto w-full max-w-md rounded-xl border border-amber-500/30 bg-slate-900 shadow-2xl">
+                      <div className="flex items-start gap-3 p-5">
+                        <AlertTriangle className="mt-0.5 shrink-0 text-amber-400" size={20} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-display text-sm font-semibold uppercase tracking-widest text-amber-300 mb-1">
+                            Already processed
+                          </p>
+                          <p className="font-data text-sm text-slate-300 mb-3">
+                            These videos have already been processed for this version. Remove them before starting the pipeline.
+                          </p>
+                          <ul className="space-y-1">
+                            {duplicateVideos.map((f) => (
+                              <li key={f} className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2">
+                                <span className="font-data min-w-0 flex-1 truncate text-xs text-slate-300">{f}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveFile(f)}
+                                  className="shrink-0 rounded border border-slate-700 px-2 py-0.5 font-display text-[10px] uppercase tracking-wide text-slate-400 transition hover:border-red-500/50 hover:text-red-400"
+                                >
+                                  Remove
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDuplicateVideos([])}
+                          className="shrink-0 rounded p-1 text-slate-400 hover:text-slate-200 transition-colors"
+                          aria-label="Dismiss"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
                 </>
               )}
             </AnimatePresence>

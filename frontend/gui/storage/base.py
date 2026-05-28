@@ -15,3 +15,8 @@ class StorageBackend(ABC):
 
     @abstractmethod
     def get_stats(self, user_id: int, game_name: str, version_name: str | None) -> dict: ...
+
+    @abstractmethod
+    def check_processed_videos(
+        self, user_id: int, game_name: str, version_name: str | None, video_names: list[str]
+    ) -> list[str]: ...

@@ -1,0 +1,138 @@
+{
+  "video_name": "megabonk_test.mp4",
+  "fps": 60.0,
+  "duration_seconds": 151.51666666666668,
+  "runs": [
+    {
+      "run_index": 1,
+      "start_event": {
+        "time": 6.0,
+        "frame": 360,
+        "confidence": 0.9996787309646606,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 96.75,
+        "frame": 5805,
+        "confidence": 0.9941413998603821,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [
+        {
+          "time": 37.2,
+          "frame": 2232,
+          "confidence": 0.9910065531730652,
+          "retry_frames": [
+            2232,
+            2227,
+            2222,
+            2212,
+            2202,
+            2172
+          ],
+          "retry_times": [
+            37.2,
+            37.11666666666667,
+            37.03333333333333,
+            36.86666666666667,
+            36.7,
+            36.2
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        },
+        {
+          "time": 59.1,
+          "frame": 3546,
+          "confidence": 0.9553513526916504,
+          "retry_frames": [
+            3546,
+            3541,
+            3536,
+            3526,
+            3516,
+            3486
+          ],
+          "retry_times": [
+            59.1,
+            59.016666666666666,
+            58.93333333333333,
+            58.766666666666666,
+            58.6,
+            58.1
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        },
+        {
+          "time": 91.7,
+          "frame": 5502,
+          "confidence": 0.9916525483131409,
+          "retry_frames": [
+            5502,
+            5497,
+            5492,
+            5482,
+            5472,
+            5442
+          ],
+          "retry_times": [
+            91.7,
+            91.61666666666666,
+            91.53333333333333,
+            91.36666666666666,
+            91.2,
+            90.7
+          ],
+          "refinement_method": "choice-unconfirmed-exit-last-preferred"
+        }
+      ],
+      "drop_events": [
+        {
+          "time": 28.5,
+          "frame": 1710,
+          "confidence": 0.9998001456260681,
+          "refinement_method": "hillclimb"
+        }
+      ]
+    },
+    {
+      "run_index": 2,
+      "start_event": {
+        "time": 110.25,
+        "frame": 6615,
+        "confidence": 0.9998536109924316,
+        "refinement_method": "hillclimb"
+      },
+      "end_event": {
+        "time": 144.0,
+        "frame": 8640,
+        "confidence": 0.9997255206108093,
+        "refinement_method": "hillclimb"
+      },
+      "choice_events": [
+        {
+          "time": 132.9,
+          "frame": 7974,
+          "confidence": 0.9301636219024658,
+          "retry_frames": [
+            7974,
+            7969,
+            7964,
+            7954,
+            7944,
+            7914
+          ],
+          "retry_times": [
+            132.9,
+            132.81666666666666,
+            132.73333333333332,
+            132.56666666666666,
+            132.4,
+            131.9
+          ],
+          "refinement_method": "choice-forward-exit-last-preferred"
+        }
+      ],
+      "drop_events": []
+    }
+  ]
+}

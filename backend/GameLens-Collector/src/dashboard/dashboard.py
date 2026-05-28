@@ -896,6 +896,8 @@ def get_runs():
                 run_ids = [row[0] for row in run_rows]
                 encounters_by_run = {}
 
+                pickups_by_run = {}
+
                 if run_ids:
                     cur.execute(
                         """
@@ -903,6 +905,7 @@ def get_runs():
                             be.run_id,
                             be.boss_id,
                             be.duration_seconds,
+                            be.start_time,
                             COALESCE(
                                 ARRAY_AGG(DISTINCT ip.item_id) FILTER (
                                     WHERE ip.item_id IS NOT NULL
@@ -918,18 +921,39 @@ def get_runs():
                             OR ip.picked_at_seconds <= be.start_time
                          )
                         WHERE be.run_id = ANY(%s)
-                        GROUP BY be.id, be.run_id, be.boss_id, be.duration_seconds
+                        GROUP BY be.id, be.run_id, be.boss_id, be.duration_seconds, be.start_time
                         ORDER BY be.run_id, be.id;
                         """,
                         (run_ids,),
                     )
 
-                    for run_id, boss_id, lifespan_seconds, loadout in cur.fetchall():
+                    for run_id, boss_id, lifespan_seconds, start_time, loadout in cur.fetchall():
                         encounters_by_run.setdefault(run_id, []).append(
                             {
                                 "bossId": boss_id,
                                 "lifespan": _format_mm_ss(lifespan_seconds),
                                 "loadout": loadout or [],
+                                "startTime": float(start_time) if start_time is not None else None,
+                            }
+                        )
+
+                    cur.execute(
+                        """
+                        SELECT run_id, item_id, picked_at_seconds, options
+                        FROM dashboard.item_pickups
+                        WHERE run_id = ANY(%s)
+                          AND picked_at_seconds IS NOT NULL
+                        ORDER BY run_id, picked_at_seconds;
+                        """,
+                        (run_ids,),
+                    )
+
+                    for run_id, item_id, picked_at_sec, options in cur.fetchall():
+                        pickups_by_run.setdefault(run_id, []).append(
+                            {
+                                "itemId": item_id,
+                                "pickedAtSeconds": float(picked_at_sec),
+                                "options": options if isinstance(options, list) else [],
                             }
                         )
 
@@ -948,6 +972,7 @@ def get_runs():
                 "outcome": outcome,
                 "gameVersion": game_version,
                 "bossEncounters": encounters_by_run.get(run_id, []),
+                "itemPickups": pickups_by_run.get(run_id, []),
             }
         )
 

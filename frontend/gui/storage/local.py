@@ -208,6 +208,7 @@ class LocalSQLiteBackend(StorageBackend):
                     be.run_id,
                     be.boss_id,
                     be.duration_seconds,
+                    be.start_time,
                     GROUP_CONCAT(DISTINCT ip.item_id) AS loadout_csv
                 FROM dash_boss_encounters be
                 LEFT JOIN dash_item_pickups ip
@@ -215,19 +216,44 @@ class LocalSQLiteBackend(StorageBackend):
                  AND ip.picked_at_seconds IS NOT NULL
                  AND (be.start_time IS NULL OR ip.picked_at_seconds <= be.start_time)
                 WHERE be.run_id IN ({placeholders})
-                GROUP BY be.id, be.run_id, be.boss_id, be.duration_seconds
+                GROUP BY be.id, be.run_id, be.boss_id, be.duration_seconds, be.start_time
                 ORDER BY be.run_id, be.id
                 """,
                 run_ids,
             ).fetchall()
 
             encounters_by_run: dict[int, list[dict]] = {}
-            for run_id, boss_id, lifespan_sec, loadout_csv in enc_rows:
+            for run_id, boss_id, lifespan_sec, start_time, loadout_csv in enc_rows:
                 loadout = [int(x) for x in loadout_csv.split(",") if x] if loadout_csv else []
                 encounters_by_run.setdefault(run_id, []).append({
                     "bossId": boss_id,
                     "lifespan": _fmt_mm_ss(lifespan_sec),
                     "loadout": loadout,
+                    "startTime": start_time,
+                })
+
+            pickup_rows = conn.execute(
+                f"""
+                SELECT run_id, item_id, picked_at_seconds, options
+                FROM dash_item_pickups
+                WHERE run_id IN ({placeholders})
+                  AND picked_at_seconds IS NOT NULL
+                ORDER BY run_id, picked_at_seconds
+                """,
+                run_ids,
+            ).fetchall()
+
+            import json as _json
+            pickups_by_run: dict[int, list[dict]] = {}
+            for run_id, item_id, picked_at_sec, options_json in pickup_rows:
+                try:
+                    options = _json.loads(options_json) if options_json else []
+                except Exception:
+                    options = []
+                pickups_by_run.setdefault(run_id, []).append({
+                    "itemId": item_id,
+                    "pickedAtSeconds": picked_at_sec,
+                    "options": options,
                 })
 
             return [
@@ -238,6 +264,7 @@ class LocalSQLiteBackend(StorageBackend):
                     "outcome": outcome,
                     "gameVersion": game_version,
                     "bossEncounters": encounters_by_run.get(run_id, []),
+                    "itemPickups": pickups_by_run.get(run_id, []),
                 }
                 for run_id, run_date, duration_sec, outcome, game_version in run_rows
             ]
@@ -365,6 +392,37 @@ class LocalSQLiteBackend(StorageBackend):
                 (game_row[0],),
             ).fetchall()
             return [r[0] for r in rows]
+        finally:
+            conn.close()
+
+    def check_processed_videos(
+        self, user_id: int, game_name: str, version_name: str | None, video_names: list[str]
+    ) -> list[str]:
+        if not video_names:
+            return []
+        conn = self._connect()
+        try:
+            game_id = self._get_game_id(conn, user_id, game_name)
+            if game_id is None:
+                return []
+            vf = "AND gv.name = ?" if version_name else ""
+            vp = (version_name,) if version_name else ()
+            rows = conn.execute(
+                f"""
+                SELECT DISTINCT r.video_filename
+                FROM dash_runs r
+                JOIN dash_game_versions gv ON gv.id = r.version_id
+                WHERE gv.game_id = ? {vf}
+                """,
+                (game_id,) + vp,
+            ).fetchall()
+            existing = {row[0] for row in rows}
+            duplicates = []
+            for name in video_names:
+                stem = Path(name).stem
+                if any(fn.startswith(f"{stem}_run_") for fn in existing):
+                    duplicates.append(name)
+            return duplicates
         finally:
             conn.close()
 

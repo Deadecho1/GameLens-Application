@@ -16,6 +16,7 @@ import {
   Film,
   ChevronRight,
   Cpu,
+  X,
 } from "lucide-react";
 
 const OPTIONS = [
@@ -50,6 +51,7 @@ export default function WorkflowTab({
   onPatch,
   onAddGame,
   onAddVersion,
+  onRemoveFile,
   onChooseFolder,
   onRun,
   onStop,
@@ -349,7 +351,15 @@ export default function WorkflowTab({
                       className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-cyan-100/80"
                     >
                       <Film className="h-3.5 w-3.5 shrink-0 text-blue-400/70" />
-                      {f}
+                      <span className="min-w-0 flex-1 truncate">{f}</span>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveFile?.(f)}
+                        className="shrink-0 rounded p-0.5 text-slate-600 transition hover:text-red-400"
+                        aria-label={`Remove ${f}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </li>
                   ))
                 )}

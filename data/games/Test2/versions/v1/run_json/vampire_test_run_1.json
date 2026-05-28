@@ -1,0 +1,25 @@
+{
+  "start_time": 13.75,
+  "end_time": 98.75,
+  "duration_seconds": 85.0,
+  "choices": [
+    {
+      "options": [
+        "Whip",
+        "King Bible",
+        "Knife"
+      ],
+      "selected_option": "Knife",
+      "picked_at_seconds": 39.9
+    },
+    {
+      "options": [
+        "Axe",
+        "Magic Wand",
+        "Santa Water"
+      ],
+      "selected_option": "Axe",
+      "picked_at_seconds": 91.5
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "start_time": 6.0,
+  "end_time": 96.75,
+  "duration_seconds": 90.75,
+  "choices": [
+    {
+      "options": [
+        "Silver Tome",
+        "Lightning Staff",
+        "Knockback Tome"
+      ],
+      "selected_option": "",
+      "picked_at_seconds": 37.2
+    },
+    {
+      "options": [
+        "Precision Tome",
+        "Cooldown Tome",
+        "Knockback"
+      ],
+      "selected_option": "Knockback",
+      "picked_at_seconds": 59.1
+    },
+    {
+      "options": [
+        "Bone",
+        "Shield Tome",
+        "Aegis"
+      ],
+      "selected_option": "",
+      "picked_at_seconds": 91.7
+    }
+  ]
+}

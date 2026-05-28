@@ -113,6 +113,12 @@ class IpcBridge(QObject):
             )
             return self._window.get_frontend_state_from_ipc()
 
+        if method == "processing:check_duplicates":
+            game_name = str(params.get("game_name") or "").strip()
+            version_name = str(params.get("version_name") or "").strip() or None
+            video_names = list(params.get("video_names") or [])
+            return self._window.check_processed_videos_from_ipc(game_name, version_name, video_names)
+
         if method == "processing:run":
             self._window.run_pipeline_from_ipc()
             return self._window.get_frontend_state_from_ipc()
