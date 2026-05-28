@@ -395,6 +395,37 @@ class LocalSQLiteBackend(StorageBackend):
         finally:
             conn.close()
 
+    def check_processed_videos(
+        self, user_id: int, game_name: str, version_name: str | None, video_names: list[str]
+    ) -> list[str]:
+        if not video_names:
+            return []
+        conn = self._connect()
+        try:
+            game_id = self._get_game_id(conn, user_id, game_name)
+            if game_id is None:
+                return []
+            vf = "AND gv.name = ?" if version_name else ""
+            vp = (version_name,) if version_name else ()
+            rows = conn.execute(
+                f"""
+                SELECT DISTINCT r.video_filename
+                FROM dash_runs r
+                JOIN dash_game_versions gv ON gv.id = r.version_id
+                WHERE gv.game_id = ? {vf}
+                """,
+                (game_id,) + vp,
+            ).fetchall()
+            existing = {row[0] for row in rows}
+            duplicates = []
+            for name in video_names:
+                stem = Path(name).stem
+                if any(fn.startswith(f"{stem}_run_") for fn in existing):
+                    duplicates.append(name)
+            return duplicates
+        finally:
+            conn.close()
+
     @staticmethod
     def _empty_stats() -> dict:
         return {

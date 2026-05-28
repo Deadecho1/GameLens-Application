@@ -1014,6 +1014,16 @@ class MainWindow(ResponsiveFontMixin, QMainWindow):
         user_id = self._auth_state.get("userId") or 0
         return self._active_backend.get_bosses(user_id, game_name, version_name or None)
 
+    def check_processed_videos_from_ipc(
+        self, game_name: str, version_name: str | None, video_names: list[str]
+    ) -> list[str]:
+        if not game_name:
+            return []
+        user_id = self._auth_state.get("userId") or 0
+        return self._active_backend.check_processed_videos(
+            user_id, game_name, version_name or None, video_names
+        )
+
     def get_dashboard_runs_from_ipc(
         self, game_name: str, version_name: str | None
     ) -> list[dict]:

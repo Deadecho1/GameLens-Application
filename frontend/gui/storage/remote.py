@@ -54,6 +54,12 @@ class RemoteCollectorBackend(StorageBackend):
             "bossKillPercent": 0.0, "mostPopularItem": None,
         }
 
+    def check_processed_videos(
+        self, user_id: int, game_name: str, version_name: str | None, video_names: list[str]
+    ) -> list[str]:
+        # Pipeline always writes to local DB — duplicate check is local-only
+        return []
+
     # ------------------------------------------------------------------
     # Write helpers used by SyncWorker
     # ------------------------------------------------------------------
