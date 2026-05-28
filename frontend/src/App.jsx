@@ -52,6 +52,16 @@ function App() {
         const activeMainTab = forceStartupAnalytics
           ? "analytics"
           : state.ui?.activeMainTab ?? "analytics";
+        const startupLoggedOutAuth = forceStartupAnalytics
+          ? {
+              ...state.auth,
+              loggedIn: false,
+              email: null,
+              userId: null,
+              syncStatus: "idle",
+              syncMessage: "",
+            }
+          : state.auth;
         if (forceStartupAnalytics) {
           startupAnalyticsAppliedRef.current = true;
         }
@@ -69,6 +79,7 @@ function App() {
                 ? "idle"
                 : state.processing?.status,
           },
+          auth: startupLoggedOutAuth,
         };
       });
       if (forceStartupAnalytics) {
