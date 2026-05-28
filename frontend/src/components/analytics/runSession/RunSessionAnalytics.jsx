@@ -6,6 +6,7 @@ import {
   Clock,
   Crosshair,
   Package,
+  ShoppingBag,
   Swords,
   Timer,
 } from 'lucide-react';
@@ -40,6 +41,34 @@ function itemNameById(catalog, id) {
 
 function bossNameById(catalog, id) {
   return catalog.find((b) => b.id === id)?.name ?? null;
+}
+
+function formatPickTime(seconds) {
+  if (seconds == null) return '—';
+  const total = Math.max(0, Math.round(seconds));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function buildTimeline(bossEncounters, itemPickups) {
+  const events = [];
+  for (const pickup of itemPickups ?? []) {
+    events.push({ type: 'pick', time: pickup.pickedAtSeconds ?? 0, pickup });
+  }
+  for (let i = 0; i < (bossEncounters ?? []).length; i++) {
+    const enc = bossEncounters[i];
+    // null startTime → sort after all picks, preserve encounter order via large offset
+    events.push({ type: 'boss', time: enc.startTime ?? 1e9 + i, encIndex: i, enc });
+  }
+  events.sort((a, b) => {
+    if (a.time !== b.time) return a.time - b.time;
+    // picks before bosses at identical time
+    if (a.type === 'pick' && b.type === 'boss') return -1;
+    if (a.type === 'boss' && b.type === 'pick') return 1;
+    return 0;
+  });
+  return events;
 }
 
 const glitchInjectVariants = {
@@ -137,6 +166,11 @@ export default function RunSessionAnalytics({
     if (!enc.length) return 1;
     return Math.max(...enc.map((e) => durationToSeconds(e.lifespan)), 1);
   }, [selectedRun]);
+
+  const timelineEvents = useMemo(
+    () => buildTimeline(selectedRun?.bossEncounters, selectedRun?.itemPickups),
+    [selectedRun],
+  );
 
   const handleListSelect = useCallback((runId) => {
     setSelectedRunId(runId);
@@ -344,8 +378,8 @@ export default function RunSessionAnalytics({
                     </h3>
                   </div>
 
-                  {(selectedRun.bossEncounters ?? []).length === 0 ? (
-                    <p className="font-data text-sm text-slate-600">No boss encounters for this run.</p>
+                  {timelineEvents.length === 0 ? (
+                    <p className="font-data text-sm text-slate-600">No timeline data for this run.</p>
                   ) : (
                     <div className="relative flex gap-4 md:gap-6">
                       <div className="relative w-8 shrink-0 md:w-10" aria-hidden>
@@ -368,19 +402,60 @@ export default function RunSessionAnalytics({
                         <div className="absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-slate-700/80" />
                       </div>
 
-                      <ul className="relative min-w-0 flex-1 space-y-10">
-                        {(selectedRun.bossEncounters ?? []).map((enc, idx) => {
+                      <ul className="relative min-w-0 flex-1 space-y-4">
+                        {timelineEvents.map((event, idx) => {
+                          if (event.type === 'pick') {
+                            const { pickup } = event;
+                            const selectedName = itemNameById(itemsCatalog, pickup.itemId);
+                            const hasOptions = Array.isArray(pickup.options) && pickup.options.length > 0;
+                            return (
+                              <li key={`${selectedRun.id}-pick-${idx}`} className="relative flex items-start gap-3">
+                                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-cyan-500/40 ring-1 ring-cyan-500/25" aria-hidden />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <ShoppingBag className="h-3 w-3 shrink-0 text-cyan-400/60" aria-hidden />
+                                    <span className="font-data tabular-nums text-[10px] text-slate-500">
+                                      {formatPickTime(pickup.pickedAtSeconds)}
+                                    </span>
+                                    <span className="font-display text-[11px] font-bold uppercase tracking-wide text-slate-300">
+                                      {selectedName ?? `Item ${pickup.itemId}`}
+                                    </span>
+                                  </div>
+                                  {hasOptions && (
+                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                      {pickup.options.map((optName, oi) => {
+                                        const isSelected = optName === selectedName;
+                                        return (
+                                          <span
+                                            key={oi}
+                                            className={
+                                              isSelected
+                                                ? 'font-display inline-block rounded border border-cyan-500/50 bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200'
+                                                : 'font-display inline-block rounded border border-slate-700 bg-slate-900/50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-500'
+                                            }
+                                          >
+                                            {optName}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </li>
+                            );
+                          }
+
+                          // boss encounter node
+                          const { enc, encIndex } = event;
                           const loadoutIds = enc.loadout ?? [];
                           const bossLabel = bossNameById(bossesCatalog, enc.bossId);
                           const bossLifeSec = durationToSeconds(enc.lifespan);
                           const barPct = Math.min(100, Math.round((bossLifeSec / maxBossLifespanSec) * 100));
-
                           return (
-                            <li key={`${selectedRun.id}-enc-${idx}`} className="relative">
+                            <li key={`${selectedRun.id}-enc-${encIndex}`} className="relative mt-6">
                               <p className="font-display pb-3 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
-                                Encounter {idx + 1}
+                                Encounter {encIndex + 1}
                               </p>
-
                               <div className="space-y-4">
                                 <div className="overflow-visible pt-2">
                                   <div className="mb-2 flex items-center gap-2">
@@ -398,7 +473,7 @@ export default function RunSessionAnalytics({
                                         const bonus = itemSynergySeconds(row);
                                         return (
                                           <RunItemChip
-                                            key={`${selectedRun.id}-enc-${idx}-syn-${itemId}`}
+                                            key={`${selectedRun.id}-enc-${encIndex}-syn-${itemId}`}
                                             item={row}
                                             itemId={itemId}
                                             run={selectedRun}
@@ -409,7 +484,6 @@ export default function RunSessionAnalytics({
                                     </div>
                                   )}
                                 </div>
-
                                 <div
                                   className="relative overflow-hidden rounded-xl border bg-emerald-500/10 text-slate-200 p-4"
                                   style={{
@@ -450,7 +524,6 @@ export default function RunSessionAnalytics({
                                     <p className="font-data mt-1.5 tabular-nums text-xs text-red-200/85">
                                       {enc.lifespan ?? '—'}
                                     </p>
-
                                     <div className="mt-4 border-t border-red-500/20 pt-4">
                                       <p className="font-display text-[9px] font-bold uppercase tracking-wider text-slate-400">
                                         Gear trace (this fight)
@@ -461,7 +534,7 @@ export default function RunSessionAnalytics({
                                         <ul className="mt-2 space-y-1.5">
                                           {loadoutIds.map((itemId) => (
                                             <li
-                                              key={`${selectedRun.id}-enc-${idx}-gear-${itemId}`}
+                                              key={`${selectedRun.id}-enc-${encIndex}-gear-${itemId}`}
                                               className="font-data flex flex-wrap items-baseline gap-x-2 text-sm text-slate-300"
                                             >
                                               <span className="tabular-nums text-cyan-400/80">{itemId}</span>
