@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
@@ -43,6 +43,84 @@ function formatPickTime(seconds) {
   const m = Math.floor(total / 60);
   const s = total % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+const ENGLISH_MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+const dateSelectClassName =
+  'font-data min-w-[11rem] cursor-pointer rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-cyan-400 outline-none transition focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50';
+
+/** Format Unix ms as local calendar date `YYYY-MM-DD` for date inputs. */
+function timestampToDateString(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) return '';
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Human-readable English label (no locale-dependent formatting). */
+function formatEnglishDateLabel(yyyyMmDd) {
+  const [y, m, d] = yyyyMmDd.split('-').map(Number);
+  if (!y || !m || !d) return yyyyMmDd;
+  return `${ENGLISH_MONTHS[m - 1]} ${d}, ${y}`;
+}
+
+/** Inclusive list of `YYYY-MM-DD` strings from min through max. */
+function enumerateCalendarDates(minDate, maxDate) {
+  if (!minDate || !maxDate || minDate > maxDate) return [];
+  const [y0, m0, d0] = minDate.split('-').map(Number);
+  const [y1, m1, d1] = maxDate.split('-').map(Number);
+  const cursor = new Date(y0, m0 - 1, d0);
+  const end = new Date(y1, m1 - 1, d1);
+  const out = [];
+  while (cursor <= end) {
+    out.push(timestampToDateString(cursor.getTime()));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+}
+
+/**
+ * English-only date picker (native `type="date"` follows OS locale in Electron).
+ */
+function EnglishDateSelect({ id, label, value, options, disabled, onChange }) {
+  return (
+    <label htmlFor={id} className="flex flex-col gap-1.5" lang="en-US">
+      <span className="font-display text-xs font-bold uppercase tracking-wider text-slate-400">
+        {label}
+      </span>
+      <select
+        id={id}
+        lang="en-US"
+        value={value}
+        disabled={disabled || options.length === 0}
+        onChange={(e) => onChange(e.target.value)}
+        className={dateSelectClassName}
+        aria-label={label}
+      >
+        {options.map((day) => (
+          <option key={day} value={day} lang="en-US">
+            {formatEnglishDateLabel(day)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 function buildTimeline(bossEncounters, itemPickups) {
@@ -90,21 +168,91 @@ export default function RunSessionAnalytics({
     return Array.isArray(runs) ? runs : [];
   }, [data]);
 
+  const { minDate, maxDate } = useMemo(() => {
+    if (!runsHistory.length) return { minDate: '', maxDate: '' };
+    const dayStrings = runsHistory
+      .map((run) => timestampToDateString(resolveRunTimestamp(run)))
+      .filter(Boolean)
+      .sort();
+    if (!dayStrings.length) return { minDate: '', maxDate: '' };
+    return { minDate: dayStrings[0], maxDate: dayStrings[dayStrings.length - 1] };
+  }, [runsHistory]);
+
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const dateRangeInitRef = useRef(false);
+
+  useEffect(() => {
+    if (!runsHistory.length) {
+      dateRangeInitRef.current = false;
+      setDateRange({ from: '', to: '' });
+      return;
+    }
+    if (!minDate || !maxDate) return;
+    if (!dateRangeInitRef.current) {
+      setDateRange({ from: minDate, to: maxDate });
+      dateRangeInitRef.current = true;
+    }
+  }, [runsHistory.length, minDate, maxDate]);
+
+  const filteredRunsHistory = useMemo(() => {
+    if (!runsHistory.length) return [];
+    if (!dateRange.from || !dateRange.to) return runsHistory;
+    return runsHistory.filter((run) => {
+      const day = timestampToDateString(resolveRunTimestamp(run));
+      if (!day) return false;
+      return day >= dateRange.from && day <= dateRange.to;
+    });
+  }, [runsHistory, dateRange.from, dateRange.to]);
+
+  const calendarDateOptions = useMemo(
+    () => enumerateCalendarDates(minDate, maxDate),
+    [minDate, maxDate]
+  );
+
+  const fromDateOptions = useMemo(
+    () => calendarDateOptions.filter((day) => !dateRange.to || day <= dateRange.to),
+    [calendarDateOptions, dateRange.to]
+  );
+
+  const toDateOptions = useMemo(
+    () => calendarDateOptions.filter((day) => !dateRange.from || day >= dateRange.from),
+    [calendarDateOptions, dateRange.from]
+  );
+
+  const handleFromDateChange = useCallback((from) => {
+    setDateRange((prev) => {
+      const next = { ...prev, from };
+      if (prev.to && from > prev.to) next.to = from;
+      return next;
+    });
+  }, []);
+
+  const handleToDateChange = useCallback((to) => {
+    setDateRange((prev) => {
+      const next = { ...prev, to };
+      if (prev.from && to < prev.from) next.from = to;
+      return next;
+    });
+  }, []);
+
   const itemsCatalog = data?.dashboard?.items ?? [];
   const bossesCatalog = data?.dashboard?.bosses ?? [];
 
   const globalAverageDurationSeconds = useMemo(() => {
-    if (!runsHistory.length) return 0;
-    const sum = runsHistory.reduce((acc, r) => acc + runDurationToSeconds(r.duration), 0);
-    return sum / runsHistory.length;
-  }, [runsHistory]);
+    if (!filteredRunsHistory.length) return 0;
+    const sum = filteredRunsHistory.reduce(
+      (acc, r) => acc + runDurationToSeconds(r.duration),
+      0
+    );
+    return sum / filteredRunsHistory.length;
+  }, [filteredRunsHistory]);
 
-  /** Stable chart rows: chronological sort, ordinal runIndex, moving avg — only when raw runs change. */
+  /** Stable chart rows: chronological sort, ordinal runIndex, moving avg — only when filtered runs change. */
   const chartBundle = useMemo(() => {
-    if (!runsHistory.length) {
+    if (!filteredRunsHistory.length) {
       return { chartData: [], n: 0, yMin: 0, yMax: 1, yPad: 0 };
     }
-    const trendSeries = buildRunDurationTrendSeries(runsHistory);
+    const trendSeries = buildRunDurationTrendSeries(filteredRunsHistory);
     const secs = trendSeries.map((p) => p.durationSec);
     const avgSecs = trendSeries.map((p) => p.movingAverage);
     const yMin = Math.min(...secs, ...avgSecs);
@@ -120,15 +268,15 @@ export default function RunSessionAnalytics({
       maxSec: yMax,
     }));
     return { chartData, n, yMin, yMax, yPad };
-  }, [runsHistory]);
+  }, [filteredRunsHistory]);
 
   const { chartData, n, yMin, yMax, yPad } = chartBundle;
 
   const runsDataKey = useMemo(() => {
-    if (!runsHistory.length) return '0';
-    const last = runsHistory[runsHistory.length - 1];
-    return `${runsHistory.length}:${runsHistory[0]?.id}:${last?.id}`;
-  }, [runsHistory]);
+    if (!filteredRunsHistory.length) return '0';
+    const last = filteredRunsHistory[filteredRunsHistory.length - 1];
+    return `${filteredRunsHistory.length}:${dateRange.from}:${dateRange.to}:${filteredRunsHistory[0]?.id}:${last?.id}`;
+  }, [filteredRunsHistory, dateRange.from, dateRange.to]);
 
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [hoveredRunId, setHoveredRunId] = useState(null);
@@ -295,9 +443,36 @@ export default function RunSessionAnalytics({
                 </button>
               ) : null}
             </div>
+            {runsHistory.length > 0 ? (
+              <div className="mb-4 flex flex-col gap-3" lang="en-US">
+                <p className="font-data text-sm text-slate-400">
+                  Available dates range from the first to the last run.
+                </p>
+                <div className="flex flex-wrap items-end gap-4">
+                  <EnglishDateSelect
+                    id="run-session-date-from"
+                    label="From"
+                    value={dateRange.from}
+                    options={fromDateOptions}
+                    disabled={!minDate}
+                    onChange={handleFromDateChange}
+                  />
+                  <EnglishDateSelect
+                    id="run-session-date-to"
+                    label="To"
+                    value={dateRange.to}
+                    options={toDateOptions}
+                    disabled={!maxDate}
+                    onChange={handleToDateChange}
+                  />
+                </div>
+              </div>
+            ) : null}
             {chartData.length === 0 ? (
               <div className="flex h-[280px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40 font-data text-base text-slate-300">
-                No data to plot.
+                {runsHistory.length > 0
+                  ? 'No runs in the selected date range.'
+                  : 'No data to plot.'}
               </div>
             ) : (
               <MemoizedRadarChart
