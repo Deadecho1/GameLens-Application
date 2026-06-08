@@ -362,16 +362,7 @@ export default function AnalyticsTab({ data, onPatch }) {
         aria-label="Version comparison"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex shrink-0 items-center gap-2 text-slate-300">
-            <GitCompare
-              className="h-4 w-4 shrink-0 text-cyan-500/80"
-              aria-hidden
-            />
-            <p className="font-display text-sm font-bold uppercase tracking-[0.22em] text-slate-300">
-              Version comparison
-            </p>
-          </div>
-          <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
+          <div className="flex flex-wrap items-end gap-x-10 gap-y-3">
             <VersionDropdown
               id="analytics-compare-version-a"
               listboxId="analytics-compare-version-a-listbox"
