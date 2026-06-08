@@ -17,6 +17,7 @@ import {
 } from '../../../utils/runMovingAverage';
 import { MemoizedRadarChart } from './TacticalRadarChart';
 import RunItemChip from './RunItemChip';
+import SessionDateRangePicker from './SessionDateRangePicker';
 
 /**
  * Converts run `duration` strings from dataStore (e.g. "00:28:00") to seconds for charts.
@@ -45,25 +46,7 @@ function formatPickTime(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-const ENGLISH_MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-const dateSelectClassName =
-  'font-data min-w-[11rem] cursor-pointer rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-cyan-400 outline-none transition focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50';
-
-/** Format Unix ms as local calendar date `YYYY-MM-DD` for date inputs. */
+/** Format Unix ms as local calendar date `YYYY-MM-DD` for date filtering. */
 function timestampToDateString(ms) {
   if (!Number.isFinite(ms) || ms <= 0) return '';
   const d = new Date(ms);
@@ -71,56 +54,6 @@ function timestampToDateString(ms) {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
-}
-
-/** Human-readable English label (no locale-dependent formatting). */
-function formatEnglishDateLabel(yyyyMmDd) {
-  const [y, m, d] = yyyyMmDd.split('-').map(Number);
-  if (!y || !m || !d) return yyyyMmDd;
-  return `${ENGLISH_MONTHS[m - 1]} ${d}, ${y}`;
-}
-
-/** Inclusive list of `YYYY-MM-DD` strings from min through max. */
-function enumerateCalendarDates(minDate, maxDate) {
-  if (!minDate || !maxDate || minDate > maxDate) return [];
-  const [y0, m0, d0] = minDate.split('-').map(Number);
-  const [y1, m1, d1] = maxDate.split('-').map(Number);
-  const cursor = new Date(y0, m0 - 1, d0);
-  const end = new Date(y1, m1 - 1, d1);
-  const out = [];
-  while (cursor <= end) {
-    out.push(timestampToDateString(cursor.getTime()));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return out;
-}
-
-/**
- * English-only date picker (native `type="date"` follows OS locale in Electron).
- */
-function EnglishDateSelect({ id, label, value, options, disabled, onChange }) {
-  return (
-    <label htmlFor={id} className="flex flex-col gap-1.5" lang="en-US">
-      <span className="font-display text-xs font-bold uppercase tracking-wider text-slate-400">
-        {label}
-      </span>
-      <select
-        id={id}
-        lang="en-US"
-        value={value}
-        disabled={disabled || options.length === 0}
-        onChange={(e) => onChange(e.target.value)}
-        className={dateSelectClassName}
-        aria-label={label}
-      >
-        {options.map((day) => (
-          <option key={day} value={day} lang="en-US">
-            {formatEnglishDateLabel(day)}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
 }
 
 function buildTimeline(bossEncounters, itemPickups) {
@@ -203,21 +136,6 @@ export default function RunSessionAnalytics({
       return day >= dateRange.from && day <= dateRange.to;
     });
   }, [runsHistory, dateRange.from, dateRange.to]);
-
-  const calendarDateOptions = useMemo(
-    () => enumerateCalendarDates(minDate, maxDate),
-    [minDate, maxDate]
-  );
-
-  const fromDateOptions = useMemo(
-    () => calendarDateOptions.filter((day) => !dateRange.to || day <= dateRange.to),
-    [calendarDateOptions, dateRange.to]
-  );
-
-  const toDateOptions = useMemo(
-    () => calendarDateOptions.filter((day) => !dateRange.from || day >= dateRange.from),
-    [calendarDateOptions, dateRange.from]
-  );
 
   const handleFromDateChange = useCallback((from) => {
     setDateRange((prev) => {
@@ -444,28 +362,18 @@ export default function RunSessionAnalytics({
               ) : null}
             </div>
             {runsHistory.length > 0 ? (
-              <div className="mb-4 flex flex-col gap-3" lang="en-US">
+              <div className="relative z-10 mb-4 flex flex-col gap-3" lang="en-US">
                 <p className="font-data text-sm text-slate-400">
                   Available dates range from the first to the last session.
                 </p>
-                <div className="flex flex-wrap items-end gap-4">
-                  <EnglishDateSelect
-                    id="run-session-date-from"
-                    label="From"
-                    value={dateRange.from}
-                    options={fromDateOptions}
-                    disabled={!minDate}
-                    onChange={handleFromDateChange}
-                  />
-                  <EnglishDateSelect
-                    id="run-session-date-to"
-                    label="To"
-                    value={dateRange.to}
-                    options={toDateOptions}
-                    disabled={!maxDate}
-                    onChange={handleToDateChange}
-                  />
-                </div>
+                <SessionDateRangePicker
+                  from={dateRange.from}
+                  to={dateRange.to}
+                  minDate={minDate}
+                  maxDate={maxDate}
+                  onFromChange={handleFromDateChange}
+                  onToChange={handleToDateChange}
+                />
               </div>
             ) : null}
             {chartData.length === 0 ? (
