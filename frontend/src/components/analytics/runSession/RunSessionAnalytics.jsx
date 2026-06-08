@@ -343,15 +343,15 @@ export default function RunSessionAnalytics({
     <aside className="flex w-full flex-col border-slate-800/80 lg:w-[min(100%,280px)] lg:shrink-0 lg:border-r lg:border-slate-800/90 lg:bg-slate-950/55">
       <div className="border-b border-slate-800/80 px-4 py-3">
         <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
-          Select a run
+          Select a session
         </p>
         <p className="font-data mt-1 text-base text-slate-300">
-          {runsHistory.length} recorded runs
+          {runsHistory.length} recorded sessions
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-color:rgba(71,85,105,0.45)_transparent]">
         {runsHistory.length === 0 ? (
-          <p className="font-data px-2 py-8 text-center text-base text-slate-300">No runs in history.</p>
+          <p className="font-data px-2 py-8 text-center text-base text-slate-300">No sessions in history.</p>
         ) : (
           <ul className="space-y-1">
             {runsHistory.map((run) => {
@@ -426,10 +426,10 @@ export default function RunSessionAnalytics({
                 <Activity className="h-4 w-4 text-cyan-400/80" aria-hidden />
                 <div>
                   <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
-                    Run time trend
+                    Session time trend
                   </h3>
                   <p className="font-data mt-1 text-base text-slate-300">
-                    Use zoom options above the chart · {n} chronological run{n === 1 ? '' : 's'}
+                    Use zoom options above the chart · {n} chronological session{n === 1 ? '' : 's'}
                   </p>
                 </div>
               </div>
@@ -446,7 +446,7 @@ export default function RunSessionAnalytics({
             {runsHistory.length > 0 ? (
               <div className="mb-4 flex flex-col gap-3" lang="en-US">
                 <p className="font-data text-sm text-slate-400">
-                  Available dates range from the first to the last run.
+                  Available dates range from the first to the last session.
                 </p>
                 <div className="flex flex-wrap items-end gap-4">
                   <EnglishDateSelect
@@ -471,7 +471,7 @@ export default function RunSessionAnalytics({
             {chartData.length === 0 ? (
               <div className="flex h-[280px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40 font-data text-base text-slate-300">
                 {runsHistory.length > 0
-                  ? 'No runs in the selected date range.'
+                  ? 'No sessions in the selected date range.'
                   : 'No data to plot.'}
               </div>
             ) : (
@@ -510,7 +510,7 @@ export default function RunSessionAnalytics({
                   className="flex min-h-[120px] items-center justify-center rounded-xl border border-dashed border-slate-700/80 bg-slate-950/40 px-4 py-8"
                 >
                   <p className="font-data text-center text-base text-slate-300">
-                    Select a run or a point on the chart to view{' '}
+                    Select a session or a point on the chart to view{' '}
                     <span className="text-cyan-500/80">telemetry</span>.
                   </p>
                 </motion.div>
@@ -543,12 +543,12 @@ export default function RunSessionAnalytics({
                   <div className="flex items-center gap-2 pb-4">
                     <Timer className="h-4 w-4 text-slate-300" aria-hidden />
                     <h3 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
-                      Run timeline
+                      Session timeline
                     </h3>
                   </div>
 
                   {timelineEvents.length === 0 ? (
-                    <p className="font-data text-base text-slate-300">No timeline data for this run.</p>
+                    <p className="font-data text-base text-slate-300">No timeline data for this session.</p>
                   ) : (
                     <div className="relative flex gap-4 md:gap-6">
                       <div className="relative w-8 shrink-0 md:w-10" aria-hidden>

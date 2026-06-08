@@ -171,7 +171,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                     ? `Average time when equipped: ${formatMmSs(st.avgEquippedRunSeconds)}`
                     : 'Average time when equipped: —';
                 const tooltipLines = [
-                  `Found in ${runCount} run${runCount === 1 ? '' : 's'}`,
+                  `Found in ${runCount} session${runCount === 1 ? '' : 's'}`,
                   avgLine,
                 ].join('\n');
 
@@ -302,7 +302,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
 
           <section className="rounded-2xl border border-slate-800 bg-slate-950/40 p-5 backdrop-blur-md">
             <h4 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
-              Average run time
+              Average session time
             </h4>
             <p className="font-data mt-1 text-base text-slate-300">
               Comparison between the global average time and the estimated time for this item combination.
@@ -392,7 +392,7 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                   }`}
                 >
                   {survivalDeltaSeconds > 0 && (
-                    <>{formatSignedDeltaMmSs(survivalDeltaSeconds)} minutes added to run time</>
+                    <>{formatSignedDeltaMmSs(survivalDeltaSeconds)} minutes added to session time</>
                   )}
                   {survivalDeltaSeconds < 0 && (
                     <>{formatSignedDeltaMmSs(survivalDeltaSeconds)} minutes below global average</>

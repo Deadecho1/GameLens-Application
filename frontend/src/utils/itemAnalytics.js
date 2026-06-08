@@ -4,9 +4,9 @@ const EARLY_END_SEC = 5 * 60;
 const MID_END_SEC = 15 * 60;
 
 const PHASE_BUCKETS = [
-  { id: 'early', label: 'Early Run', sublabel: '0 – 5 min', minSec: 0, maxSec: EARLY_END_SEC },
-  { id: 'mid', label: 'Mid Run', sublabel: '5 – 15 min', minSec: EARLY_END_SEC, maxSec: MID_END_SEC },
-  { id: 'late', label: 'Late Run', sublabel: '15+ min', minSec: MID_END_SEC, maxSec: Infinity },
+  { id: 'early', label: 'Early Session', sublabel: '0 – 5 min', minSec: 0, maxSec: EARLY_END_SEC },
+  { id: 'mid', label: 'Mid Session', sublabel: '5 – 15 min', minSec: EARLY_END_SEC, maxSec: MID_END_SEC },
+  { id: 'late', label: 'Late Session', sublabel: '15+ min', minSec: MID_END_SEC, maxSec: Infinity },
 ];
 
 /**

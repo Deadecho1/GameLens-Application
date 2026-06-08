@@ -95,13 +95,13 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
           General analytics
         </p>
         <h3 className="mt-2 font-display text-xl font-bold text-slate-100 md:text-2xl">
-          Run summary
+          Session summary
         </h3>
 
       </header>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <BriefMetricCard title="Total runs" subtitle="All recorded runs" icon={Activity} accent="cyan" hero>
+        <BriefMetricCard title="Total sessions" subtitle="All recorded sessions" icon={Activity} accent="cyan" hero>
           <motion.p
             className="font-data text-2xl font-bold tabular-nums tracking-tight text-cyan-200 md:text-3xl"
             animate={{
@@ -124,7 +124,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
           ) : null}
         </BriefMetricCard>
 
-        <BriefMetricCard title="Avg. run time" subtitle="Average run time" icon={Clock} accent="blue">
+        <BriefMetricCard title="Avg. session time" subtitle="Average session time" icon={Clock} accent="blue">
           <p className="font-data text-2xl font-bold tabular-nums text-slate-100 md:text-3xl">{avgLabel}</p>
           {baselineMetrics ? (
             <DeltaIndicator
@@ -135,7 +135,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
           ) : null}
         </BriefMetricCard>
 
-        <BriefMetricCard title="Longest run" subtitle="Maximum run time" icon={Hourglass} accent="blue">
+        <BriefMetricCard title="Longest session" subtitle="Maximum session time" icon={Hourglass} accent="blue">
           <p className="font-data text-2xl font-bold tabular-nums text-slate-100 md:text-3xl">{longestLabel}</p>
           {baselineMetrics ? (
             <DeltaIndicator
@@ -170,16 +170,16 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
           <div className="rounded-2xl border border-slate-800 bg-transparent p-4 backdrop-blur-md md:p-6">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
               <h4 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-blue-400/90">
-                Run time distribution
+                Session time distribution
               </h4>
               <span className="font-data text-base text-slate-300">
-                {histogramTotal} run{histogramTotal === 1 ? '' : 's'} · 5 min intervals
+                {histogramTotal} session{histogramTotal === 1 ? '' : 's'} · 5 min intervals
               </span>
             </div>
             <div className="h-[320px] w-full min-w-0">
               {histogramTotal === 0 ? (
                 <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-950/40">
-                  <p className="font-data text-base text-slate-300">No runs recorded yet.</p>
+                  <p className="font-data text-base text-slate-300">No sessions recorded yet.</p>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
@@ -209,7 +209,7 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
                       axisLine={{ stroke: '#475569' }}
                       tickLine={{ stroke: '#475569' }}
                       label={{
-                        value: 'Number of runs',
+                        value: 'Number of sessions',
                         angle: -90,
                         position: 'insideLeft',
                         fill: '#64748b',
@@ -230,15 +230,15 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
                           <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl backdrop-blur-md">
                             <p className="font-data text-sm font-semibold text-cyan-200">{row.bucket}</p>
                             <p className="font-data mt-1 text-sm text-slate-200">
-                              <span className="tabular-nums text-blue-300">{row.count}</span> run
+                              <span className="tabular-nums text-blue-300">{row.count}</span> session
                               {row.count === 1 ? '' : 's'}
                             </p>
-                            <p className="font-data text-base text-slate-300">{pct}% of runs</p>
+                            <p className="font-data text-base text-slate-300">{pct}% of sessions</p>
                           </div>
                         );
                       }}
                     />
-                    <Bar dataKey="count" name="Runs" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                    <Bar dataKey="count" name="Sessions" radius={[6, 6, 0, 0]} maxBarSize={48}>
                       {histogramData.map((entry) => (
                         <Cell
                           key={entry.bucket}
@@ -330,13 +330,13 @@ export default function GeneralMissionStats({ data, compareBaseline = null }) {
             <div className="mb-3 flex items-center gap-2">
               <Crosshair className="h-4 w-4 text-slate-300" strokeWidth={1.25} aria-hidden />
               <h4 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-blue-400/90">
-                Run history
+                Session history
               </h4>
             </div>
             <p className="font-data mb-2 text-base text-slate-300">Sorted by longest time</p>
             <ul className="font-data max-h-[220px] min-h-[120px] space-y-2 overflow-y-auto pr-1 text-sm [scrollbar-color:rgba(51,65,85,0.9)_transparent]">
               {sortedRunsDesc.length === 0 ? (
-                <li className="py-6 text-center text-slate-300">No run history.</li>
+                <li className="py-6 text-center text-slate-300">No session history.</li>
               ) : (
                 sortedRunsDesc.map((run) => (
                   <li

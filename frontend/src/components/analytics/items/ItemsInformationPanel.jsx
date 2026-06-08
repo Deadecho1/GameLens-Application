@@ -157,7 +157,7 @@ export default function ItemsInformationPanel({
                       {detail.item.name}
                     </h4>
                     <p className="font-data mt-0.5 text-base text-slate-300 font-medium">
-                      Based on {detail.runCount} run{detail.runCount === 1 ? '' : 's'}
+                      Based on {detail.runCount} session{detail.runCount === 1 ? '' : 's'}
                     </p>
                   </div>
                 </div>
@@ -186,7 +186,7 @@ export default function ItemsInformationPanel({
                 <div className="mb-2 flex items-center gap-2">
                   <Clock className="h-4 w-4 text-cyan-400/80" />
                   <p className="font-display text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
-                    Average run time
+                    Average session time
                   </p>
                 </div>
                 <p className="font-data text-3xl font-bold tabular-nums text-cyan-200">
@@ -201,7 +201,7 @@ export default function ItemsInformationPanel({
                   />
                 ) : null}
                 <p className="font-data mt-1 text-base text-slate-300">
-                  Average time of runs using this item
+                  Average time of sessions using this item
                 </p>
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950/45 p-4">
@@ -222,7 +222,7 @@ export default function ItemsInformationPanel({
                   />
                 ) : null}
                 <p className="font-data mt-1 text-base text-slate-300">
-                  Number of runs where this item was used
+                  Number of sessions where this item was used
                 </p>
               </div>
             </div>
@@ -236,7 +236,7 @@ export default function ItemsInformationPanel({
               </div>
               {detail.topSynergies.length === 0 ? (
                 <p className="font-data text-base text-slate-300">
-                  No co-occurring items in shared runs yet.
+                  No co-occurring items in shared sessions yet.
                 </p>
               ) : (
                 <ul className="space-y-2">
@@ -257,7 +257,7 @@ export default function ItemsInformationPanel({
                           {syn.name}
                         </span>
                         <span className="font-data shrink-0 text-sm tabular-nums text-cyan-400/90">
-                          {syn.count} run{syn.count === 1 ? '' : 's'} · {syn.pct}%
+                          {syn.count} session{syn.count === 1 ? '' : 's'} · {syn.pct}%
                         </span>
                       </li>
                     ))}
@@ -270,7 +270,7 @@ export default function ItemsInformationPanel({
                 Time acquired
               </h5>
               <p className="font-data mt-1 text-base text-slate-300">
-                When this item is usually obtained during a run
+                When this item is usually obtained during a session
               </p>
               <div className={`mt-4 w-full min-w-0 ${compact ? 'h-[200px]' : 'h-[240px]'}`}>
                 <ResponsiveContainer width="100%" height="100%">
