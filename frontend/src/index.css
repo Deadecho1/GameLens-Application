@@ -278,3 +278,70 @@ body,
 *::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Welcome screen — animated mesh placeholder (swap for <video> later) */
+@keyframes gl-welcome-mesh-shift {
+  0%,
+  100% {
+    background-position: 0% 40%, 100% 60%, 50% 50%, 0% 50%;
+  }
+  33% {
+    background-position: 100% 0%, 0% 100%, 80% 20%, 50% 50%;
+  }
+  66% {
+    background-position: 50% 100%, 50% 0%, 20% 80%, 100% 50%;
+  }
+}
+
+.gl-welcome-mesh {
+  background-color: #020617;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 15% 25%, rgba(37, 99, 235, 0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 55% at 85% 75%, rgba(15, 23, 42, 0.95) 0%, transparent 50%),
+    radial-gradient(ellipse 55% 45% at 55% 45%, rgba(8, 145, 178, 0.28) 0%, transparent 60%),
+    linear-gradient(135deg, #020617 0%, #0f172a 40%, #1e293b 75%, #0c1929 100%);
+  background-size: 200% 200%, 200% 200%, 180% 180%, 400% 400%;
+  animation: gl-welcome-mesh-shift 22s ease-in-out infinite;
+}
+
+.gl-welcome-glass {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(0, 229, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.gl-welcome-title {
+  text-shadow:
+    0 0 20px rgba(0, 229, 255, 0.45),
+    0 0 40px rgba(0, 229, 255, 0.2),
+    0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.gl-welcome-submit {
+  background: linear-gradient(135deg, #06b6d4 0%, #2563eb 55%, #1d4ed8 100%);
+  box-shadow:
+    0 0 24px rgba(0, 229, 255, 0.25),
+    0 4px 14px rgba(0, 0, 0, 0.35);
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+
+.gl-welcome-submit:hover:not(:disabled) {
+  box-shadow:
+    0 0 36px rgba(0, 229, 255, 0.5),
+    0 0 64px rgba(37, 99, 235, 0.25),
+    0 6px 20px rgba(0, 0, 0, 0.4);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.gl-welcome-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
