@@ -353,8 +353,10 @@ export default function ItemsBuildPanel({ data, compact = false, compareBaseline
                       borderRadius: 8,
                       fontSize: 12,
                       fontFamily: 'JetBrains Mono, monospace',
+                      color: '#ffffff',
                     }}
                     labelStyle={{ color: '#e2e8f0' }}
+                    itemStyle={{ color: '#00e5ff' }}
                     formatter={(value) => [`${Number(value).toFixed(1)} min`, 'Average time']}
                   />
                   <Bar dataKey="minutes" radius={[6, 6, 0, 0]} maxBarSize={72}>

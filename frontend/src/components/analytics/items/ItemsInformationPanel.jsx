@@ -303,7 +303,10 @@ export default function ItemsInformationPanel({
                         borderRadius: 8,
                         fontSize: 12,
                         fontFamily: 'JetBrains Mono, monospace',
+                        color: '#ffffff',
                       }}
+                      labelStyle={{ color: '#e2e8f0' }}
+                      itemStyle={{ color: '#00e5ff' }}
                       formatter={(value, _name, item) => [
                         `${value} time${value === 1 ? '' : 's'} selected`,
                         item?.payload?.sublabel ?? '',
