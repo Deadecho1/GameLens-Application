@@ -1,14 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Cloud,
-  Crosshair,
-  Loader2,
-  LogIn,
-  Mail,
-  Shield,
-  UserRound,
-} from 'lucide-react';
+import { Loader2, LogIn, Mail, UserRound } from 'lucide-react';
 
 /**
  * App entry — email-only sign-in (no password) or local guest mode.
@@ -37,71 +29,42 @@ export default function WelcomeScreen({ onLogin, onGuestContinue }) {
   }
 
   return (
-    <div className="relative flex min-h-screen overflow-hidden bg-slate-950 text-base text-slate-200">
-      <div className="pointer-events-none fixed inset-0 gl-cyber-grid" aria-hidden />
-      <div
-        className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_90%_70%_at_15%_20%,rgba(34,211,238,0.12),transparent_55%),radial-gradient(ellipse_70%_60%_at_85%_80%,rgba(59,130,246,0.1),transparent_50%)]"
-        aria-hidden
-      />
-      <div className="gl-app-scanlines pointer-events-none fixed inset-0" aria-hidden />
+    <div className="relative min-h-screen overflow-hidden text-slate-200">
+      {/* Full-screen background — drop in <video> above the mesh when ready */}
+      <div className="absolute inset-0 z-0" aria-hidden>
+        {/*
+          <video
+            className="absolute inset-0 h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster="/welcome-poster.jpg"
+          >
+            <source src="/welcome-bg.mp4" type="video/mp4" />
+          </video>
+        */}
+        <div className="gl-welcome-mesh absolute inset-0" />
+        <div className="absolute inset-0 bg-slate-950/25" />
+      </div>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col lg:flex-row lg:items-stretch">
-        {/* Brand panel */}
-        <motion.section
-          initial={{ opacity: 0, x: -24 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-1 flex-col justify-center px-6 py-12 lg:px-10 lg:py-16"
+      <div className="gl-app-scanlines pointer-events-none absolute inset-0 z-1 opacity-40" aria-hidden />
+
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-6 py-12">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="flex w-full max-w-md flex-col items-center text-center"
         >
-          <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-400/35 bg-slate-900/90 shadow-[0_0_40px_rgba(34,211,238,0.22)]">
-            <Crosshair className="h-8 w-8 text-cyan-400" strokeWidth={1.25} aria-hidden />
-          </div>
-          <p className="font-display text-sm font-bold uppercase tracking-[0.4em] text-cyan-500/80">
-            Tactical analytics platform
-          </p>
-          <h1 className="mt-4 font-display text-4xl font-extrabold leading-tight tracking-tight text-transparent bg-linear-to-br from-cyan-100 via-cyan-300 to-blue-600 bg-clip-text md:text-5xl lg:text-6xl">
+          <h1 className="gl-welcome-title font-display text-4xl font-bold tracking-tight text-white md:text-5xl">
             Welcome to GameLens
           </h1>
-          <p className="mt-5 max-w-md font-data text-base leading-relaxed text-slate-300 md:text-base">
-            Analyze runs, tune AI detectors, and compare game versions — from your desktop,
-            with optional cloud sync when you&apos;re ready.
+          <p className="font-data mt-4 max-w-sm text-base leading-relaxed text-slate-300 md:text-lg">
+            Automated gameplay analysis through computer vision.
           </p>
-          <ul className="mt-10 space-y-4">
-            {[
-              {
-                icon: Cloud,
-                title: 'Cloud Sync',
-                text: 'Any email registers an account — sync data across machines.',
-              },
-              {
-                icon: Shield,
-                title: 'Local-first',
-                text: 'Run fully offline as a guest; nothing is sent until you sign in.',
-              },
-            ].map(({ icon: Icon, title, text }) => (
-              <li key={title} className="flex gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-slate-900/60 text-cyan-400/90">
-                  <Icon className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                </span>
-                <div>
-                  <p className="font-display text-sm font-bold uppercase tracking-[0.18em] text-slate-300">
-                    {title}
-                  </p>
-                  <p className="font-data mt-0.5 text-base text-slate-300 font-medium">{text}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </motion.section>
 
-        {/* Auth card */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.08 }}
-          className="flex flex-1 items-center justify-center px-6 py-10 lg:px-10"
-        >
-          <div className="w-full max-w-md rounded-2xl border border-cyan-500/20 bg-slate-900/55 p-8 shadow-[0_0_60px_rgba(34,211,238,0.08),inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl ring-1 ring-slate-800/80">
+          <div className="gl-welcome-glass mt-10 w-full rounded-2xl p-8 text-left">
             <div className="mb-6 flex items-center gap-2">
               <LogIn className="h-5 w-5 text-cyan-400" strokeWidth={1.5} aria-hidden />
               <h2 className="font-display text-sm font-bold uppercase tracking-[0.2em] text-cyan-200/90">
@@ -119,7 +82,7 @@ export default function WelcomeScreen({ onLogin, onGuestContinue }) {
                 </label>
                 <div className="relative mt-2">
                   <Mail
-                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
                     aria-hidden
                   />
                   <input
@@ -131,13 +94,9 @@ export default function WelcomeScreen({ onLogin, onGuestContinue }) {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
                     disabled={submitting}
-                    className="font-data w-full rounded-xl border border-slate-700 bg-slate-950/80 py-3 pl-10 pr-4 text-base text-slate-100 placeholder:text-slate-400 outline-none transition focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 disabled:opacity-60"
+                    className="font-data w-full rounded-xl border border-white/10 bg-black/25 py-3 pl-10 pr-4 text-base text-slate-100 placeholder:text-slate-500 outline-none backdrop-blur-sm transition focus:border-cyan-400/40 focus:ring-2 focus:ring-cyan-400/15 disabled:opacity-60"
                   />
                 </div>
-                <p className="font-data mt-2.5 text-base leading-relaxed text-slate-300">
-                  Sign in to enable Cloud Sync and access your analytics from anywhere. No
-                  password required — any email creates or restores your account.
-                </p>
               </div>
 
               {error ? (
@@ -152,7 +111,7 @@ export default function WelcomeScreen({ onLogin, onGuestContinue }) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-500/40 bg-linear-to-b from-cyan-600 to-cyan-800 py-3.5 font-display text-sm font-bold uppercase tracking-[0.16em] text-white shadow-[0_0_28px_rgba(34,211,238,0.25)] transition hover:shadow-[0_0_36px_rgba(34,211,238,0.35)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="gl-welcome-submit flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-400/30 py-3.5 font-display text-sm font-bold uppercase tracking-[0.16em] text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -165,10 +124,10 @@ export default function WelcomeScreen({ onLogin, onGuestContinue }) {
 
             <div className="relative my-7">
               <div className="absolute inset-0 flex items-center" aria-hidden>
-                <div className="w-full border-t border-slate-800" />
+                <div className="w-full border-t border-white/10" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-slate-900/80 px-3 font-data text-sm font-semibold uppercase tracking-widest text-slate-300">
+                <span className="bg-transparent px-3 font-data text-sm font-semibold uppercase tracking-widest text-slate-400">
                   or
                 </span>
               </div>
@@ -178,16 +137,13 @@ export default function WelcomeScreen({ onLogin, onGuestContinue }) {
               type="button"
               onClick={onGuestContinue}
               disabled={submitting}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-transparent py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-slate-300 transition hover:border-slate-600 hover:bg-slate-800/40 hover:text-slate-200 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-slate-300 backdrop-blur-sm transition hover:border-cyan-400/25 hover:bg-white/10 hover:text-slate-100 disabled:opacity-50"
             >
               <UserRound className="h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden />
               Continue as Guest (Local Mode)
             </button>
-            <p className="font-data mt-3 text-center text-base text-slate-300">
-              Skips cloud sync · data stays on this device
-            </p>
           </div>
-        </motion.section>
+        </motion.div>
       </div>
     </div>
   );

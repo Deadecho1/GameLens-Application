@@ -1,0 +1,125 @@
+/* Dark theme overrides for react-datepicker (Session Stats date range). */
+
+.gl-session-datepicker.react-datepicker {
+  background-color: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 0.5rem;
+  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.65);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.gl-session-datepicker .react-datepicker__header {
+  background-color: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  padding-top: 0.65rem;
+}
+
+.gl-session-datepicker .react-datepicker__current-month,
+.gl-session-datepicker .react-datepicker-time__header,
+.gl-session-datepicker .react-datepicker-year-header {
+  color: #e2e8f0;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.gl-session-datepicker .react-datepicker__day-name {
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 600;
+  width: 2rem;
+  line-height: 2rem;
+  margin: 0.15rem;
+}
+
+.gl-session-datepicker .react-datepicker__day {
+  color: #e2e8f0;
+  width: 2rem;
+  line-height: 2rem;
+  margin: 0.15rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.gl-session-datepicker .react-datepicker__day:hover {
+  background-color: rgba(34, 211, 238, 0.12);
+  color: #67e8f9;
+}
+
+.gl-session-datepicker .react-datepicker__day--today {
+  font-weight: 700;
+  color: #22d3ee;
+}
+
+.gl-session-datepicker .react-datepicker__day--selected,
+.gl-session-datepicker .react-datepicker__day--keyboard-selected {
+  background-color: rgba(34, 211, 238, 0.22) !important;
+  color: #22d3ee !important;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+}
+
+.gl-session-datepicker .react-datepicker__day--outside-month {
+  color: #475569;
+}
+
+.gl-session-datepicker .react-datepicker__day--disabled {
+  color: #334155 !important;
+  cursor: not-allowed;
+}
+
+.gl-session-datepicker .react-datepicker__day--disabled:hover {
+  background-color: transparent;
+  color: #334155 !important;
+}
+
+.gl-session-datepicker .react-datepicker__navigation {
+  top: 0.65rem;
+}
+
+.gl-session-datepicker .react-datepicker__navigation-icon::before {
+  border-color: #94a3b8;
+}
+
+.gl-session-datepicker .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+  border-color: #22d3ee;
+}
+
+.gl-session-datepicker .react-datepicker__triangle {
+  display: none;
+}
+
+.gl-session-date-field {
+  position: relative;
+  width: fit-content;
+}
+
+.gl-session-date-field .react-datepicker-wrapper {
+  display: block;
+}
+
+.gl-session-datepicker-popper {
+  z-index: 50;
+}
+
+.gl-session-date-input {
+  width: 100%;
+  min-width: 11rem;
+  cursor: pointer;
+  border-radius: 0.375rem;
+  border: 1px solid #1e293b;
+  background-color: #0f172a;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #22d3ee;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gl-session-date-input:focus {
+  border-color: rgba(34, 211, 238, 0.5);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3);
+}
+
+.gl-session-date-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

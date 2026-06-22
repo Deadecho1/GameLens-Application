@@ -16,8 +16,8 @@ const DEFAULT_PLOT_HEIGHT = 400;
 
 const ZOOM_OPTIONS = [
   { id: 'ALL', label: 'All Time' },
-  { id: 'LAST_50', label: 'Last 50 Runs' },
-  { id: 'LAST_20', label: 'Last 20 Runs' },
+  { id: 'LAST_50', label: 'Last 50 Sessions' },
+  { id: 'LAST_20', label: 'Last 20 Sessions' },
 ];
 
 const axisTickDateFormatter = new Intl.DateTimeFormat('en-US', {
@@ -169,7 +169,7 @@ function TacticalRadarChart({
     if (!displayLength || zoomView === 'ALL') return null;
     const start = dateLabelFromRow(displayData[0]);
     const end = dateLabelFromRow(displayData[displayLength - 1]);
-    return `${start} – ${end} · ${displayLength} run${displayLength === 1 ? '' : 's'}`;
+    return `${start} – ${end} · ${displayLength} session${displayLength === 1 ? '' : 's'}`;
   }, [displayData, displayLength, zoomView]);
 
   const yDomain = useMemo(() => safeYDomain(yMin, yMax, yPad), [yMin, yMax, yPad]);
@@ -266,7 +266,7 @@ function TacticalRadarChart({
                 tickLine={{ stroke: '#475569' }}
                 tickFormatter={runIndexTickFormatter}
                 label={{
-                  value: 'Run sequence',
+                  value: 'Session sequence',
                   position: 'insideBottom',
                   offset: -6,
                   fill: '#64748b',
@@ -326,13 +326,13 @@ function TacticalRadarChart({
                   return (
                     <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-xl">
                       <p className="font-display text-sm font-bold uppercase tracking-wide text-cyan-200">
-                        Run ID · {runId}
+                        Session ID · {runId}
                       </p>
                       <p className="font-data mt-1 text-sm tabular-nums text-slate-300">
                         <span className="text-cyan-300/90">{when}</span>
                         <span className="text-slate-300">
                           {' '}
-                          · Run #{p.runIndex ?? '—'}
+                          · Session #{p.runIndex ?? '—'}
                           {p.run_index != null ? ` · DB index ${p.run_index}` : ''}
                         </span>
                       </p>
@@ -344,7 +344,7 @@ function TacticalRadarChart({
                       </p>
                       {typeof p.movingAverage === 'number' ? (
                         <p className="font-data mt-2 border-t border-slate-800 pt-2 text-base text-slate-300">
-                          10-run trend{' '}
+                          10-session trend{' '}
                           <span className="tabular-nums text-cyan-400/90">
                             {formatSecondsAsHMS(Math.round(p.movingAverage))}
                           </span>
@@ -368,7 +368,7 @@ function TacticalRadarChart({
                 type="monotone"
                 dataKey="movingAverage"
                 xAxisId={0}
-                name="10-run trend"
+                name="10-session trend"
                 stroke="#67e8f9"
                 strokeWidth={3.5}
                 strokeOpacity={1}
