@@ -230,6 +230,15 @@ export default function AnalyticsTab({ data, onPatch }) {
     return applyGameLibrarySlice(source, activeGame, activeVersion);
   }, [data, splitView, versionB]);
 
+  // Non-split view: scope to the selected version. dashboard.runsHistory now
+  // holds all versions' runs, so render the selected version's slice only.
+  const dataSingle = useMemo(() => {
+    const selectedVersion = data?.setup?.selectedVersion;
+    const sliced = sliceAnalyticsDataByVersion(data, selectedVersion);
+    const activeGame = (sliced?.setup?.selectedGame ?? "").trim();
+    return applyGameLibrarySlice(sliced, activeGame, selectedVersion);
+  }, [data]);
+
   const leftScrollRef = useRef(null);
   const rightScrollRef = useRef(null);
   const syncLock = useRef(false);
@@ -472,7 +481,7 @@ export default function AnalyticsTab({ data, onPatch }) {
         className={splitView ? "min-h-0" : ""}
       >
         {!splitView ? (
-          renderActiveSubView(sub, data, {
+          renderActiveSubView(sub, dataSingle, {
             itemsSubTab,
             onItemsSubTabChange: setItemsSubTab,
           })

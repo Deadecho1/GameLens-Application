@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
 import { cloneInitialData } from "./dataStore";
 import { IS_MOCK, getItems, getBosses, getRuns } from "./api/client";
+import { sliceAnalyticsDataByVersion } from "./utils/analyticsVersionSlice";
 import Header from "./components/Header";
 import MainTabNav from "./components/MainTabNav";
 import ChangePickerModal from "./components/ChangePickerModal";
@@ -20,6 +21,25 @@ import {
   readGuestModeContinued,
 } from "./utils/guestMode";
 import { EXIT_UI_PATCH, mergeExitSessionState } from "./utils/sessionExit";
+
+/**
+ * Apply a full backend state snapshot while preserving the analytics-owned
+ * dashboard. The backend's state:get / ipc:patch responses carry only the
+ * selected version's runsHistory and no gameLibrary, so they must not clobber
+ * the all-version runsHistory + per-version gameLibrary the analytics fetch
+ * effect loads for split view. Use the backend dashboard only as initial seed.
+ */
+function mergeServerState(prev, state) {
+  const prevDash = prev.dashboard;
+  const hasLocalDashboard =
+    prevDash &&
+    ((prevDash.runsHistory?.length ?? 0) > 0 ||
+      Object.keys(prevDash.gameLibrary ?? {}).length > 0);
+  return {
+    ...state,
+    dashboard: hasLocalDashboard ? prevDash : state.dashboard ?? prevDash,
+  };
+}
 
 /**
  * GameLens frontend orchestrator.
@@ -66,10 +86,11 @@ function App() {
         if (forceStartupAnalytics) {
           startupAnalyticsAppliedRef.current = true;
         }
+        const merged = mergeServerState(prev, state);
         return {
-          ...state,
+          ...merged,
           ui: {
-            ...state.ui,
+            ...merged.ui,
             activeMainTab,
           },
           processing: {
@@ -113,45 +134,77 @@ function App() {
     };
   }, [refreshState]);
 
+  // Stable primitive so the all-versions analytics fetch doesn't re-run on every
+  // poll (data.setup.versions is a fresh array each state:get).
+  const versionsKey = (data.setup.versions ?? []).filter(Boolean).join("|");
+
   useEffect(() => {
-    if (data.ui.activeMainTab !== "analytics") return;
+    if (
+      data.ui.activeMainTab !== "analytics" &&
+      data.ui.activeMainTab !== "runSession"
+    )
+      return;
     const gameName = (data.setup.selectedGame ?? "").trim();
-    const versionName = data.setup.selectedVersion;
+    const selectedVersion = data.setup.selectedVersion;
+    const versionList = versionsKey ? versionsKey.split("|") : [];
     if (!gameName) return;
 
     let cancelled = false;
 
+    const fetchItems = (v) =>
+      IS_MOCK
+        ? getItems(null, gameName, v)
+        : ipcRequest("dashboard:items", { game_name: gameName, version_name: v });
+    const fetchBosses = (v) =>
+      IS_MOCK
+        ? getBosses(null, gameName, v)
+        : ipcRequest("dashboard:bosses", { game_name: gameName, version_name: v });
+    const fetchRuns = (v) =>
+      IS_MOCK
+        ? getRuns(null, gameName, v)
+        : ipcRequest("dashboard:runs", { game_name: gameName, version_name: v });
+
     (async () => {
       try {
-        let items, bosses, runsHistory;
-        if (IS_MOCK) {
-          [items, bosses, runsHistory] = await Promise.all([
-            getItems(null, gameName, versionName),
-            getBosses(null, gameName, versionName),
-            getRuns(null, gameName, versionName),
-          ]);
-        } else {
-          [items, bosses, runsHistory] = await Promise.all([
-            ipcRequest("dashboard:items", {
-              game_name: gameName,
-              version_name: versionName,
-            }),
-            ipcRequest("dashboard:bosses", {
-              game_name: gameName,
-              version_name: versionName,
-            }),
-            ipcRequest("dashboard:runs", {
-              game_name: gameName,
-              version_name: versionName,
-            }),
-          ]);
-        }
-        if (!cancelled) {
-          setData((prev) => ({
-            ...prev,
-            dashboard: { ...prev.dashboard, items, bosses, runsHistory },
-          }));
-        }
+        // All-version runs (each tagged with gameVersion) so split view can slice
+        // per version; non-split callers slice down to the selected version.
+        const runsHistory = await fetchRuns(null);
+
+        // Per-version item/boss catalogs — needed so split view compares the right
+        // version's catalogs, not a single shared one.
+        const libVersions = versionList.length
+          ? versionList
+          : selectedVersion
+            ? [selectedVersion]
+            : [];
+        const perVersion = await Promise.all(
+          libVersions.map(async (v) => {
+            const [items, bosses] = await Promise.all([
+              fetchItems(v),
+              fetchBosses(v),
+            ]);
+            return [v, { items, bosses }];
+          }),
+        );
+
+        if (cancelled) return;
+
+        const versionMap = Object.fromEntries(perVersion);
+        const selectedNode = selectedVersion ? versionMap[selectedVersion] : null;
+
+        setData((prev) => ({
+          ...prev,
+          dashboard: {
+            ...prev.dashboard,
+            items: selectedNode?.items ?? prev.dashboard.items,
+            bosses: selectedNode?.bosses ?? prev.dashboard.bosses,
+            runsHistory,
+            gameLibrary: {
+              ...prev.dashboard.gameLibrary,
+              [gameName]: versionMap,
+            },
+          },
+        }));
       } catch (e) {
         if (!cancelled) setModalError(String(e?.message || e));
       }
@@ -164,8 +217,16 @@ function App() {
     data.ui.activeMainTab,
     data.setup.selectedGame,
     data.setup.selectedVersion,
+    versionsKey,
     ipcRequest,
   ]);
+
+  // RunSession tab is scoped to the selected version (dashboard.runsHistory now
+  // holds every version's runs for split-view comparison).
+  const runSessionData = useMemo(
+    () => sliceAnalyticsDataByVersion(data, data.setup.selectedVersion),
+    [data],
+  );
 
   const mergePatch = useCallback(
     async (patch) => {
@@ -239,7 +300,7 @@ function App() {
         }
 
         if (latestState) {
-          setData(latestState);
+          setData((prev) => mergeServerState(prev, latestState));
           return;
         }
 
@@ -269,7 +330,7 @@ function App() {
       const state = await ipcRequest("processing:stage_folder", {
         pipeline_path: folder,
       });
-      setData(state);
+      setData((prev) => mergeServerState(prev, state));
     } catch (e) {
       setModalError(String(e?.message || e));
     }
@@ -302,7 +363,7 @@ function App() {
         }
       }
       const state = await ipcRequest("processing:run");
-      setData(state);
+      setData((prev) => mergeServerState(prev, state));
     } catch (e) {
       setModalError(String(e?.message || e));
     }
@@ -311,7 +372,7 @@ function App() {
   const handleStop = useCallback(async () => {
     try {
       const state = await ipcRequest("processing:stop");
-      setData(state);
+      setData((prev) => mergeServerState(prev, state));
     } catch (e) {
       setModalError(String(e?.message || e));
     }
@@ -320,7 +381,7 @@ function App() {
   const handleClearLogs = useCallback(async () => {
     try {
       const state = await ipcRequest("processing:clear_logs");
-      setData(state);
+      setData((prev) => mergeServerState(prev, state));
     } catch (e) {
       setModalError(String(e?.message || e));
     }
@@ -455,7 +516,7 @@ function App() {
       if (!trimmed) return;
       try {
         const state = await ipcRequest("auth:login", { email: trimmed });
-        setData(state);
+        setData((prev) => mergeServerState(prev, state));
       } catch (e) {
         setModalError(String(e?.message || e));
         throw e;
@@ -467,7 +528,7 @@ function App() {
   const handleSyncNow = useCallback(async () => {
     try {
       const state = await ipcRequest("auth:sync");
-      setData(state);
+      setData((prev) => mergeServerState(prev, state));
     } catch (e) {
       setModalError(String(e?.message || e));
     }
@@ -554,7 +615,7 @@ function App() {
               <AnalyticsTab key="analytics" data={data} onPatch={mergePatch} />
             )}
             {tab === "runSession" && (
-              <RunSessionAnalytics key="runSession" data={data} />
+              <RunSessionAnalytics key="runSession" data={runSessionData} />
             )}
             {tab === "tuning" && (
               <TuningTab key="tuning" data={data} ipcRequest={ipcRequest} />
